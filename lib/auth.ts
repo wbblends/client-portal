@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { SESSION_COOKIE } from "./session-cookie";
 
 /**
  * Demo-only auth. A single seeded user is hardcoded. Sessions are stored as a
@@ -11,7 +12,7 @@ import { redirect } from "next/navigation";
  * implementations (e.g. to Auth.js, Clerk, or your own JWT verification).
  */
 
-export const SESSION_COOKIE = "wbb_session";
+export { SESSION_COOKIE };
 
 export type SessionUser = {
   username: string;
