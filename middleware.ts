@@ -4,7 +4,7 @@ import { SESSION_COOKIE } from "@/lib/auth";
 
 const PUBLIC_PATHS = new Set<string>(["/login"]);
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (PUBLIC_PATHS.has(pathname) || pathname.startsWith("/api/auth/")) {
@@ -22,8 +22,8 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Run on every page route, but skip Next internals and static assets so the
-  // proxy stays out of the asset pipeline.
+  // Run on every page route, but skip Next internals and static assets so
+  // middleware stays out of the asset pipeline.
   matcher: [
     "/((?!_next/|favicon\\.ico|assets/|.*\\.svg$|.*\\.png$|.*\\.jpg$).*)",
   ],
