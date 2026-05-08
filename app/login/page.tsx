@@ -40,11 +40,11 @@ export default async function LoginPage(props: PageProps<"/login">) {
             </div>
 
             <h1 className="font-display text-[44px] leading-[1.05] tracking-tight text-foreground">
-              You&apos;ll Know Where Your Order Stands.
+              Excellence in Every <em className="text-primary">Blend</em>.
             </h1>
             <p className="mt-4 text-[15px] text-muted leading-relaxed">
-              Sign in to your wholesale portal — promise dates, current
-              production stage, and any flags on every open order, anytime.
+              Sign in to your portal — promise dates, current production stage,
+              and any flags on every open order, anytime.
             </p>
 
             <div className="mt-8 rounded-2xl border border-border bg-card p-7 shadow-[var(--shadow-card-hover)]">
