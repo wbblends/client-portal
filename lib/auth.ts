@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { SESSION_COOKIE } from "./session-cookie";
 
 /**
  * Demo-only auth. A single seeded user is hardcoded. Sessions are stored as a
@@ -10,9 +9,13 @@ import { SESSION_COOKIE } from "./session-cookie";
  * Future: replace with a real provider. Recommended path is to keep
  * `getSession()` and `requireSession()` as the only call sites and swap their
  * implementations (e.g. to Auth.js, Clerk, or your own JWT verification).
+ *
+ * Auth is enforced per page via `requireSession()` in server components — no
+ * middleware/proxy is wired up. That keeps every page's runtime in Node so
+ * Buffer-based session decoding works without Edge runtime constraints.
  */
 
-export { SESSION_COOKIE };
+export const SESSION_COOKIE = "wbb_session";
 
 export type SessionUser = {
   username: string;
