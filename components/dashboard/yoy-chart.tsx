@@ -88,7 +88,7 @@ export function SalesByDurationChart({
                   boxShadow: "var(--shadow-popover)",
                 }}
                 labelStyle={{ color: "var(--color-foreground)", fontWeight: 600 }}
-                formatter={(v: number, name) => [fmt(v), name === "current" ? "Selected period" : compareLabel]}
+                formatter={(v, name) => [fmt(Number(v)), name === "current" ? "Selected period" : compareLabel]}
               />
               <Bar dataKey="prior" fill="var(--color-border-strong)" radius={[4, 4, 0, 0]} maxBarSize={42} />
               <Bar dataKey="current" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={42} />
