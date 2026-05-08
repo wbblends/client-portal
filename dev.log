@@ -1,0 +1,38 @@
+
+> wb-blends-portal@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.50.74:3000
+✓ Ready in 7.4s
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+
+○ Compiling /login ...
+ GET /login 200 in 6.5s (next.js: 6.2s, proxy.ts: 9ms, application-code: 280ms)
+ POST /api/auth/login 401 in 584ms (next.js: 522ms, proxy.ts: 11ms, application-code: 51ms)
+ POST /api/auth/login 200 in 23ms (next.js: 4ms, proxy.ts: 8ms, application-code: 11ms)
+The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+ GET /dashboard 200 in 4.1s (next.js: 3.4s, proxy.ts: 6ms, application-code: 606ms)
+ GET /documents 200 in 700ms (next.js: 571ms, proxy.ts: 9ms, application-code: 120ms)
+ GET /invoices 200 in 804ms (next.js: 570ms, proxy.ts: 5ms, application-code: 229ms)
+ GET /contact 200 in 644ms (next.js: 424ms, proxy.ts: 6ms, application-code: 214ms)
+The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+ GET /dashboard?preset=mtd 200 in 169ms (next.js: 5ms, proxy.ts: 7ms, application-code: 157ms)
+The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+ GET /dashboard?preset=12m 200 in 174ms (next.js: 6ms, proxy.ts: 7ms, application-code: 161ms)
+✓ Compiled in 122ms
+[?25h

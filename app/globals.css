@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand palette — vibrant purple primary, very light purple-tinted surface */
+  --color-background: #ffffff;
+  --color-surface: #f6f4ff;          /* very, very light purple */
+  --color-surface-tint: #efeaff;     /* slightly stronger tint */
+  --color-foreground: #15102b;       /* deep near-black with a violet undertone */
+  --color-foreground-soft: #2a2350;
+  --color-muted: #5b537a;
+  --color-muted-soft: #8a83a8;
+  --color-border: #e6e1f5;
+  --color-border-strong: #d1c8ee;
+  --color-card: #ffffff;
+
+  --color-primary: #6e5bfe;          /* WB Blends purple */
+  --color-primary-hover: #5947e8;
+  --color-primary-soft: #eeebff;
+  --color-primary-foreground: #ffffff;
+
+  --color-accent: #f2efff;
+  --color-accent-foreground: #15102b;
+
+  --color-success: #14854c;
+  --color-success-soft: #e8f5ec;
+  --color-warning: #b45309;
+  --color-warning-soft: #fdf2dc;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fdeaea;
+  --color-info: #4338ca;
+  --color-info-soft: #ebe9fb;
+
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: var(--font-display), ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --shadow-card: 0 1px 2px 0 rgba(21, 16, 43, 0.04), 0 0 0 1px rgba(21, 16, 43, 0.04);
+  --shadow-card-hover: 0 4px 14px -2px rgba(110, 91, 254, 0.10), 0 0 0 1px rgba(21, 16, 43, 0.06);
+  --shadow-popover: 0 12px 32px -8px rgba(21, 16, 43, 0.18), 0 0 0 1px rgba(21, 16, 43, 0.06);
+}
+
+@layer base {
+  html {
+    background: var(--color-surface);
+  }
+
+  body {
+    background: var(--color-surface);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  *::selection {
+    background: color-mix(in oklab, var(--color-primary) 26%, transparent);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Display heading utility — apply via class="font-display" */
+  .font-display {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  /* Decorative purple wash, used as a backdrop in marketing-feeling spots
+     where we don't want a heavy raster background. */
+  .gradient-mesh {
+    background:
+      radial-gradient(at 12% 8%, color-mix(in oklab, var(--color-primary) 18%, transparent) 0px, transparent 50%),
+      radial-gradient(at 92% 22%, color-mix(in oklab, var(--color-primary) 14%, transparent) 0px, transparent 55%),
+      radial-gradient(at 60% 100%, color-mix(in oklab, var(--color-primary) 10%, transparent) 0px, transparent 60%);
+  }
+}
