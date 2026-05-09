@@ -42,6 +42,15 @@ export function OpenOrdersReport({
         Open Order Status: {reportDate}
       </div>
 
+      {orders.length === 0 ? (
+        <div className="px-5 py-10 text-center">
+          <p className="text-sm font-medium text-foreground">No matching orders</p>
+          <p className="mt-1 text-sm text-muted">
+            Try clearing a filter or broadening your search to see more results.
+          </p>
+        </div>
+      ) : (
+        <>
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm border-collapse table-fixed">
@@ -174,6 +183,8 @@ export function OpenOrdersReport({
           );
         })}
       </ul>
+        </>
+      )}
     </div>
   );
 }

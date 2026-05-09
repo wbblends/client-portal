@@ -2,11 +2,33 @@ import Link from "next/link";
 import { ChevronRight, Download, Folder, FileText, FileSpreadsheet, Image as ImageIcon, FolderOpen } from "lucide-react";
 import { requireSession } from "@/lib/auth";
 import { getDocuments, getChildren, getBreadcrumb, findNode } from "@/lib/data/documents";
+import { parseSearchParam, parseMultiParam } from "@/lib/filters";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { formatDate, cn } from "@/lib/utils";
 import type { DocNode } from "@/lib/data/types";
 
 export const metadata = { title: "Documents — WB Blends" };
+
+const SORT_OPTIONS = [
+  { value: "name-asc", label: "Name (A → Z)" },
+  { value: "name-desc", label: "Name (Z → A)" },
+  { value: "modified-desc", label: "Modified (newest)" },
+  { value: "modified-asc", label: "Modified (oldest)" },
+  { value: "size-desc", label: "Size (largest)" },
+  { value: "size-asc", label: "Size (smallest)" },
+];
+
+const TYPE_OPTIONS = [
+  { value: "folder", label: "Folders" },
+  { value: "pdf", label: "PDF" },
+  { value: "xlsx", label: "Excel" },
+  { value: "docx", label: "Word" },
+  { value: "csv", label: "CSV" },
+  { value: "png", label: "PNG" },
+  { value: "jpg", label: "JPG" },
+  { value: "txt", label: "Text" },
+];
 
 function fileIcon(node: DocNode) {
   if (node.kind === "folder") return Folder;
@@ -29,14 +51,54 @@ function formatBytes(b?: number): string {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function nodeMatchesType(node: DocNode, types: string[]): boolean {
+  if (types.length === 0) return true;
+  if (node.kind === "folder") return types.includes("folder");
+  return !!(node.fileType && types.includes(node.fileType));
+}
+
+function sortNodes(nodes: DocNode[], sortToken: string): DocNode[] {
+  const [field, dirRaw] = sortToken.split("-");
+  const dir = dirRaw === "asc" ? 1 : -1;
+  return [...nodes].sort((a, b) => {
+    // Folders always cluster first — they navigate, files don't.
+    if (a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
+    switch (field) {
+      case "modified": {
+        const ax = a.modified?.getTime() ?? 0;
+        const bx = b.modified?.getTime() ?? 0;
+        return (ax - bx) * dir;
+      }
+      case "size": {
+        const ax = a.size ?? 0;
+        const bx = b.size ?? 0;
+        return (ax - bx) * dir;
+      }
+      case "name":
+      default:
+        return a.name.localeCompare(b.name) * dir;
+    }
+  });
+}
+
 export default async function DocumentsPage(props: PageProps<"/documents">) {
   const user = await requireSession();
   const sp = await props.searchParams;
   const folderId = typeof sp.folder === "string" ? sp.folder : null;
 
+  const q = parseSearchParam(sp.q).toLowerCase();
+  const types = parseMultiParam(sp.type);
+  const sort = parseSearchParam(sp.sort) || "name-asc";
+
   const tree = await getDocuments(user.customerId);
   const current = folderId ? findNode(tree, folderId) ?? null : null;
-  const items = getChildren(tree, folderId);
+  const allChildren = getChildren(tree, folderId);
+
+  let items = allChildren;
+  if (q) items = items.filter(n => n.name.toLowerCase().includes(q));
+  items = items.filter(n => nodeMatchesType(n, types));
+  items = sortNodes(items, sort);
+
   const crumbs = getBreadcrumb(tree, folderId);
 
   return (
@@ -84,16 +146,37 @@ export default async function DocumentsPage(props: PageProps<"/documents">) {
         <CardHeader>
           <CardTitle>{current ? current.name : "All Files"}</CardTitle>
           <CardDescription>
-            {items.length === 0
+            {allChildren.length === 0
               ? "This folder is empty."
-              : `${items.length} item${items.length === 1 ? "" : "s"}`}
+              : items.length === allChildren.length
+                ? `${items.length} item${items.length === 1 ? "" : "s"}`
+                : `${items.length} of ${allChildren.length} items`}
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-0">
-          {items.length === 0 ? (
+        {allChildren.length > 0 && (
+          <CardContent>
+            <FilterBar
+              searchParam="q"
+              searchPlaceholder="Search files…"
+              filterGroups={[
+                { param: "type", label: "Type", options: TYPE_OPTIONS },
+              ]}
+              sort={{ options: SORT_OPTIONS, defaultValue: "name-asc" }}
+            />
+          </CardContent>
+        )}
+        <CardContent className="px-0 pt-0">
+          {allChildren.length === 0 ? (
             <EmptyState />
+          ) : items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center px-5 py-12 text-center border-t border-border">
+              <p className="text-sm font-medium text-foreground">No matching files</p>
+              <p className="mt-1 text-sm text-muted max-w-sm">
+                Try clearing a filter or broadening your search to see more results.
+              </p>
+            </div>
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-border border-t border-border">
               {items.map(item => {
                 const Icon = fileIcon(item);
                 return (
