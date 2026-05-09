@@ -5,6 +5,7 @@ import { UserMenu } from "@/components/portal/user-menu";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const user = await requireSession();
+  const isSuperAdmin = user.role === "super_admin";
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">
@@ -14,7 +15,7 @@ export default async function PortalLayout({ children }: { children: React.React
           <Logo />
         </div>
         <div className="flex-1 overflow-y-auto py-2">
-          <SidebarNav />
+          <SidebarNav isSuperAdmin={isSuperAdmin} />
         </div>
         <div className="p-3 border-t border-border">
           <UserMenu
@@ -40,7 +41,7 @@ export default async function PortalLayout({ children }: { children: React.React
 
       {/* Mobile inline nav — horizontal strip */}
       <div className="lg:hidden border-b border-border bg-card py-2">
-        <SidebarNav orientation="horizontal" />
+        <SidebarNav orientation="horizontal" isSuperAdmin={isSuperAdmin} />
       </div>
 
       <main className="min-w-0">{children}</main>

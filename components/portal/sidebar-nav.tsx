@@ -2,15 +2,30 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderClosed, FileText, Users, ShieldCheck } from "lucide-react";
+import {
+  LayoutDashboard,
+  FolderClosed,
+  FileText,
+  Users,
+  ShieldCheck,
+  UserCog,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NAV = [
+type NavItem = {
+  label: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  superAdminOnly?: boolean;
+};
+
+const NAV: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Documents", href: "/documents", icon: FolderClosed },
   { label: "Invoices", href: "/invoices", icon: FileText },
   { label: "Quality", href: "/quality", icon: ShieldCheck },
   { label: "Contact", href: "/contact", icon: Users },
+  { label: "Users", href: "/admin/users", icon: UserCog, superAdminOnly: true },
 ];
 
 /**
@@ -18,15 +33,20 @@ const NAV = [
  *  - Desktop sidebar: vertical column
  *  - Mobile inline nav: horizontal scrollable strip
  *
- * Pass `orientation="horizontal"` for the mobile usage.
+ * Pass `orientation="horizontal"` for the mobile usage. Items flagged
+ * `superAdminOnly` are filtered out unless `isSuperAdmin` is true.
  */
 export function SidebarNav({
   orientation = "vertical",
+  isSuperAdmin = false,
 }: {
   orientation?: "vertical" | "horizontal";
+  isSuperAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const isHorizontal = orientation === "horizontal";
+
+  const items = NAV.filter(item => !item.superAdminOnly || isSuperAdmin);
 
   return (
     <nav
@@ -36,7 +56,7 @@ export function SidebarNav({
           : "flex flex-col gap-0.5 px-3",
       )}
     >
-      {NAV.map(item => {
+      {items.map(item => {
         const active = pathname === item.href || pathname.startsWith(item.href + "/");
         const Icon = item.icon;
         return (

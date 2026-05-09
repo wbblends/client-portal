@@ -1,58 +1,44 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getUser, verifyCredentials, type Permission, type Role } from "./users";
 
 /**
- * Demo-only auth. A single seeded user is hardcoded. Sessions are stored as a
- * base64-encoded JSON cookie — adequate for a placeholder portal so the user
- * can log in as a test account, but obviously not safe for production.
+ * Demo-only auth. Sessions are a base64-encoded JSON cookie carrying the
+ * user's id; the canonical user record (name, role, permissions) is read
+ * from `lib/users.ts` on each request so admin edits take effect immediately.
  *
- * Future: replace with a real provider. Recommended path is to keep
- * `getSession()` and `requireSession()` as the only call sites and swap their
- * implementations (e.g. to Auth.js, Clerk, or your own JWT verification).
- *
- * Auth is enforced per page via `requireSession()` in server components — no
- * middleware/proxy is wired up. That keeps every page's runtime in Node so
- * Buffer-based session decoding works without Edge runtime constraints.
+ * Auth is enforced per page via `requireSession()` / `requireSuperAdmin()`
+ * in server components — no middleware/proxy is wired up. That keeps every
+ * page's runtime in Node so Buffer-based session decoding works without Edge
+ * runtime constraints.
  */
 
 export const SESSION_COOKIE = "wbb_session";
 
 export type SessionUser = {
+  id: string;
   username: string;
   name: string;
   email: string;
   company: string;
   customerId: string;
-  /** Optional path under `public/`. Falls back to initials avatar when absent. */
+  /** Optional path under `public/`, absolute URL, or `data:` URL. */
   avatarUrl?: string;
-};
-
-const SEEDED_USERS: Record<string, { password: string; user: SessionUser }> = {
-  dsimmons: {
-    password: "test",
-    user: {
-      username: "dsimmons",
-      name: "Devin Simmons",
-      email: "devin@devinstest.example",
-      company: "Devin's Test Brand",
-      customerId: "C-1042",
-      avatarUrl: "/avatars/dsimmons.jpg",
-    },
-  },
+  role: Role;
+  permissions: Permission[];
 };
 
 export async function authenticate(
   username: string,
   password: string,
 ): Promise<SessionUser | null> {
-  const entry = SEEDED_USERS[username.trim().toLowerCase()];
-  if (!entry || entry.password !== password) return null;
-  return entry.user;
+  const user = verifyCredentials(username, password);
+  return user ? toSession(user) : null;
 }
 
-export async function createSession(user: SessionUser, remember: boolean) {
+export async function createSession(user: { id: string }, remember: boolean) {
   const jar = await cookies();
-  const payload = encodePayload(user);
+  const payload = encodePayload({ id: user.id });
   jar.set(SESSION_COOKIE, payload, {
     httpOnly: true,
     sameSite: "lax",
@@ -71,7 +57,11 @@ export async function getSession(): Promise<SessionUser | null> {
   const jar = await cookies();
   const cookie = jar.get(SESSION_COOKIE);
   if (!cookie) return null;
-  return decodePayload(cookie.value);
+  const payload = decodePayload(cookie.value);
+  if (!payload) return null;
+  const user = getUser(payload.id);
+  if (!user || user.status !== "active") return null;
+  return toSession(user);
 }
 
 export async function requireSession(): Promise<SessionUser> {
@@ -80,17 +70,48 @@ export async function requireSession(): Promise<SessionUser> {
   return user;
 }
 
-function encodePayload(user: SessionUser): string {
-  // Buffer is available because proxy/route handlers run in Node runtime.
-  return Buffer.from(JSON.stringify(user)).toString("base64url");
+export async function requireSuperAdmin(): Promise<SessionUser> {
+  const user = await requireSession();
+  if (user.role !== "super_admin") redirect("/dashboard");
+  return user;
 }
 
-function decodePayload(value: string): SessionUser | null {
+function toSession(u: {
+  id: string;
+  username: string;
+  name: string;
+  email: string;
+  company: string;
+  customerId: string;
+  avatarUrl?: string;
+  role: Role;
+  permissions: Permission[];
+}): SessionUser {
+  return {
+    id: u.id,
+    username: u.username,
+    name: u.name,
+    email: u.email,
+    company: u.company,
+    customerId: u.customerId,
+    avatarUrl: u.avatarUrl,
+    role: u.role,
+    permissions: u.permissions,
+  };
+}
+
+type CookiePayload = { id: string };
+
+function encodePayload(payload: CookiePayload): string {
+  return Buffer.from(JSON.stringify(payload)).toString("base64url");
+}
+
+function decodePayload(value: string): CookiePayload | null {
   try {
     const json = Buffer.from(value, "base64url").toString("utf8");
     const obj = JSON.parse(json);
-    if (typeof obj?.username === "string" && typeof obj?.customerId === "string") {
-      return obj as SessionUser;
+    if (typeof obj?.id === "string") {
+      return { id: obj.id };
     }
     return null;
   } catch {
