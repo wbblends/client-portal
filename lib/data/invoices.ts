@@ -1,4 +1,4 @@
-import { seededRng } from "@/lib/utils";
+import { hashString, seededRng } from "@/lib/utils";
 import type { Invoice, InvoiceStatus } from "./types";
 
 /**
@@ -6,7 +6,7 @@ import type { Invoice, InvoiceStatus } from "./types";
  * payment status from the proprietary AR system.
  */
 export async function getInvoices(customerId: string): Promise<Invoice[]> {
-  const rng = seededRng(hash(customerId) ^ 0xa53c1b);
+  const rng = seededRng(hashString(customerId) ^ 0xa53c1b);
   const today = new Date();
   const list: Invoice[] = [];
   for (let i = 0; i < 32; i++) {
@@ -55,11 +55,3 @@ export const INVOICE_STATUS_META: Record<InvoiceStatus, { label: string; tone: "
   draft: { label: "Draft", tone: "neutral" },
 };
 
-function hash(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = (h * 16777619) >>> 0;
-  }
-  return h >>> 0;
-}

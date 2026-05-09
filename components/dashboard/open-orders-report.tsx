@@ -42,24 +42,25 @@ export function OpenOrdersReport({
         Open Order Status: {reportDate}
       </div>
 
-      {/* Desktop table */}
-      <div className="hidden md:block overflow-x-auto">
+      {/* Desktop table — only at lg+ so Current Status keeps enough room
+          for the prose. Below lg, the mobile card stack takes over. */}
+      <div className="hidden lg:block overflow-x-auto">
         <table className="w-full text-sm border-collapse table-fixed">
           {/* PO# / Sales Order / Product / Type / Qty / Label / Approval / In-House / Est. Ship / Current Status */}
           <colgroup>
-            <col className="w-[88px]" />
-            <col className="w-[88px]" />
-            <col className="w-[180px]" />
             <col className="w-[78px]" />
+            <col className="w-[82px]" />
+            <col className="w-[160px]" />
+            <col className="w-[64px]" />
+            <col className="w-[58px]" />
+            <col className="w-[74px]" />
             <col className="w-[78px]" />
-            <col className="w-[88px]" />
-            <col className="w-[88px]" />
-            <col className="w-[92px]" />
-            <col className="w-[78px]" />
+            <col className="w-[84px]" />
+            <col className="w-[76px]" />
             <col />
           </colgroup>
-          <thead className="text-left text-[10.5px] font-semibold uppercase tracking-wide text-muted">
-            <tr className="border-b border-border">
+          <thead className="sticky top-0 z-10 bg-card text-left text-[10.5px] font-semibold uppercase tracking-wide text-muted shadow-[0_1px_0_0_var(--color-border)]">
+            <tr>
               <th className="px-3 py-2.5 font-semibold">PO #</th>
               <th className="px-2 py-2.5 font-semibold">Sales Order</th>
               <th className="px-3 py-2.5 font-semibold">Product</th>
@@ -123,8 +124,8 @@ export function OpenOrdersReport({
         </table>
       </div>
 
-      {/* Mobile card stack */}
-      <ul className="md:hidden divide-y divide-border">
+      {/* Mobile + tablet card stack */}
+      <ul className="lg:hidden divide-y divide-border">
         {orders.map(o => {
           const meta = ON_TRACK_META[o.onTrack];
           return (

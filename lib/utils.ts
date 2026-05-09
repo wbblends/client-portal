@@ -76,3 +76,50 @@ export function seededRng(seed: number) {
     return state / 0x100000000;
   };
 }
+
+/** FNV-1a 32-bit hash for stable seeds derived from strings. */
+export function hashString(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/**
+ * Validates a `next=` redirect target so we never bounce a user to an
+ * absolute external URL or protocol-relative path. Allows only same-origin
+ * paths starting with a single `/`.
+ */
+export function isSafeNextPath(next: string | undefined | null): boolean {
+  if (!next) return false;
+  if (!next.startsWith("/")) return false;
+  if (next.startsWith("//") || next.startsWith("/\\")) return false;
+  return true;
+}
+
+/**
+ * Race a promise against a timeout. On timeout, throws an Error tagged with
+ * `name = "TimeoutError"` so callers can `catch` and fall back to placeholder
+ * data without conflating a slow upstream with a real failure.
+ */
+export function withTimeout<T>(p: Promise<T>, ms: number, label = "operation"): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const id = setTimeout(() => {
+      const err = new Error(`${label} timed out after ${ms}ms`);
+      err.name = "TimeoutError";
+      reject(err);
+    }, ms);
+    p.then(
+      v => {
+        clearTimeout(id);
+        resolve(v);
+      },
+      e => {
+        clearTimeout(id);
+        reject(e);
+      },
+    );
+  });
+}

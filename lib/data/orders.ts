@@ -1,4 +1,5 @@
-import { seededRng, startOfDay, endOfDay } from "@/lib/utils";
+import { cache } from "react";
+import { hashString, seededRng, startOfDay, endOfDay } from "@/lib/utils";
 import type { OrderLine, OrderStatus } from "./types";
 
 /**
@@ -52,8 +53,8 @@ function pickStatus(rng: () => number, daysSinceOrder: number, dueIn: number): O
  * Future: replace with `acumatica.salesOrders.list({ customerId, dateFrom, dateTo })`
  * and a join against the proprietary system for SKU enrichments.
  */
-export async function getAllOrders(customerId: string): Promise<OrderLine[]> {
-  const rng = seededRng(hashSeed(customerId));
+export const getAllOrders = cache(async (customerId: string): Promise<OrderLine[]> => {
+  const rng = seededRng(hashString(customerId));
   const lines: OrderLine[] = [];
   const today = new Date();
   const start = new Date(today);
@@ -136,7 +137,7 @@ export async function getAllOrders(customerId: string): Promise<OrderLine[]> {
   }
 
   return lines;
-}
+});
 
 export async function getOrdersInRange(
   customerId: string,
@@ -152,13 +153,18 @@ export async function getOrdersInRange(
   });
 }
 
-function hashSeed(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = (h * 16777619) >>> 0;
-  }
-  return h >>> 0;
+/**
+ * Share of delivered orders that arrived on or before their promise date,
+ * expressed as a one-decimal percentage. Returns 0 when nothing has been
+ * delivered yet.
+ */
+export function computeOnTimeRate(
+  delivered: { promisedDate: Date; deliveredDate: Date | null }[],
+): number {
+  const completed = delivered.filter(o => o.deliveredDate);
+  if (completed.length === 0) return 0;
+  const onTime = completed.filter(o => o.deliveredDate! <= o.promisedDate).length;
+  return Math.round((onTime / completed.length) * 1000) / 10;
 }
 
 export const ORDER_STATUS_META: Record<OrderStatus, { label: string; tone: "neutral" | "info" | "success" | "warning" | "danger" }> = {

@@ -1,30 +1,27 @@
-import { seededRng } from "@/lib/utils";
+import { notFound } from "next/navigation";
+import { hashString, seededRng } from "@/lib/utils";
+import { getCustomer } from "@/lib/customers/registry";
 import type { CustomerProfile } from "./types";
 
 /**
  * Returns the customer profile for a given customer id. Mock implementation —
  * future: hit Acumatica `Customer` GET endpoint and the proprietary CRM for
  * supplemental fields.
+ *
+ * Unknown ids trigger `notFound()` so a stale or stray id surfaces as a 404
+ * rather than a half-rendered page with the raw id as the display name.
+ * Routes under `/c/[customerId]/...` already gate on `requireCustomerAccess`,
+ * so in practice only direct callers (or future broken links into this loader)
+ * would hit this branch.
  */
 export async function getCustomerProfile(customerId: string): Promise<CustomerProfile> {
-  const rng = seededRng(hash(customerId));
+  const known = getCustomer(customerId);
+  if (!known) notFound();
+  const rng = seededRng(hashString(customerId));
   return {
     id: customerId,
-    name: customerNames[customerId] ?? "Devin's Test Brand",
-    primaryContact: "Devin Simmons",
+    name: known.name,
+    primaryContact: "TBD",
     accountSince: 2018 + Math.floor(rng() * 5),
   };
-}
-
-const customerNames: Record<string, string> = {
-  "C-1042": "Devin's Test Brand",
-};
-
-function hash(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = (h * 16777619) >>> 0;
-  }
-  return h >>> 0;
 }

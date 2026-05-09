@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { authenticate, createSession } from "@/lib/auth";
+import { attemptLogin, createSession, setMfaChallenge } from "@/lib/auth";
+import { isSafeNextPath } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   let body: { username?: string; password?: string; remember?: boolean; next?: string } = {};
@@ -16,13 +17,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Username and password are required." }, { status: 400 });
   }
 
-  const user = await authenticate(username, password);
-  if (!user) {
+  const result = await attemptLogin(username, password);
+  if (result.kind === "invalid") {
     return NextResponse.json({ error: "Invalid username or password." }, { status: 401 });
   }
 
-  await createSession(user, !!body.remember);
+  const next = isSafeNextPath(body.next) ? body.next! : "/";
+  const remember = !!body.remember;
 
-  const next = body.next && body.next.startsWith("/") ? body.next : "/dashboard";
+  if (result.kind === "mfa-required") {
+    await setMfaChallenge(result.username, remember);
+    return NextResponse.json({ ok: true, mfaRequired: true, next });
+  }
+
+  await createSession(result.user, remember);
   return NextResponse.json({ ok: true, next });
 }

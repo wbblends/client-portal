@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand palette — vibrant purple primary, very light purple-tinted surface */
+  /* Brand palette — vibrant purple primary, very light purple-tinted surface.
+     Light mode is the default; dark mode overrides land in the
+     [data-theme="dark"] block below. */
   --color-background: #ffffff;
   --color-surface: #f6f4ff;          /* very, very light purple */
   --color-surface-tint: #efeaff;     /* slightly stronger tint */
@@ -39,9 +41,60 @@
   --shadow-popover: 0 12px 32px -8px rgba(21, 16, 43, 0.18), 0 0 0 1px rgba(21, 16, 43, 0.06);
 }
 
+/* ─── Dark mode ────────────────────────────────────────────────────────────
+   Same brand purple, inverted lightness. Background is a deep purple-black
+   (not neutral gray) so the violet undertone reads through; primary is
+   nudged brighter so it still pops against the dark surfaces. Card sits
+   one step lighter than surface so layered cards still read as elevated. */
+[data-theme="dark"] {
+  --color-background: #0c0820;
+  --color-surface: #100b28;
+  --color-surface-tint: #181238;
+  --color-foreground: #f3f0ff;
+  --color-foreground-soft: #d8d2f3;
+  --color-muted: #9b94c4;
+  --color-muted-soft: #6f6796;
+  --color-border: #261f4a;
+  --color-border-strong: #36306b;
+  --color-card: #15102e;
+
+  --color-primary: #8675ff;
+  --color-primary-hover: #9b8bff;
+  --color-primary-soft: #2a2358;
+  --color-primary-foreground: #ffffff;
+
+  --color-accent: #1d1742;
+  --color-accent-foreground: #f3f0ff;
+
+  --color-success: #4ade80;
+  --color-success-soft: #0d3a23;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #3d2c0a;
+  --color-danger: #f87171;
+  --color-danger-soft: #3d0f0f;
+  --color-info: #a5b4fc;
+  --color-info-soft: #1e1b4b;
+
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-card-hover: 0 4px 14px -2px rgba(134, 117, 255, 0.20), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-popover: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* Smooth color transitions when toggling. Limited to top-level color
+   properties so we don't regress focus/hover responsiveness. */
+html,
+body,
+*[data-theme-transition] {
+  transition: background-color 200ms ease, border-color 200ms ease,
+    color 200ms ease;
+}
+
 @layer base {
   html {
     background: var(--color-surface);
+    /* Prevent text autosizing on iOS landscape rotate. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -50,6 +103,8 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Stops horizontal page scroll when a child briefly overflows on mobile. */
+    overflow-x: hidden;
   }
 
   *::selection {
@@ -75,6 +130,102 @@
 }
 
 @layer utilities {
+  /* Fluid horizontal padding that scales with viewport width.
+     Used by every page in the portal to keep content readable from
+     narrow phones (~340px) through ultrawide monitors. The clamp grows
+     padding gracefully without snapping at breakpoints. */
+  .page-pad-x {
+    padding-left: max(env(safe-area-inset-left), clamp(1rem, 3vw, 2.5rem));
+    padding-right: max(env(safe-area-inset-right), clamp(1rem, 3vw, 2.5rem));
+  }
+  .page-pad-y {
+    padding-top: clamp(1rem, 2.5vw, 2rem);
+    padding-bottom: clamp(1.5rem, 3vw, 2.5rem);
+  }
+
+  /* Container that stays comfortable on ultrawide without leaving a
+     desert of empty space. Caps at 1600px so dense tables don't stretch
+     into uncomfortable line lengths, but lets cards breathe wider than
+     the old 1400px ceiling. */
+  .page-container {
+    max-width: 1600px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+
+  /* Honor iOS bottom home indicator when content sits at the bottom edge. */
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+
+  /* Mobile drawer overlay + slide-in animations. */
+  @keyframes drawer-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes drawer-slide-in {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+  .animate-drawer-fade { animation: drawer-fade-in 180ms ease-out; }
+  .animate-drawer-slide { animation: drawer-slide-in 240ms cubic-bezier(0.32, 0.72, 0, 1); }
+
+  /* Brief flash on the customer scope panel when the active customer changes,
+     so it's obvious the data the panel's links point at just swapped. */
+  @keyframes scope-pulse {
+    0% {
+      background-color: color-mix(in oklab, var(--color-primary) 14%, var(--color-card));
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-primary) 35%, transparent);
+    }
+    100% {
+      background-color: var(--color-card);
+      box-shadow: var(--shadow-card);
+    }
+  }
+  .animate-scope-pulse {
+    animation: scope-pulse 600ms ease-out;
+  }
+
+  /* Command palette animations — fade for the backdrop, soft pop for the
+     panel. Kept short (160–220ms) so opening feels instant. */
+  @keyframes palette-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes palette-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  .animate-palette-fade { animation: palette-fade-in 160ms ease-out; }
+  .animate-palette-pop { animation: palette-pop-in 220ms cubic-bezier(0.32, 0.72, 0, 1); }
+
+  /* Skeleton shimmer — used by <Skeleton /> while server data is in-flight.
+     A travelling highlight sweeps left-to-right across a faint base color. */
+  @keyframes skeleton-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .skeleton {
+    background-color: var(--color-accent);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklab, var(--color-card) 60%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+    border-radius: 6px;
+  }
+
   /* Decorative purple wash, used as a backdrop in marketing-feeling spots
      where we don't want a heavy raster background. */
   .gradient-mesh {

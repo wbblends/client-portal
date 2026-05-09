@@ -79,22 +79,40 @@ project. More setup up front, less work later.
 
 ## Locking it down
 
-The portal already requires a username/password (`dsimmons` / `test`) so
-random visitors can't see customer data. That said, anyone who knows the
-demo credentials can sign in. A few options to tighten that up before sharing
-externally:
+The portal requires sign-in for everything except `/login` and the public
+auth pages. Things to do before sharing externally:
 
-- **Change or remove the demo credentials** — edit
-  `lib/auth.ts` and update the `SEEDED_USERS` map. You can also just delete
-  the "Demo credentials: dsimmons / test" hint from `app/login/login-form.tsx`
-  so the credentials aren't shown on the page.
+- **Change the demo password.** Sign in as `dsimmons` / `test`, then go to
+  Account → Security to enroll 2FA, or use Forgot password to set a real
+  one. Once you do, also delete the "Demo credentials" hint from
+  `app/login/login-form.tsx`.
+- **Add real users from the admin UI.** Sign in as an admin and go to
+  Admin → Users → New user. Each user gets an email with a link to set their
+  own password — no manual JSON editing needed.
 - **Vercel Deployment Protection** (paid feature) — adds a Vercel-managed
-  password gate in front of the whole site so only people with the
-  organization password can even reach the login screen. Configure in
-  Project Settings → Deployment Protection.
-- **Add real customer accounts** — extend `SEEDED_USERS` with one entry
-  per customer. Each customer can only see their own data because the
-  customer-id is on their session.
+  password gate in front of the whole site. Configure in Project Settings
+  → Deployment Protection.
+- **Recommend 2FA for admins.** Each user can enroll a TOTP authenticator at
+  Account → Security.
+
+## Production environment variables
+
+Set these in Vercel: Project → Settings → Environment Variables. See
+`.env.example` for the full annotated list. The must-haves:
+
+- `SESSION_SECRET` — long random string used to sign auth cookies. Generate
+  with `node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"`.
+- `DATABASE_URL` + `DATABASE_AUTH_TOKEN` — Vercel can't write to disk, so
+  point at a hosted LibSQL. [Turso](https://turso.tech) has a generous free
+  tier and is the easiest path.
+- `RESEND_API_KEY` + `EMAIL_FROM` — needed for invite + password-reset
+  emails. The sender domain (`wbcustomerportal.com` by default) must be
+  verified in Resend before mail will deliver to inboxes.
+- `PUBLIC_BASE_URL` — your Vercel URL or custom domain, used to build links
+  in outbound emails.
+
+Without `RESEND_API_KEY` the app still runs, but invite/reset emails print
+to the server console instead of being sent.
 
 ## Custom domain (optional)
 

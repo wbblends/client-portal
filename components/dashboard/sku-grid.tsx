@@ -54,8 +54,8 @@ export function SkuGrid({ orders, topN = 7 }: { orders: OrderLine[]; topN?: numb
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-left text-[11px] font-semibold uppercase tracking-wide text-muted">
-            <tr className="border-b border-border">
+          <thead className="sticky top-0 z-10 bg-card text-left text-[11px] font-semibold uppercase tracking-wide text-muted shadow-[0_1px_0_0_var(--color-border)]">
+            <tr>
               <th className="px-5 py-2.5 font-semibold">SKU</th>
               <th className="px-3 py-2.5 font-semibold text-right">Units</th>
               <th className="px-3 py-2.5 font-semibold text-right">Value</th>

@@ -30,9 +30,9 @@ export function SalesByProduct({
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-left text-[11px] font-semibold uppercase tracking-wide text-muted">
-            <tr className="border-b border-border">
-              <th rowSpan={2} className="px-5 pt-3 pb-2 align-bottom font-semibold">
+          <thead className="sticky top-0 z-10 bg-card text-left text-[11px] font-semibold uppercase tracking-wide text-muted shadow-[0_1px_0_0_var(--color-border)]">
+            <tr>
+              <th rowSpan={2} className="px-5 pt-3 pb-2 align-bottom font-semibold bg-card">
                 Product
               </th>
               <th rowSpan={2} className="px-3 pt-3 pb-2 align-bottom font-semibold text-right">

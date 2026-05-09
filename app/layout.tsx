@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { ServiceWorkerRegister } from "@/components/portal/service-worker-register";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 // import localFont from "next/font/local";
 import "./globals.css";
@@ -51,7 +52,51 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "WB Blends — Customer Portal",
   description: "Orders, invoices, documents, and account contacts for WB Blends customers.",
+  applicationName: "WB Blends",
+  appleWebApp: {
+    capable: true,
+    title: "WB Blends",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: "/brand/wb-mark.png",
+    shortcut: "/brand/wb-mark.png",
+    apple: "/brand/wb-mark.png",
+  },
 };
+
+/**
+ * `viewport-fit=cover` lets us reach under the iOS notch/home-indicator and
+ * pair with `env(safe-area-inset-*)` in CSS. `maximumScale: 1` keeps iOS from
+ * zooming forms with <16px text, but we leave `userScalable` on so the user
+ * can still pinch-zoom for accessibility.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#6e5bfe",
+};
+
+/**
+ * Pre-paint theme script. Runs before React hydrates so the page never flashes
+ * the wrong theme on initial load. Reads the user's saved preference from
+ * localStorage; falls back to OS preference if nothing's stored. Kept inline
+ * (not a module) so it can run synchronously in the document head.
+ */
+const themeBootScript = `
+(function () {
+  try {
+    var saved = localStorage.getItem('wbb.theme');
+    var theme = saved === 'dark' || saved === 'light'
+      ? saved
+      : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -62,8 +107,15 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${displayFallback.variable} ${bodyFallback.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full bg-surface text-foreground">{children}</body>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
+      <body className="min-h-full bg-surface text-foreground">
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }

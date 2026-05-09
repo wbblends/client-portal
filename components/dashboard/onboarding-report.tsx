@@ -33,8 +33,8 @@ export function OnboardingReport({
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm border-collapse">
-          <thead className="text-left text-[11px] font-semibold uppercase tracking-wide text-muted">
-            <tr className="border-b border-border">
+          <thead className="sticky top-0 z-10 bg-card text-left text-[11px] font-semibold uppercase tracking-wide text-muted shadow-[0_1px_0_0_var(--color-border)]">
+            <tr>
               <th className="px-4 py-2.5 font-semibold">SKU</th>
               <th className="px-3 py-2.5 font-semibold">Product</th>
               <th className="px-3 py-2.5 font-semibold">Format</th>

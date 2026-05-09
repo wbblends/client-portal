@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WB Blends Portal
 
-## Getting Started
+Customer-facing portal for WB Blends — orders, invoices, documents, contacts —
+plus an admin marketing dashboard. Next.js 16 (App Router), React 19,
+Tailwind v4, Recharts.
 
-First, run the development server:
+Built with a swappable data layer: today the portal runs on deterministic
+mock data so the UI is fully clickable; tomorrow the same pages will be wired
+to Acumatica + the proprietary CRM by replacing the loaders in `lib/data/*`
+without touching pages or components.
 
-```bash
+## Getting started
+
+```powershell
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>. Demo credentials: `dsimmons` / `test`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev` — local dev server with hot reload
+- `npm run build` — production build (uses webpack, not Turbopack — see `package.json`)
+- `npm run start` — serve the production build
+- `npm run lint` — ESLint
+- `npm run typecheck` — `tsc --noEmit`
 
-## Learn More
+## Layout
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/
+  (portal)/                  authenticated routes (sidebar layout)
+    c/[customerId]/          per-customer pages: overview, documents, invoices, quality, contact
+    dashboards/[slug]/       cross-customer dashboards (registry-driven)
+    admin/users/             admin: manage seeded users
+  api/                       API routes (auth, etc.)
+  login/                     unauthenticated login page
+components/
+  dashboard/                 chart + KPI building blocks
+  dashboards/                full dashboard renderers (one per registry entry)
+  portal/                    sidebar, mobile nav, command palette, user menu
+  ui/                        primitives (button, card, input, etc.)
+lib/
+  auth.ts                    HMAC-signed session cookies + route guards
+  customers/registry.ts      customer slugs + display names (single source of truth)
+  data/                      swappable data layer — replace these with API calls
+  dashboards/registry.ts     dashboards available per role
+  marketing/                 HubSpot + Google Ads + LinkedIn loaders
+  users/                     seeded users + bcrypt hashing
+public/
+  avatars/                   user avatar files (filename matches username)
+  brand/                     logo + brand assets
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Adding a customer
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Edit `lib/customers/registry.ts`. Pages under `/c/<id>/...` will start
+working immediately and pull mock data deterministically seeded on the id.
 
-## Deploy on Vercel
+## Adding a user
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Edit `lib/users/users.json` (and reload). Passwords are stored as bcrypt
+hashes; use the existing entries as a template. For role-based access, see
+the `role` and `dashboards` fields.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Adding a dashboard
+
+Add an entry to `lib/dashboards/registry.ts`, then either rely on the
+generic `<PlaceholderDashboard>` or add a renderer in `components/dashboards/`
+and a `case` in `app/(portal)/dashboards/[slug]/page.tsx`.
+
+## Environment
+
+See `.env.example`. The portal runs without any env vars set — every external
+integration falls back to placeholder data so the UI stays demo-able.
+
+## Deploy
+
+See `SHIP.md` for the full Vercel walkthrough.
