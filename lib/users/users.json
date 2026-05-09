@@ -1,0 +1,73 @@
+{
+  "_comment": "Seeded users for the WB Blends portal. Edit this file and redeploy to add users. Use the form at /admin/users to generate a new entry. Roles: admin (manages users + switches customers), internal (board/exec/CS — switches customers), customer (locked to their own customerId). Passwords are plain text (placeholder auth — swap for hashed passwords + a real DB before production).",
+  "users": [
+    {
+      "username": "dsimmons",
+      "password": "test",
+      "name": "Devin Simmons",
+      "email": "dsimmons@wbblends.com",
+      "company": "Western Botanicals",
+      "role": "admin",
+      "dashboards": [
+        "exec-sales",
+        "exec-operations",
+        "orders-portal",
+        "pipeline-kanban",
+        "board-summary",
+        "account-health",
+        "marketing-overview"
+      ],
+      "avatarUrl": "/avatars/dsimmons.jpg"
+    },
+    {
+      "username": "kilo",
+      "password": "test",
+      "name": "Kilo Health Demo",
+      "email": "demo@kilo.example",
+      "company": "Kilo Health",
+      "customerId": "kilo-health",
+      "role": "customer",
+      "dashboards": []
+    },
+    {
+      "username": "tboysen",
+      "password": "test",
+      "name": "Todd Boysen",
+      "email": "tboysen@wbblends.com",
+      "company": "Western Botanicals",
+      "role": "internal",
+      "dashboards": ["pipeline-kanban", "orders-portal", "account-health"],
+      "avatarUrl": "/avatars/tboysen.jpg"
+    },
+    {
+      "username": "jfishback",
+      "password": "test",
+      "name": "Jacob Fishback",
+      "email": "jfishback@wbblends.com",
+      "company": "Western Botanicals",
+      "role": "internal",
+      "dashboards": ["pipeline-kanban", "orders-portal", "account-health"],
+      "avatarUrl": "/avatars/jfishback.jpg"
+    },
+    {
+      "username": "cboone",
+      "password": "test",
+      "name": "Casey Boone",
+      "email": "cboone@wbblends.com",
+      "company": "Western Botanicals",
+      "role": "internal",
+      "dashboards": ["pipeline-kanban", "orders-portal", "account-health"],
+      "avatarUrl": "/avatars/cboone.jpg"
+    },
+    {
+      "username": "nvonsternberg",
+      "password": "test",
+      "name": "Nicole Von Sternberg",
+      "email": "nicole@wbblends.com",
+      "company": "Western Botanicals",
+      "role": "internal",
+      "dashboards": ["pipeline-kanban", "orders-portal", "account-health"],
+      "avatarUrl": "/avatars/nvonsternberg.jpg"
+    }
+  ]
+}

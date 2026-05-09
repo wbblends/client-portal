@@ -65,6 +65,7 @@ export type ContactCard = {
   email: string;
   phone?: string;
   notes?: string;
+  avatarUrl?: string;
 };
 
 export type ResourceLink = {
@@ -81,20 +82,17 @@ export type CustomerProfile = {
   accountSince: number; // year
 };
 
-export type MarketIndicator = {
-  id: string;
-  label: string;
-  value: string;
-  delta: number; // % vs prior period
-  unit?: string;
-  note?: string;
-};
+export type QualityStatus = "open" | "in_review" | "closed";
 
-export type Pitch = {
+export type QualityTicket = {
   id: string;
-  title: string;
-  category: string;
-  blurb: string;
-  highlight: string; // short data point
-  cta?: string;
+  ticketNumber: string;
+  name: string;
+  description: string;
+  status: QualityStatus;
+  decision?: string;       // closed-only resolution summary
+  affectedLot?: string;
+  openedDate: string;      // formatted M/D/YY
+  lastUpdated: string;
+  owner: string;
 };
