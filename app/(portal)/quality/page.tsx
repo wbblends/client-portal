@@ -2,14 +2,20 @@ import { requireSession } from "@/lib/auth";
 import { getQualityTickets, QUALITY_STATUS_META } from "@/lib/data/quality";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
+import { paginate, parsePagination } from "@/lib/pagination";
 
 export const metadata = { title: "Quality — WB Blends" };
 
-export default async function QualityPage() {
+export default async function QualityPage(props: PageProps<"/quality">) {
   const user = await requireSession();
+  const sp = await props.searchParams;
   const tickets = await getQualityTickets(user.customerId);
   const open = tickets.filter(t => t.status !== "closed").length;
   const closed = tickets.filter(t => t.status === "closed").length;
+
+  // Summary tiles use the full set; only the ticket list itself paginates.
+  const paged = paginate(tickets, parsePagination(sp));
 
   return (
     <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">
@@ -39,7 +45,7 @@ export default async function QualityPage() {
         </CardHeader>
         <CardContent className="px-0">
           <ul className="divide-y divide-border">
-            {tickets.map(t => {
+            {paged.items.map(t => {
               const meta = QUALITY_STATUS_META[t.status];
               return (
                 <li key={t.id} className="px-5 py-4">
@@ -72,6 +78,13 @@ export default async function QualityPage() {
               );
             })}
           </ul>
+
+          <Pagination
+            total={paged.total}
+            page={paged.page}
+            pageSize={paged.pageSize}
+            itemLabel="tickets"
+          />
         </CardContent>
       </Card>
     </div>

@@ -14,10 +14,12 @@ export function OnboardingReport({
   products,
   reportDate,
   customerName,
+  footer,
 }: {
   products: OnboardingProduct[];
   reportDate: string;
   customerName: string;
+  footer?: React.ReactNode;
 }) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-[var(--shadow-card)]">
@@ -102,6 +104,8 @@ export function OnboardingReport({
           );
         })}
       </ul>
+
+      {footer}
     </div>
   );
 }

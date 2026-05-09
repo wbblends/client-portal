@@ -14,6 +14,8 @@ import { getOpenOrders } from "@/lib/data/open-orders";
 import { getOnboardingProducts } from "@/lib/data/onboarding";
 import { buildSalesByProduct } from "@/lib/data/sales-products";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
+import { paginate, parsePagination } from "@/lib/pagination";
 import { DateRangePicker } from "@/components/dashboard/date-range-picker";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
 import { SalesByDurationChart } from "@/components/dashboard/yoy-chart";
@@ -70,6 +72,17 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
 
   const today = new Date();
   const reportDate = `${today.getMonth() + 1}/${today.getDate()}/${String(today.getFullYear()).slice(2)}`;
+
+  // Two paginated reports share this page, so each owns its own param namespace.
+  // Default to 10 rows on the dashboard — these are widgets, not full list pages.
+  const openOrdersPaged = paginate(
+    openOrders,
+    parsePagination(sp, { pageParam: "ooPage", sizeParam: "ooSize", defaultPageSize: 10 }),
+  );
+  const onboardingPaged = paginate(
+    onboarding,
+    parsePagination(sp, { pageParam: "obPage", sizeParam: "obSize", defaultPageSize: 10 }),
+  );
 
   return (
     <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-7">
@@ -167,9 +180,19 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
           </p>
         </div>
         <OnboardingReport
-          products={onboarding}
+          products={onboardingPaged.items}
           reportDate={reportDate}
           customerName={profile.name}
+          footer={
+            <Pagination
+              total={onboardingPaged.total}
+              page={onboardingPaged.page}
+              pageSize={onboardingPaged.pageSize}
+              pageParam="obPage"
+              sizeParam="obSize"
+              itemLabel="products"
+            />
+          }
         />
       </section>
 
@@ -185,11 +208,21 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
           </p>
         </div>
         <OpenOrdersReport
-          orders={openOrders}
+          orders={openOrdersPaged.items}
           reportDate={reportDate}
           customerName={profile.name}
           salesRep="Priya Patel"
           accountManager="Jordan Reyes"
+          footer={
+            <Pagination
+              total={openOrdersPaged.total}
+              page={openOrdersPaged.page}
+              pageSize={openOrdersPaged.pageSize}
+              pageParam="ooPage"
+              sizeParam="ooSize"
+              itemLabel="orders"
+            />
+          }
         />
       </section>
 

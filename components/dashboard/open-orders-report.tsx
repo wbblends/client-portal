@@ -18,12 +18,14 @@ export function OpenOrdersReport({
   customerName,
   salesRep,
   accountManager,
+  footer,
 }: {
   orders: OpenOrder[];
   reportDate: string;
   customerName: string;
   salesRep: string;
   accountManager: string;
+  footer?: React.ReactNode;
 }) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-[var(--shadow-card)]">
@@ -174,6 +176,8 @@ export function OpenOrdersReport({
           );
         })}
       </ul>
+
+      {footer}
     </div>
   );
 }

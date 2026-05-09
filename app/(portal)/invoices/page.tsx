@@ -3,18 +3,24 @@ import { requireSession } from "@/lib/auth";
 import { getInvoices, INVOICE_STATUS_META } from "@/lib/data/invoices";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
+import { paginate, parsePagination } from "@/lib/pagination";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export const metadata = { title: "Invoices — WB Blends" };
 
-export default async function InvoicesPage() {
+export default async function InvoicesPage(props: PageProps<"/invoices">) {
   const user = await requireSession();
+  const sp = await props.searchParams;
   const invoices = await getInvoices(user.customerId);
 
   const open = invoices.filter(i => i.status === "open" || i.status === "partial");
   const overdue = invoices.filter(i => i.status === "overdue");
   const totalOpen = open.reduce((sum, i) => sum + (i.amount - i.paidAmount), 0);
   const totalOverdue = overdue.reduce((sum, i) => sum + (i.amount - i.paidAmount), 0);
+
+  // Summary tiles roll up the full account; the table itself paginates.
+  const paged = paginate(invoices, parsePagination(sp));
 
   return (
     <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">
@@ -56,7 +62,7 @@ export default async function InvoicesPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map(inv => {
+                {paged.items.map(inv => {
                   const meta = INVOICE_STATUS_META[inv.status];
                   return (
                     <tr
@@ -102,7 +108,7 @@ export default async function InvoicesPage() {
 
           {/* Mobile card stack */}
           <ul className="md:hidden divide-y divide-border">
-            {invoices.map(inv => {
+            {paged.items.map(inv => {
               const meta = INVOICE_STATUS_META[inv.status];
               return (
                 <li key={inv.id} className="p-4">
@@ -146,6 +152,13 @@ export default async function InvoicesPage() {
               );
             })}
           </ul>
+
+          <Pagination
+            total={paged.total}
+            page={paged.page}
+            pageSize={paged.pageSize}
+            itemLabel="invoices"
+          />
         </CardContent>
       </Card>
     </div>

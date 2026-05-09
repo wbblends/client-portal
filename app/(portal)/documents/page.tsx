@@ -3,6 +3,8 @@ import { ChevronRight, Download, Folder, FileText, FileSpreadsheet, Image as Ima
 import { requireSession } from "@/lib/auth";
 import { getDocuments, getChildren, getBreadcrumb, findNode } from "@/lib/data/documents";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
+import { paginate, parsePagination } from "@/lib/pagination";
 import { formatDate, cn } from "@/lib/utils";
 import type { DocNode } from "@/lib/data/types";
 
@@ -38,6 +40,8 @@ export default async function DocumentsPage(props: PageProps<"/documents">) {
   const current = folderId ? findNode(tree, folderId) ?? null : null;
   const items = getChildren(tree, folderId);
   const crumbs = getBreadcrumb(tree, folderId);
+
+  const paged = paginate(items, parsePagination(sp));
 
   return (
     <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">
@@ -94,7 +98,7 @@ export default async function DocumentsPage(props: PageProps<"/documents">) {
             <EmptyState />
           ) : (
             <ul className="divide-y divide-border">
-              {items.map(item => {
+              {paged.items.map(item => {
                 const Icon = fileIcon(item);
                 return (
                   <li key={item.id}>
@@ -134,6 +138,15 @@ export default async function DocumentsPage(props: PageProps<"/documents">) {
                 );
               })}
             </ul>
+          )}
+
+          {items.length > 0 && (
+            <Pagination
+              total={paged.total}
+              page={paged.page}
+              pageSize={paged.pageSize}
+              itemLabel="items"
+            />
           )}
         </CardContent>
       </Card>
