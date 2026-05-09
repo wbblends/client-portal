@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { paginate, parsePagination } from "@/lib/pagination";
+import { getPersistedPageSize } from "@/lib/pagination-server";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export const metadata = { title: "Invoices — WB Blends" };
@@ -20,7 +21,8 @@ export default async function InvoicesPage(props: PageProps<"/invoices">) {
   const totalOverdue = overdue.reduce((sum, i) => sum + (i.amount - i.paidAmount), 0);
 
   // Summary tiles roll up the full account; the table itself paginates.
-  const paged = paginate(invoices, parsePagination(sp));
+  const defaultPageSize = await getPersistedPageSize();
+  const paged = paginate(invoices, parsePagination(sp, { defaultPageSize }));
 
   return (
     <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">

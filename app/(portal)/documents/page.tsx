@@ -5,6 +5,7 @@ import { getDocuments, getChildren, getBreadcrumb, findNode } from "@/lib/data/d
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
 import { paginate, parsePagination } from "@/lib/pagination";
+import { getPersistedPageSize } from "@/lib/pagination-server";
 import { formatDate, cn } from "@/lib/utils";
 import type { DocNode } from "@/lib/data/types";
 
@@ -41,7 +42,8 @@ export default async function DocumentsPage(props: PageProps<"/documents">) {
   const items = getChildren(tree, folderId);
   const crumbs = getBreadcrumb(tree, folderId);
 
-  const paged = paginate(items, parsePagination(sp));
+  const defaultPageSize = await getPersistedPageSize();
+  const paged = paginate(items, parsePagination(sp, { defaultPageSize }));
 
   return (
     <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">

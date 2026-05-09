@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { paginate, parsePagination } from "@/lib/pagination";
+import { getPersistedPageSize } from "@/lib/pagination-server";
 
 export const metadata = { title: "Quality — WB Blends" };
 
@@ -15,7 +16,8 @@ export default async function QualityPage(props: PageProps<"/quality">) {
   const closed = tickets.filter(t => t.status === "closed").length;
 
   // Summary tiles use the full set; only the ticket list itself paginates.
-  const paged = paginate(tickets, parsePagination(sp));
+  const defaultPageSize = await getPersistedPageSize();
+  const paged = paginate(tickets, parsePagination(sp, { defaultPageSize }));
 
   return (
     <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">

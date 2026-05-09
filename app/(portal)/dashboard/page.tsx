@@ -16,6 +16,7 @@ import { buildSalesByProduct } from "@/lib/data/sales-products";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
 import { paginate, parsePagination } from "@/lib/pagination";
+import { getPersistedPageSize } from "@/lib/pagination-server";
 import { DateRangePicker } from "@/components/dashboard/date-range-picker";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
 import { SalesByDurationChart } from "@/components/dashboard/yoy-chart";
@@ -75,13 +76,25 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
 
   // Two paginated reports share this page, so each owns its own param namespace.
   // Default to 10 rows on the dashboard — these are widgets, not full list pages.
+  const [openOrdersDefault, onboardingDefault] = await Promise.all([
+    getPersistedPageSize({ sizeParam: "ooSize", fallback: 10 }),
+    getPersistedPageSize({ sizeParam: "obSize", fallback: 10 }),
+  ]);
   const openOrdersPaged = paginate(
     openOrders,
-    parsePagination(sp, { pageParam: "ooPage", sizeParam: "ooSize", defaultPageSize: 10 }),
+    parsePagination(sp, {
+      pageParam: "ooPage",
+      sizeParam: "ooSize",
+      defaultPageSize: openOrdersDefault,
+    }),
   );
   const onboardingPaged = paginate(
     onboarding,
-    parsePagination(sp, { pageParam: "obPage", sizeParam: "obSize", defaultPageSize: 10 }),
+    parsePagination(sp, {
+      pageParam: "obPage",
+      sizeParam: "obSize",
+      defaultPageSize: onboardingDefault,
+    }),
   );
 
   return (

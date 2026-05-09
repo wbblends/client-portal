@@ -10,6 +10,14 @@
 export const DEFAULT_PAGE_SIZE = 25;
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
+/**
+ * Cookie name prefix used to persist a user's preferred page size per
+ * pagination namespace (e.g. `wbb_pgsize_pageSize`, `wbb_pgsize_ooSize`).
+ * The client writes via `document.cookie`; the server reads it through
+ * `getPersistedPageSize` in `pagination-server.ts`.
+ */
+export const PAGE_SIZE_COOKIE_PREFIX = "wbb_pgsize_";
+
 export type PaginationState = {
   page: number;
   pageSize: number;

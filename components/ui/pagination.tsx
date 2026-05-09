@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useId, useTransition, type ButtonHTMLAttributes } from "react";
-import { PAGE_SIZE_OPTIONS } from "@/lib/pagination";
+import { PAGE_SIZE_COOKIE_PREFIX, PAGE_SIZE_OPTIONS } from "@/lib/pagination";
 import { cn, formatNumber } from "@/lib/utils";
 
 type Props = {
@@ -67,6 +67,12 @@ export function Pagination({
 
   function setSize(nextSize: number) {
     if (nextSize === pageSize) return;
+    // Persist the preference for future visits in this namespace. One year is
+    // long enough that returning users keep their density, short enough that
+    // a stale value gets re-validated against the allowlist eventually.
+    if (typeof document !== "undefined") {
+      document.cookie = `${PAGE_SIZE_COOKIE_PREFIX}${sizeParam}=${nextSize}; path=/; max-age=31536000; samesite=lax`;
+    }
     // Reset to page 1 — the row at the user's current offset is unlikely
     // to still live on the same page once the window changes.
     startTransition(() => {
