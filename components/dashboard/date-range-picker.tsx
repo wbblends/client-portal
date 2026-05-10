@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { Calendar, ChevronDown } from "lucide-react";
 import { cn, formatDate, formatDateISO } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 type Preset = { id: string; label: string; getRange: () => { from: Date; to: Date } };
 
@@ -74,6 +75,7 @@ export function DateRangePicker({
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const [open, setOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState(formatDateISO(from));
@@ -105,13 +107,14 @@ export function DateRangePicker({
   }, [open]);
 
   function applyPreset(p: Preset) {
-    const r = p.getRange();
     const params = new URLSearchParams(sp.toString());
     params.set("preset", p.id);
     params.delete("from");
     params.delete("to");
-    router.push(`${pathname}?${params.toString()}`);
     setOpen(false);
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`);
+    });
   }
 
   function applyCustom() {
@@ -119,8 +122,10 @@ export function DateRangePicker({
     params.delete("preset");
     params.set("from", customFrom);
     params.set("to", customTo);
-    router.push(`${pathname}?${params.toString()}`);
-    setOpen(false);
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`);
+      setOpen(false);
+    });
   }
 
   const activePreset = PRESETS.find(p => p.id === presetId);
@@ -132,6 +137,7 @@ export function DateRangePicker({
         ref={triggerRef}
         type="button"
         onClick={() => setOpen(o => !o)}
+        aria-busy={isPending || undefined}
         className={cn(
           "inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-border bg-card text-sm font-medium",
           "hover:border-border-strong transition-colors",
@@ -142,7 +148,11 @@ export function DateRangePicker({
         <span className="text-muted-soft hidden sm:inline">
           ({formatDate(from, "short")} – {formatDate(to, "short")})
         </span>
-        <ChevronDown className="h-4 w-4 text-muted" />
+        {isPending ? (
+          <Spinner size="sm" className="h-4 w-4 border-[2px]" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted" />
+        )}
       </button>
 
       {open && (
@@ -193,8 +203,13 @@ export function DateRangePicker({
             <button
               type="button"
               onClick={applyCustom}
-              className="mt-3 h-9 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-hover transition-colors"
+              disabled={isPending}
+              aria-busy={isPending || undefined}
+              className="mt-3 inline-flex items-center justify-center gap-2 h-9 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-hover transition-colors disabled:pointer-events-none disabled:opacity-60"
             >
+              {isPending && (
+                <Spinner size="sm" className="border-primary-foreground/30 border-t-primary-foreground" />
+              )}
               Apply custom range
             </button>
           </div>
