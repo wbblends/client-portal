@@ -155,15 +155,16 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         />
       </section>
 
-      {/* Onboarding Statuses — first per the brand's commercialization process */}
+      {/* Onboarding Pipeline — Kanban view of every SKU still in commercialization */}
       <section className="space-y-2">
         <div>
           <h2 className="font-display text-[24px] leading-tight tracking-tight text-foreground">
-            Onboarding Statuses
+            Onboarding Pipeline
           </h2>
           <p className="text-sm text-muted mt-0.5">
-            Every SKU we&apos;re commercializing with you — quoting, R&amp;D, pilot, and FPS review.
-            Once a product hits production, it rolls into Open Orders below.
+            Every SKU we&apos;re commercializing with you, lined up by stage — quoting, R&amp;D,
+            pilot hold, and FPS review. Cards move right as work progresses; once a product hits
+            Approved it rolls into Open Orders below.
           </p>
         </div>
         <OnboardingReport

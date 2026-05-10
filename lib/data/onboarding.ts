@@ -25,6 +25,19 @@ export type OnboardingProduct = {
   owner: string;       // who's holding the next step
 };
 
+/**
+ * Pipeline order — left-to-right Kanban column order. Mirrors the natural
+ * progression of a SKU through commercialization, so the board reads like
+ * a process map rather than an alphabetized list.
+ */
+export const ONBOARDING_STAGE_ORDER: readonly OnboardingStage[] = [
+  "Quoting",
+  "R&D",
+  "PH",
+  "FPS Review",
+  "Approved",
+] as const;
+
 export async function getOnboardingProducts(
   _customerId: string,
 ): Promise<OnboardingProduct[]> {
@@ -88,6 +101,54 @@ export async function getOnboardingProducts(
         "FPS approved. First production run scheduled the week of 6/9. Will roll into your standing weekly Friday open-order report from there.",
       lastUpdated: "5/1/26",
       owner: "WB Production",
+    },
+    {
+      id: "ob-6",
+      productName: "Sleep Stack PM",
+      sku: "DTB-CAP-006",
+      format: "Capsules",
+      count: "60 ct",
+      stage: "Quoting",
+      lastNote:
+        "Initial quote drafted. Confirming melatonin grade + glycinate source before sending pricing tier breakdown.",
+      lastUpdated: "5/8/26",
+      owner: "WB Sales",
+    },
+    {
+      id: "ob-7",
+      productName: "Hydration Plus Electrolytes",
+      sku: "DTB-PWD-007",
+      format: "Powders",
+      count: "20-stick carton",
+      stage: "R&D",
+      lastNote:
+        "Bench trial #2 underway — solubility passes, dialing back stevia by 8% per your tasting panel feedback.",
+      lastUpdated: "5/4/26",
+      owner: "WB R&D",
+    },
+    {
+      id: "ob-8",
+      productName: "Immune Defense Shot",
+      sku: "DTB-LIQ-008",
+      format: "Liquids",
+      count: "1.5 oz",
+      stage: "FPS Review",
+      lastNote:
+        "FPS revision 2 sent 5/3 incorporating your label-claim language. Awaiting sign-off — flagged at standing Tuesday call.",
+      lastUpdated: "5/3/26",
+      owner: "Customer",
+    },
+    {
+      id: "ob-9",
+      productName: "Pre-Workout Pump",
+      sku: "DTB-PWD-009",
+      format: "Powders",
+      count: "40-serving tub",
+      stage: "PH",
+      lastNote:
+        "Pilot hold — beta-alanine tingle profile flagged on first run. Reformulating buffer system, second pilot week of 5/26.",
+      lastUpdated: "4/29/26",
+      owner: "WB R&D",
     },
   ];
 }
