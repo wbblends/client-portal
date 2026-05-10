@@ -76,15 +76,19 @@ export function DateRangePicker({
   const sp = useSearchParams();
 
   const [open, setOpen] = useState(false);
-  const [customFrom, setCustomFrom] = useState(formatDateISO(from));
-  const [customTo, setCustomTo] = useState(formatDateISO(to));
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
+  const [customFrom, setCustomFrom] = useState(() => formatDateISO(from));
+  const [customTo, setCustomTo] = useState(() => formatDateISO(to));
+  // Re-sync the custom-range inputs when the active range changes externally
+  // (e.g. user picks a preset). Using the React docs' "store previous prop"
+  // pattern so we adjust state during render rather than in an effect.
+  const [syncedRange, setSyncedRange] = useState({ from, to });
+  if (syncedRange.from !== from || syncedRange.to !== to) {
+    setSyncedRange({ from, to });
     setCustomFrom(formatDateISO(from));
     setCustomTo(formatDateISO(to));
-  }, [from, to]);
+  }
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -105,7 +109,6 @@ export function DateRangePicker({
   }, [open]);
 
   function applyPreset(p: Preset) {
-    const r = p.getRange();
     const params = new URLSearchParams(sp.toString());
     params.set("preset", p.id);
     params.delete("from");
@@ -139,9 +142,11 @@ export function DateRangePicker({
       >
         <Calendar className="h-4 w-4 text-muted" />
         <span className="text-foreground">{label}</span>
-        <span className="text-muted-soft hidden sm:inline">
-          ({formatDate(from, "short")} – {formatDate(to, "short")})
-        </span>
+        {activePreset && (
+          <span className="text-muted-soft hidden sm:inline">
+            ({formatDate(from, "short")} – {formatDate(to, "short")})
+          </span>
+        )}
         <ChevronDown className="h-4 w-4 text-muted" />
       </button>
 
@@ -177,7 +182,7 @@ export function DateRangePicker({
                   type="date"
                   value={customFrom}
                   onChange={e => setCustomFrom(e.target.value)}
-                  className="h-9 w-full rounded-md border border-border bg-card px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="date-input h-9 w-full rounded-md border border-border bg-card px-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </label>
               <label className="block">
@@ -186,7 +191,7 @@ export function DateRangePicker({
                   type="date"
                   value={customTo}
                   onChange={e => setCustomTo(e.target.value)}
-                  className="h-9 w-full rounded-md border border-border bg-card px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="date-input h-9 w-full rounded-md border border-border bg-card px-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </label>
             </div>

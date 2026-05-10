@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
   BarChart,
   Bar,
@@ -11,6 +11,13 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatCurrency, formatNumber, cn } from "@/lib/utils";
+
+// Recharts measures the DOM, so it can't render on the server. Use
+// useSyncExternalStore to flip from the server snapshot (false) to the client
+// snapshot (true) on hydration without setState-in-effect.
+const subscribe = () => () => {};
+const useHasMounted = () =>
+  useSyncExternalStore(subscribe, () => true, () => false);
 
 export type YoyPoint = {
   bucket: string;
@@ -34,8 +41,7 @@ export function SalesByDurationChart({
   compareLabel?: string;
 }) {
   const [metric, setMetric] = useState<"dollars" | "units">("dollars");
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useHasMounted();
   const series = metric === "dollars" ? data : unitsData;
   const fmt = metric === "dollars"
     ? (v: number) => formatCurrency(v, { compact: true })

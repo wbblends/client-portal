@@ -74,6 +74,32 @@
   }
 }
 
+@layer components {
+  /* Native <input type="date"> styling. Pin the form control color-scheme so
+     the OS-rendered popover stays light (otherwise on macOS / Windows users
+     with dark mode preferences, the picker lands in dark mode and clashes
+     with the rest of the portal). Tint the picker indicator toward the
+     primary purple so it reads as "ours" rather than the browser default. */
+  .date-input {
+    color-scheme: light;
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+  }
+  .date-input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.55;
+    /* Approximate the WB Blends purple from a black source via filters. */
+    filter: invert(36%) sepia(63%) saturate(2890%) hue-rotate(232deg) brightness(96%) contrast(101%);
+    transition: opacity 120ms ease;
+  }
+  .date-input::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+  .date-input::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+}
+
 @layer utilities {
   /* Decorative purple wash, used as a backdrop in marketing-feeling spots
      where we don't want a heavy raster background. */
