@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Spinner } from "@/components/ui/spinner";
 
 export function LoginForm({ next }: { next: string }) {
   const router = useRouter();
@@ -82,7 +83,14 @@ export function LoginForm({ next }: { next: string }) {
       )}
 
       <Button type="submit" size="lg" className="w-full" disabled={loading}>
-        {loading ? "Signing In…" : "Sign In"}
+        {loading ? (
+          <>
+            <Spinner size="sm" className="border-primary-foreground/30 border-t-primary-foreground" />
+            Signing In…
+          </>
+        ) : (
+          "Sign In"
+        )}
       </Button>
 
       <div className="rounded-md border border-dashed border-border bg-accent/40 px-3 py-2 text-xs text-muted">
