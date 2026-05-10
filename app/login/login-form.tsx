@@ -81,7 +81,13 @@ export function LoginForm({ next }: { next: string }) {
         </div>
       )}
 
-      <Button type="submit" size="lg" className="w-full" disabled={loading}>
+      <Button
+        type="submit"
+        variant="glassProminent"
+        size="lg"
+        className="w-full"
+        disabled={loading}
+      >
         {loading ? "Signing In…" : "Sign In"}
       </Button>
 

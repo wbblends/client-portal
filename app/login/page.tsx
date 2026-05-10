@@ -30,10 +30,10 @@ export default async function LoginPage(props: PageProps<"/login">) {
       </div>
 
       <div className="relative grid min-h-dvh grid-rows-1 grid-cols-1 lg:grid-cols-[minmax(440px,520px)_1fr]">
-        {/* Form column — sits on a soft surface so the form is readable
-            against the swirl behind it. Stronger overlay on mobile so the
-            headline + logo aren't fighting the swoosh. */}
-        <div className="relative grid place-items-center px-6 py-10 bg-surface/85 backdrop-blur-[3px] lg:bg-surface/95">
+        {/* Form column — translucent wash so the swirl shows through and the
+            glass card has something rich to refract over. Stronger wash on
+            mobile where the swirl is visually busier. */}
+        <div className="relative grid place-items-center px-6 py-10 bg-white/45 backdrop-blur-sm lg:bg-white/55">
           <div className="w-full max-w-[400px]">
             <div className="mb-10">
               <Logo size="lg" />
@@ -47,7 +47,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
               and any flags on every open order, anytime.
             </p>
 
-            <div className="mt-8 rounded-2xl border border-border bg-card p-7 shadow-[var(--shadow-card-hover)]">
+            <div className="mt-8 rounded-2xl glass glass-card p-7">
               <LoginForm next={next} />
             </div>
 
