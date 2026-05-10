@@ -1,5 +1,5 @@
 import { requireSession } from "@/lib/auth";
-import { getCustomerProfile } from "@/lib/data/customer";
+import { getCompany } from "@/lib/data/companies";
 import { getAllOrders, getOrdersInRange } from "@/lib/data/orders";
 import { computeOnTimeRate } from "@/lib/data/market";
 import { resolveRange, getCompareRange } from "@/lib/data/range";
@@ -21,6 +21,7 @@ import { SkuGrid } from "@/components/dashboard/sku-grid";
 import { SalesByProduct } from "@/components/dashboard/sales-by-product";
 import { OpenOrdersReport } from "@/components/dashboard/open-orders-report";
 import { OnboardingReport } from "@/components/dashboard/onboarding-report";
+import { CompanyNameTrigger } from "@/components/dashboard/company-name-trigger";
 import { formatCurrency, formatNumber, formatDate } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard — WB Blends" };
@@ -31,9 +32,9 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const range = resolveRange(sp);
   const compare = getCompareRange(range);
 
-  const [profile, currentOrders, priorOrders, allOrders, openOrders, onboarding] =
+  const [company, currentOrders, priorOrders, allOrders, openOrders, onboarding] =
     await Promise.all([
-      getCustomerProfile(user.customerId),
+      getCompany(user.customerId),
       getOrdersInRange(user.customerId, range.from, range.to),
       getOrdersInRange(user.customerId, compare.from, compare.to),
       getAllOrders(user.customerId),
@@ -77,11 +78,11 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm text-muted">Welcome back, {user.name.split(" ")[0]}.</p>
-          <h1 className="mt-0.5 font-display text-[34px] leading-[1.1] tracking-tight text-foreground">
-            {profile.name}
-          </h1>
+          <div className="mt-0.5">
+            <CompanyNameTrigger company={company} />
+          </div>
           <p className="mt-1 text-sm text-muted">
-            Customer #{profile.id} · Account Since {profile.accountSince} · Showing{" "}
+            Customer #{company.id} · Account Since {company.accountSince} · Showing{" "}
             <span className="text-foreground-soft font-medium">
               {formatDate(range.from, "short")} – {formatDate(range.to, "short")}
             </span>
@@ -169,7 +170,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         <OnboardingReport
           products={onboarding}
           reportDate={reportDate}
-          customerName={profile.name}
+          customerName={company.name}
         />
       </section>
 
@@ -187,7 +188,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         <OpenOrdersReport
           orders={openOrders}
           reportDate={reportDate}
-          customerName={profile.name}
+          customerName={company.name}
           salesRep="Priya Patel"
           accountManager="Jordan Reyes"
         />
