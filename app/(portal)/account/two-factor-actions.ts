@@ -28,7 +28,10 @@ export type StartEnrollmentResult =
     }
   | { ok: false; message: string };
 
-const ISSUER = process.env.PORTAL_2FA_ISSUER || "WB Blends Portal";
+// Shown next to the 6-digit code inside Google Authenticator, 1Password,
+// Authy, etc. Override per-environment with PORTAL_2FA_ISSUER if you want
+// to distinguish prod from staging in the user's authenticator list.
+const ISSUER = process.env.PORTAL_2FA_ISSUER || "WB Blends";
 
 export async function startTwoFactorEnrollmentAction(): Promise<StartEnrollmentResult> {
   const me = await requireSession();
