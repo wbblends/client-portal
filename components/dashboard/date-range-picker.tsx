@@ -148,7 +148,7 @@ export function DateRangePicker({
       {open && (
         <div
           ref={popoverRef}
-          className="absolute right-0 z-20 mt-2 w-[320px] rounded-xl border border-border bg-card p-3 shadow-[var(--shadow-popover)]"
+          className="absolute left-0 lg:left-auto lg:right-0 z-20 mt-2 w-[min(320px,calc(100vw-2rem))] rounded-xl border border-border bg-card p-3 shadow-[var(--shadow-popover)]"
         >
           <div className="grid grid-cols-2 gap-1">
             {PRESETS.map(p => (

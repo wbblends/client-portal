@@ -44,7 +44,7 @@ export function OpenOrdersReport({
 
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-sm border-collapse table-fixed">
+        <table className="w-full min-w-[1100px] text-sm border-collapse table-fixed">
           {/* PO# / Sales Order / Product / Type / Qty / Label / Approval / In-House / Est. Ship / Current Status */}
           <colgroup>
             <col className="w-[88px]" />

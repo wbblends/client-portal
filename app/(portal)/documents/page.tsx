@@ -52,7 +52,7 @@ export default async function DocumentsPage(props: PageProps<"/documents">) {
       </div>
 
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1 text-sm">
+      <nav className="flex flex-wrap items-center gap-y-1 gap-x-1 text-sm">
         <Link
           href="/documents"
           className={cn(

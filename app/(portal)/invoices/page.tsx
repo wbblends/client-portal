@@ -42,7 +42,7 @@ export default async function InvoicesPage() {
         <CardContent className="px-0">
           {/* Desktop table */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[820px] text-sm">
               <thead className="text-left text-[11px] font-semibold uppercase tracking-wide text-muted">
                 <tr className="border-b border-border">
                   <th className="px-5 py-2.5 font-semibold">Invoice</th>

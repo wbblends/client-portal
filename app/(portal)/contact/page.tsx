@@ -82,17 +82,20 @@ export default async function ContactPage() {
         <CardContent className="px-0">
           <ul className="divide-y divide-border">
             {resources.map(r => (
-              <li key={r.label} className="px-5 py-3.5 flex items-center justify-between gap-4">
+              <li
+                key={r.label}
+                className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4"
+              >
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-foreground">{r.label}</div>
                   {r.description && <div className="text-sm text-muted mt-0.5">{r.description}</div>}
                 </div>
                 <a
                   href={r.email ? `mailto:${r.email}` : r.href}
-                  className="inline-flex items-center gap-1.5 shrink-0 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground-soft hover:border-border-strong hover:bg-accent transition-colors"
+                  className="inline-flex items-center gap-1.5 self-start sm:self-auto sm:shrink-0 max-w-full rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground-soft hover:border-border-strong hover:bg-accent transition-colors"
                 >
-                  {r.email ?? "Open"}
-                  <ArrowUpRight className="h-3.5 w-3.5" />
+                  <span className="truncate">{r.email ?? "Open"}</span>
+                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
                 </a>
               </li>
             ))}

@@ -43,8 +43,8 @@ export default async function QualityPage() {
               const meta = QUALITY_STATUS_META[t.status];
               return (
                 <li key={t.id} className="px-5 py-4">
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div className="min-w-0 flex-1">
+                  <div className="flex flex-col-reverse sm:flex-row items-start sm:justify-between gap-2 sm:gap-4">
+                    <div className="min-w-0 flex-1 w-full">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge tone={meta.tone}>{meta.label}</Badge>
                         <span className="font-mono text-[11px] text-muted">{t.ticketNumber}</span>
@@ -62,10 +62,10 @@ export default async function QualityPage() {
                         </div>
                       )}
                     </div>
-                    <div className="text-right text-xs text-muted shrink-0 tabular-nums">
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 sm:block sm:text-right text-xs text-muted shrink-0 tabular-nums">
                       <div>Opened {t.openedDate}</div>
-                      <div className="mt-0.5">Updated {t.lastUpdated}</div>
-                      <div className="mt-1.5 text-foreground-soft">{t.owner}</div>
+                      <div className="sm:mt-0.5">Updated {t.lastUpdated}</div>
+                      <div className="sm:mt-1.5 text-foreground-soft basis-full sm:basis-auto">{t.owner}</div>
                     </div>
                   </div>
                 </li>
