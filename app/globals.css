@@ -7,14 +7,15 @@
   --color-surface-tint: #efeaff;     /* slightly stronger tint */
   --color-foreground: #15102b;       /* deep near-black with a violet undertone */
   --color-foreground-soft: #2a2350;
-  --color-muted: #5b537a;
-  --color-muted-soft: #8a83a8;
-  --color-border: #e6e1f5;
-  --color-border-strong: #d1c8ee;
+  /* Muted tones darkened for WCAG AAA (~7:1) on white — older eyes lose contrast sensitivity. */
+  --color-muted: #3d365e;
+  --color-muted-soft: #5b537a;
+  --color-border: #d6cfee;
+  --color-border-strong: #b8acdf;
   --color-card: #ffffff;
 
-  --color-primary: #6e5bfe;          /* WB Blends purple */
-  --color-primary-hover: #5947e8;
+  --color-primary: #5947e8;          /* WB Blends purple — AAA on white */
+  --color-primary-hover: #4636c9;
   --color-primary-soft: #eeebff;
   --color-primary-foreground: #ffffff;
 
@@ -42,12 +43,16 @@
 @layer base {
   html {
     background: var(--color-surface);
+    /* Larger base font (18px) so the whole UI scales up for older readers.
+       All Tailwind text-* utilities scale from this. Respects user zoom. */
+    font-size: 112.5%;
   }
 
   body {
     background: var(--color-surface);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -56,8 +61,9 @@
     background: color-mix(in oklab, var(--color-primary) 26%, transparent);
   }
 
+  /* Thicker, more visible focus ring — easier to track when tabbing. */
   *:focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: 3px solid var(--color-primary);
     outline-offset: 2px;
     border-radius: 4px;
   }

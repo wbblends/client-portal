@@ -43,19 +43,19 @@ export function SidebarNav({
           <Link
             key={item.href}
             href={item.href}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "group flex items-center gap-2 rounded-lg text-sm font-medium transition-colors shrink-0",
-              isHorizontal ? "px-3 py-1.5" : "px-3 py-2 gap-2.5",
+              "group flex items-center gap-3 rounded-lg text-base font-semibold transition-colors shrink-0",
+              isHorizontal ? "px-4 py-2.5" : "px-4 py-3",
               active
                 ? "bg-primary-soft text-primary"
-                : "text-foreground-soft hover:bg-accent hover:text-foreground",
+                : "text-foreground hover:bg-accent",
             )}
           >
             <Icon
               className={cn(
-                "shrink-0",
-                isHorizontal ? "h-4 w-4" : "h-[17px] w-[17px]",
-                active ? "text-primary" : "text-muted group-hover:text-foreground-soft",
+                "shrink-0 h-6 w-6",
+                active ? "text-primary" : "text-muted group-hover:text-foreground",
               )}
             />
             {item.label}

@@ -40,8 +40,8 @@ export function LoginForm({ next }: { next: string }) {
   }
 
   return (
-    <form className="space-y-4" onSubmit={onSubmit}>
-      <div className="space-y-1.5">
+    <form className="space-y-6" onSubmit={onSubmit} noValidate>
+      <div className="space-y-2">
         <Label htmlFor="username">Username</Label>
         <Input
           id="username"
@@ -50,13 +50,18 @@ export function LoginForm({ next }: { next: string }) {
           value={username}
           onChange={e => setUsername(e.target.value)}
           required
+          aria-required="true"
+          aria-invalid={error ? true : undefined}
         />
       </div>
 
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <Label htmlFor="password">Password</Label>
-          <a href="#" className="text-xs text-muted hover:text-foreground transition-colors">
+          <a
+            href="#"
+            className="text-base font-semibold text-primary underline underline-offset-4 hover:text-primary-hover transition-colors"
+          >
             Forgot Password?
           </a>
         </div>
@@ -67,17 +72,26 @@ export function LoginForm({ next }: { next: string }) {
           value={password}
           onChange={e => setPassword(e.target.value)}
           required
+          aria-required="true"
+          aria-invalid={error ? true : undefined}
         />
       </div>
 
-      <label className="flex items-center gap-2 select-none">
+      <label className="flex items-center gap-3 select-none cursor-pointer py-1">
         <Checkbox checked={remember} onChange={e => setRemember(e.target.checked)} />
-        <span className="text-sm text-foreground-soft">Keep Me Signed In</span>
+        <span className="text-base font-medium text-foreground">Keep Me Signed In</span>
       </label>
 
       {error && (
-        <div className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
-          {error}
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-lg border-2 border-danger/40 bg-danger-soft px-4 py-3 text-base text-danger"
+        >
+          <span aria-hidden className="mt-0.5 text-xl leading-none">⚠</span>
+          <div>
+            <div className="font-bold">We couldn&apos;t sign you in</div>
+            <div className="font-medium">{error}</div>
+          </div>
         </div>
       )}
 
@@ -85,8 +99,15 @@ export function LoginForm({ next }: { next: string }) {
         {loading ? "Signing In…" : "Sign In"}
       </Button>
 
-      <div className="rounded-md border border-dashed border-border bg-accent/40 px-3 py-2 text-xs text-muted">
-        <span className="font-medium text-foreground-soft">Demo credentials:</span> dsimmons / test
+      <p className="text-center text-base text-foreground-soft">
+        Need help signing in? Call us at{" "}
+        <a href="tel:+18005551234" className="font-semibold text-primary underline underline-offset-4">
+          1‑800‑555‑1234
+        </a>
+      </p>
+
+      <div className="rounded-lg border-2 border-dashed border-border-strong bg-accent/40 px-4 py-3 text-sm text-muted">
+        <span className="font-semibold text-foreground-soft">Demo credentials:</span> dsimmons / test
       </div>
     </form>
   );
