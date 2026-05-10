@@ -14,6 +14,7 @@ import { getOpenOrders } from "@/lib/data/open-orders";
 import { getOnboardingProducts } from "@/lib/data/onboarding";
 import { buildSalesByProduct } from "@/lib/data/sales-products";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { RefreshButton } from "@/components/ui/refresh-button";
 import { DateRangePicker } from "@/components/dashboard/date-range-picker";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
 import { SalesByDurationChart } from "@/components/dashboard/yoy-chart";
@@ -87,7 +88,10 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
             </span>
           </p>
         </div>
-        <DateRangePicker from={range.from} to={range.to} presetId={range.presetId} />
+        <div className="flex items-center gap-3">
+          <RefreshButton resources={["customer-profile"]} scope={user.customerId} />
+          <DateRangePicker from={range.from} to={range.to} presetId={range.presetId} />
+        </div>
       </div>
 
       {/* KPIs — compare hint adapts to the selected window */}
