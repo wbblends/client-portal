@@ -290,6 +290,71 @@ function Field({
   );
 }
 
+function PermissionToggle({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: CustomerPermission;
+  onChange: (next: CustomerPermission) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Permission"
+      className={
+        "inline-flex shrink-0 rounded-md border border-border bg-card overflow-hidden text-xs " +
+        (disabled ? "opacity-50" : "")
+      }
+    >
+      <PermissionButton
+        active={value === "viewer"}
+        disabled={disabled}
+        onClick={() => onChange("viewer")}
+      >
+        <Eye className="h-3 w-3" /> Viewer
+      </PermissionButton>
+      <PermissionButton
+        active={value === "editor"}
+        disabled={disabled}
+        onClick={() => onChange("editor")}
+      >
+        <Pencil className="h-3 w-3" /> Editor
+      </PermissionButton>
+    </div>
+  );
+}
+
+function PermissionButton({
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      className={
+        "inline-flex items-center gap-1 px-2.5 py-1 transition-colors " +
+        (active
+          ? "bg-primary-soft text-primary"
+          : "text-foreground-soft hover:bg-accent disabled:hover:bg-transparent")
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
 function RoleChip({
   value,
   current,

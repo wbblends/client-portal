@@ -75,15 +75,19 @@ async function applySchema(client: Client) {
  * a real numbered-migration system instead.
  */
 async function applyMigrations(client: Client) {
-  // 2026-05 — per-customer permission on user_customers (viewer | editor)
-  const cols = await client.execute("PRAGMA table_info(user_customers)");
-  const hasPermission = cols.rows.some(r => (r.name as string) === "permission");
-  if (!hasPermission) {
+  // 2026-05 — per-customer permission on user_customers (viewer | editor).
+  // Fresh DBs already get the column from schema.sql's CREATE TABLE; this
+  // step exists for DBs that were created before the column was added. The
+  // duplicate-column error is the one signal that means "already migrated"
+  // and is safe to swallow.
+  try {
     await client.execute(
       `ALTER TABLE user_customers
          ADD COLUMN permission TEXT NOT NULL DEFAULT 'viewer'
                     CHECK (permission IN ('viewer', 'editor'))`,
     );
+  } catch (err) {
+    if (!(err instanceof Error && /duplicate column/i.test(err.message))) throw err;
   }
 }
 

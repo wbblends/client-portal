@@ -114,16 +114,24 @@ export default async function AdminUsersPage() {
                       </td>
                       <td className="px-3 py-3">
                         {u.role !== "customer" ? (
-                          <span className="text-xs text-muted">all</span>
+                          <span className="text-xs text-muted">all (editor)</span>
                         ) : u.customerIds.length === 0 ? (
                           <span className="text-xs text-muted">none</span>
                         ) : (
                           <div className="flex flex-wrap gap-1.5">
                             {u.customerIds.map(id => {
                               const c = getCustomer(id);
+                              const perm = u.customerPermissions[id] ?? "viewer";
                               return (
-                                <Badge key={id} tone="neutral">
+                                <Badge
+                                  key={id}
+                                  tone={perm === "editor" ? "info" : "neutral"}
+                                  title={`${c?.name ?? id} — ${perm}`}
+                                >
                                   {c?.name ?? id}
+                                  <span className="text-[10px] uppercase tracking-wider opacity-70">
+                                    {perm === "editor" ? "Editor" : "Viewer"}
+                                  </span>
                                 </Badge>
                               );
                             })}

@@ -66,6 +66,7 @@ export default async function EditUserPage(props: PageProps<"/admin/users/[usern
               company: user.company,
               role: user.role,
               customerIds: user.customerIds,
+              customerPermissions: user.customerPermissions,
               dashboards: user.dashboards,
             }}
           />

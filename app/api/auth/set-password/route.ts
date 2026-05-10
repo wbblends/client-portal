@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         company: user.company,
         customerIds: user.customerIds,
+        customerPermissions: user.customerPermissions,
         role: user.role,
         dashboards: user.dashboards,
         avatarUrl: user.avatarUrl,
