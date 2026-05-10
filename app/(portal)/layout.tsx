@@ -2,6 +2,7 @@ import { requireSession } from "@/lib/auth";
 import { Logo } from "@/components/ui/logo";
 import { SidebarNav } from "@/components/portal/sidebar-nav";
 import { UserMenu } from "@/components/portal/user-menu";
+import { PageToolbar } from "@/components/portal/page-toolbar";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const user = await requireSession();
@@ -9,7 +10,7 @@ export default async function PortalLayout({ children }: { children: React.React
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">
       {/* Sidebar */}
-      <aside className="hidden lg:flex sticky top-0 h-dvh flex-col border-r border-border bg-card">
+      <aside className="hidden lg:flex sticky top-0 h-dvh flex-col border-r border-border bg-card print:hidden">
         <div className="flex h-16 items-center px-6">
           <Logo />
         </div>
@@ -27,7 +28,7 @@ export default async function PortalLayout({ children }: { children: React.React
       </aside>
 
       {/* Mobile top bar */}
-      <header className="flex lg:hidden h-14 items-center justify-between border-b border-border bg-card px-4 sticky top-0 z-10">
+      <header className="flex lg:hidden h-14 items-center justify-between border-b border-border bg-card px-4 sticky top-0 z-10 print:hidden">
         <Logo />
         <UserMenu
           name={user.name}
@@ -39,11 +40,15 @@ export default async function PortalLayout({ children }: { children: React.React
       </header>
 
       {/* Mobile inline nav — horizontal strip */}
-      <div className="lg:hidden border-b border-border bg-card py-2">
+      <div className="lg:hidden border-b border-border bg-card py-2 print:hidden">
         <SidebarNav orientation="horizontal" />
       </div>
 
-      <main className="min-w-0">{children}</main>
+      <main className="min-w-0 pb-24 print:pb-0">{children}</main>
+
+      {/* Floating per-page toolbar: find on page, feedback, zoom, export PDF.
+          Hidden in print so it never shows up on the exported document. */}
+      <PageToolbar />
     </div>
   );
 }

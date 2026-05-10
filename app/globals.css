@@ -84,3 +84,68 @@
       radial-gradient(at 60% 100%, color-mix(in oklab, var(--color-primary) 10%, transparent) 0px, transparent 60%);
   }
 }
+
+/* Find-on-page highlights — applied via the CSS Custom Highlight API by
+   components/portal/page-toolbar.tsx. */
+::highlight(portal-search) {
+  background-color: color-mix(in oklab, var(--color-warning) 38%, transparent);
+}
+::highlight(portal-search-active) {
+  background-color: color-mix(in oklab, var(--color-primary) 65%, transparent);
+}
+
+/* PDF export: window.print() is invoked by the floating PageToolbar. The
+   layout's chrome (sidebar, mobile nav, toolbar) carries `print:hidden`;
+   the rules below collapse the grid and preserve brand color tints. */
+@media print {
+  @page {
+    size: letter;
+    margin: 0.5in;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  /* Collapse the desktop sidebar grid into a single column. */
+  .lg\:grid {
+    display: block !important;
+  }
+
+  main {
+    padding: 0 !important;
+    /* Inline `zoom` set by the toolbar shouldn't carry into print. */
+    zoom: 1 !important;
+  }
+
+  /* Preserve our purple banners, badges, and chart fills on paper. */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Don't break a card or section across pages when we can avoid it. */
+  section,
+  article,
+  .rounded-xl,
+  .rounded-lg {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Long tables should still flow; repeat headers on each page. */
+  table {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr,
+  img {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
