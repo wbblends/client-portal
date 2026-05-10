@@ -39,10 +39,10 @@ export default async function LoginPage(props: PageProps<"/login">) {
               <Logo size="lg" />
             </div>
 
-            <h1 className="font-display text-[44px] leading-[1.05] tracking-tight text-foreground">
+            <h1 className="font-display text-5xl leading-tight tracking-tight text-foreground">
               Excellence in Every <em className="text-primary">Blend</em>.
             </h1>
-            <p className="mt-4 text-[15px] text-muted leading-relaxed">
+            <p className="mt-4 text-lg text-foreground-soft leading-relaxed">
               Sign in to your portal — promise dates, current production stage,
               and any flags on every open order, anytime.
             </p>
@@ -51,7 +51,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
               <LoginForm next={next} />
             </div>
 
-            <div className="mt-6 text-xs text-muted-soft">
+            <div className="mt-6 text-base text-foreground-soft">
               Don&apos;t have access yet? Reach out to your account manager and we&apos;ll get
               you set up.
             </div>

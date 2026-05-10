@@ -43,16 +43,21 @@ export function SalesByDurationChart({
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-end">
-        <div className="inline-flex rounded-lg border border-border bg-card p-0.5 text-xs font-medium">
+      <div className="mb-4 flex items-center justify-end">
+        <div
+          role="group"
+          aria-label="Chart metric"
+          className="inline-flex rounded-lg border-2 border-border-strong bg-card p-1 text-base font-semibold"
+        >
           {(["dollars", "units"] as const).map(m => (
             <button
               key={m}
               type="button"
               onClick={() => setMetric(m)}
+              aria-pressed={metric === m}
               className={cn(
-                "rounded-md px-3 py-1 transition-colors",
-                metric === m ? "bg-primary text-primary-foreground" : "text-muted hover:text-foreground",
+                "rounded-md px-4 py-2 transition-colors",
+                metric === m ? "bg-primary text-primary-foreground" : "text-foreground-soft hover:text-foreground hover:bg-accent",
               )}
             >
               {m === "dollars" ? "Dollars" : "Units"}
@@ -60,34 +65,36 @@ export function SalesByDurationChart({
           ))}
         </div>
       </div>
-      <div className="h-[280px] w-full">
+      <div className="h-[320px] w-full">
         {mounted ? (
           <ResponsiveContainer>
             <BarChart data={series} margin={{ top: 8, right: 16, left: 0, bottom: 0 }} barCategoryGap="22%">
               <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="bucket"
-                tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+                tick={{ fill: "var(--color-muted)", fontSize: 14, fontWeight: 600 }}
                 tickLine={false}
-                axisLine={{ stroke: "var(--color-border)" }}
+                axisLine={{ stroke: "var(--color-border-strong)" }}
               />
               <YAxis
                 tickFormatter={fmt}
-                tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+                tick={{ fill: "var(--color-muted)", fontSize: 14, fontWeight: 600 }}
                 tickLine={false}
                 axisLine={false}
-                width={64}
+                width={72}
               />
               <Tooltip
-                cursor={{ fill: "color-mix(in oklab, var(--color-primary) 8%, transparent)" }}
+                cursor={{ fill: "color-mix(in oklab, var(--color-primary) 10%, transparent)" }}
                 contentStyle={{
                   background: "var(--color-card)",
-                  border: "1px solid var(--color-border)",
+                  border: "2px solid var(--color-border-strong)",
                   borderRadius: 8,
-                  fontSize: 12,
+                  fontSize: 15,
+                  padding: "8px 12px",
                   boxShadow: "var(--shadow-popover)",
                 }}
-                labelStyle={{ color: "var(--color-foreground)", fontWeight: 600 }}
+                labelStyle={{ color: "var(--color-foreground)", fontWeight: 700, marginBottom: 4 }}
+                itemStyle={{ color: "var(--color-foreground-soft)" }}
                 formatter={(v, name) => [fmt(Number(v)), name === "current" ? "Selected period" : compareLabel]}
               />
               <Bar dataKey="prior" fill="var(--color-border-strong)" radius={[4, 4, 0, 0]} maxBarSize={42} />
@@ -98,17 +105,17 @@ export function SalesByDurationChart({
           <div className="h-full w-full rounded-lg bg-accent/30" />
         )}
       </div>
-      <div className="mt-3 flex items-center gap-5 text-xs">
+      <div className="mt-4 flex items-center gap-6 text-base">
         <div className="flex items-center gap-2">
-          <span className="block h-2.5 w-2.5 rounded-sm bg-primary" />
-          <span className="text-foreground-soft">Selected period</span>
+          <span className="block h-3.5 w-3.5 rounded-sm bg-primary" />
+          <span className="text-foreground font-semibold">Selected period</span>
         </div>
         <div className="flex items-center gap-2">
           <span
-            className="block h-2.5 w-2.5 rounded-sm"
+            className="block h-3.5 w-3.5 rounded-sm"
             style={{ background: "var(--color-border-strong)" }}
           />
-          <span className="text-foreground-soft">{compareLabel}</span>
+          <span className="text-foreground font-semibold">{compareLabel}</span>
         </div>
       </div>
     </div>

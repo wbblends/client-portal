@@ -43,7 +43,7 @@ export function SkuGrid({ orders, topN = 7 }: { orders: OrderLine[]; topN?: numb
 
   if (rows.length === 0) {
     return (
-      <div className="px-5 py-12 text-center text-sm text-muted">
+      <div className="px-5 py-12 text-center text-base text-muted">
         No orders in this date range.
       </div>
     );
@@ -53,15 +53,15 @@ export function SkuGrid({ orders, topN = 7 }: { orders: OrderLine[]; topN?: numb
     <>
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-[11px] font-semibold uppercase tracking-wide text-muted">
-            <tr className="border-b border-border">
-              <th className="px-5 py-2.5 font-semibold">SKU</th>
-              <th className="px-3 py-2.5 font-semibold text-right">Units</th>
-              <th className="px-3 py-2.5 font-semibold text-right">Value</th>
-              <th className="px-3 py-2.5 font-semibold border-l border-border">Last Order</th>
-              <th className="px-3 py-2.5 font-semibold">Cadence</th>
-              <th className="px-5 py-2.5 font-semibold">Order Window</th>
+        <table className="w-full text-base">
+          <thead className="text-left text-xs font-bold uppercase tracking-wide text-muted">
+            <tr className="border-b-2 border-border-strong">
+              <th className="px-5 py-3">SKU</th>
+              <th className="px-3 py-3 text-right">Units</th>
+              <th className="px-3 py-3 text-right">Value</th>
+              <th className="px-3 py-3 border-l border-border">Last Order</th>
+              <th className="px-3 py-3">Cadence</th>
+              <th className="px-5 py-3">Order Window</th>
             </tr>
           </thead>
           <tbody>
@@ -76,32 +76,32 @@ export function SkuGrid({ orders, topN = 7 }: { orders: OrderLine[]; topN?: numb
                     "border-b border-border last:border-b-0 hover:bg-accent/40 transition-colors align-top",
                   )}
                 >
-                  <td className="px-5 py-3">
-                    <div className="font-mono text-[12px] text-muted">{row.sku}</div>
-                    <div className="font-medium text-foreground">{row.skuName}</div>
+                  <td className="px-5 py-4">
+                    <div className="font-mono text-sm text-muted">{row.sku}</div>
+                    <div className="font-semibold text-foreground">{row.skuName}</div>
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums">
+                  <td className="px-3 py-4 text-right tabular-nums">
                     {formatNumber(roundToHalfK(row.units))}
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums font-medium">
+                  <td className="px-3 py-4 text-right tabular-nums font-semibold">
                     {formatCurrency(row.amount)}
                   </td>
-                  <td className="px-3 py-3 border-l border-border whitespace-nowrap">
+                  <td className="px-3 py-4 border-l border-border whitespace-nowrap">
                     <div className="text-foreground-soft tabular-nums">
                       {cadence?.lastOrder ?? formatDate(row.lastOrderDate, "short")}
                     </div>
-                    <div className="text-[11px] text-muted mt-0.5">
+                    <div className="text-sm text-muted mt-1">
                       Latest <Badge tone={meta.tone as BadgeTone} className="ml-0.5">{meta.label}</Badge>
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-foreground-soft whitespace-nowrap">
+                  <td className="px-3 py-4 text-foreground-soft whitespace-nowrap">
                     {cadence?.cadence ?? "—"}
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-4">
                     {cadence ? (
                       <Badge tone={windowTone as BadgeTone}>{cadence.windowLabel}</Badge>
                     ) : (
-                      <span className="text-xs text-muted">—</span>
+                      <span className="text-sm text-muted">—</span>
                     )}
                   </td>
                 </tr>
@@ -118,41 +118,41 @@ export function SkuGrid({ orders, topN = 7 }: { orders: OrderLine[]; topN?: numb
           const meta = ORDER_STATUS_META[row.latestStatus];
           const windowTone = cadence ? WINDOW_TONE[cadence.windowStatus] : "neutral";
           return (
-            <li key={row.sku} className="p-4">
+            <li key={row.sku} className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-foreground">{row.skuName}</div>
-                  <div className="font-mono text-[11px] text-muted">{row.sku}</div>
+                  <div className="text-base font-bold text-foreground">{row.skuName}</div>
+                  <div className="font-mono text-sm text-muted">{row.sku}</div>
                 </div>
                 {cadence && (
                   <Badge tone={windowTone as BadgeTone}>{cadence.windowLabel}</Badge>
                 )}
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px]">
+              <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 text-base">
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted">Units</div>
-                  <div className="tabular-nums font-medium text-foreground">
+                  <div className="text-xs uppercase tracking-wide font-bold text-muted">Units</div>
+                  <div className="tabular-nums font-semibold text-foreground mt-0.5">
                     {formatNumber(roundToHalfK(row.units))}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted">Value</div>
-                  <div className="tabular-nums font-medium text-foreground">
+                  <div className="text-xs uppercase tracking-wide font-bold text-muted">Value</div>
+                  <div className="tabular-nums font-semibold text-foreground mt-0.5">
                     {formatCurrency(row.amount)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted">Last Order</div>
-                  <div className="tabular-nums text-foreground-soft">
+                  <div className="text-xs uppercase tracking-wide font-bold text-muted">Last Order</div>
+                  <div className="tabular-nums text-foreground-soft mt-0.5">
                     {cadence?.lastOrder ?? formatDate(row.lastOrderDate, "short")}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted">Cadence</div>
-                  <div className="text-foreground-soft">{cadence?.cadence ?? "—"}</div>
+                  <div className="text-xs uppercase tracking-wide font-bold text-muted">Cadence</div>
+                  <div className="text-foreground-soft mt-0.5">{cadence?.cadence ?? "—"}</div>
                 </div>
               </div>
-              <div className="mt-2 text-[11px] text-muted">
+              <div className="mt-3 text-sm text-muted">
                 Latest <Badge tone={meta.tone as BadgeTone} className="ml-1">{meta.label}</Badge>
               </div>
             </li>

@@ -12,15 +12,15 @@ export function MarketCard({ indicators }: { indicators: MarketIndicator[] }) {
         const tone = up ? "text-danger" : down ? "text-success" : "text-muted";
         // Note: in commodity context up movement is bad for buyer cost, hence danger.
         return (
-          <div key={ind.id} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+          <div key={ind.id} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
             <div className="min-w-0">
-              <div className="text-sm font-medium text-foreground">{ind.label}</div>
-              {ind.note && <div className="mt-0.5 text-xs text-muted">{ind.note}</div>}
+              <div className="text-base font-semibold text-foreground">{ind.label}</div>
+              {ind.note && <div className="mt-1 text-sm text-muted">{ind.note}</div>}
             </div>
             <div className="text-right shrink-0">
-              <div className="text-sm font-semibold tabular-nums text-foreground">{ind.value}</div>
-              <div className={cn("inline-flex items-center gap-0.5 text-xs font-medium", tone)}>
-                <Icon className="h-3 w-3" />
+              <div className="text-base font-bold tabular-nums text-foreground">{ind.value}</div>
+              <div className={cn("inline-flex items-center gap-1 text-sm font-semibold", tone)}>
+                <Icon className="h-4 w-4" aria-hidden />
                 {ind.delta > 0 ? "+" : ""}
                 {ind.delta.toFixed(1)}%
               </div>

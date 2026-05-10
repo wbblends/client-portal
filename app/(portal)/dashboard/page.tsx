@@ -76,13 +76,13 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       {/* Page header */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm text-muted">Welcome back, {user.name.split(" ")[0]}.</p>
-          <h1 className="mt-0.5 font-display text-[34px] leading-[1.1] tracking-tight text-foreground">
+          <p className="text-base text-foreground-soft">Welcome back, {user.name.split(" ")[0]}.</p>
+          <h1 className="mt-1 font-display text-4xl leading-tight tracking-tight text-foreground">
             {profile.name}
           </h1>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-2 text-base text-foreground-soft">
             Customer #{profile.id} · Account Since {profile.accountSince} · Showing{" "}
-            <span className="text-foreground-soft font-medium">
+            <span className="text-foreground font-semibold">
               {formatDate(range.from, "short")} – {formatDate(range.to, "short")}
             </span>
           </p>
@@ -140,10 +140,10 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       {/* Sales By Product — top 5 products with annual + current + compare */}
       <section className="space-y-2">
         <div>
-          <h2 className="font-display text-[24px] leading-tight tracking-tight text-foreground">
+          <h2 className="font-display text-2xl leading-tight tracking-tight text-foreground">
             Sales By Product
           </h2>
-          <p className="text-sm text-muted mt-0.5">
+          <p className="text-base text-foreground-soft mt-2 max-w-3xl leading-relaxed">
             Your top five products by trailing-12-month volume. Selected and compare windows
             adjust as you change the date picker.
           </p>
@@ -158,10 +158,10 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       {/* Onboarding Statuses — first per the brand's commercialization process */}
       <section className="space-y-2">
         <div>
-          <h2 className="font-display text-[24px] leading-tight tracking-tight text-foreground">
+          <h2 className="font-display text-2xl leading-tight tracking-tight text-foreground">
             Onboarding Statuses
           </h2>
-          <p className="text-sm text-muted mt-0.5">
+          <p className="text-base text-foreground-soft mt-2 max-w-3xl leading-relaxed">
             Every SKU we&apos;re commercializing with you — quoting, R&amp;D, pilot, and FPS review.
             Once a product hits production, it rolls into Open Orders below.
           </p>
@@ -176,10 +176,10 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       {/* Open Orders — same data the customer success team sends every Friday */}
       <section className="space-y-2">
         <div>
-          <h2 className="font-display text-[24px] leading-tight tracking-tight text-foreground">
+          <h2 className="font-display text-2xl leading-tight tracking-tight text-foreground">
             Open Orders
           </h2>
-          <p className="text-sm text-muted mt-0.5">
+          <p className="text-base text-foreground-soft mt-2 max-w-3xl leading-relaxed">
             Your standing weekly Friday status — promise dates, current production stage, and any
             flags. No black boxes.
           </p>
