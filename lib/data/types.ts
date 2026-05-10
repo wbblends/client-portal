@@ -3,6 +3,9 @@
  * the underlying ERP/proprietary system so the data layer can be swapped from
  * mock implementations to real API calls (Acumatica, internal services) by
  * changing only the loaders in `lib/data/*` — pages and components stay the same.
+ *
+ * Records that flow in from upstream systems carry `externalIds` so a portal
+ * row can be reconciled back to its source-of-truth in either system.
  */
 
 export type DateRange = {
@@ -10,6 +13,35 @@ export type DateRange = {
   to: Date;
   label: string; // e.g. "Year to date", "Custom"
 };
+
+/**
+ * Source-system pointers attached to records that originate outside the portal
+ * (Orders & Companies → Acumatica; Onboarding Projects → proprietary
+ * commercialization tracker).
+ */
+export type ExternalIds = {
+  acumaticaId?: string;
+  proprietarySystemId?: string;
+};
+
+export type Address = {
+  label: string; // "Headquarters", "Ship-to: Reno DC"
+  line1: string;
+  line2?: string;
+  city: string;
+  region: string;
+  postalCode: string;
+  country: string;
+};
+
+export type CompanySegment =
+  | "small"
+  | "midmarket"
+  | "enterprise"
+  | "distributor"
+  | "private_label";
+
+export type CompanyStatus = "active" | "prospect" | "paused" | "former";
 
 export type OrderStatus =
   | "open"
@@ -74,11 +106,32 @@ export type ResourceLink = {
   description?: string;
 };
 
-export type CustomerProfile = {
+/**
+ * A company is the canonical org-level record we hold for a buyer. One portal
+ * user maps to one primary company today via `SessionUser.customerId`, but the
+ * directory below is the full set WB Blends does business with — sourced from
+ * Acumatica (financial truth) joined with the proprietary CRM (contacts,
+ * segment, brand metadata).
+ */
+export type Company = {
   id: string;
   name: string;
   primaryContact: string;
   accountSince: number; // year
+  segment?: CompanySegment;
+  status?: CompanyStatus;
+  websiteUrl?: string;
+  primaryEmail?: string;
+  primaryPhone?: string;
+  accountManager?: string; // WB-side AM name
+  salesRep?: string;
+  parentCompanyId?: string | null;
+  brands?: string[]; // sub-brands sold under this company
+  addresses?: Address[];
+  externalIds?: ExternalIds;
+  creditTerms?: string; // "Net 30"
+  lifetimeValue?: number; // dollars; rolled up from Acumatica
+  notes?: string;
 };
 
 export type MarketIndicator = {
