@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderClosed, FileText, Users, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, FolderClosed, FileText, Users, ShieldCheck, Thermometer } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -11,6 +11,9 @@ const NAV = [
   { label: "Invoices", href: "/invoices", icon: FileText },
   { label: "Quality", href: "/quality", icon: ShieldCheck },
   { label: "Contact", href: "/contact", icon: Users },
+  // Sales — internal executive view. Add a role gate here when sales-team
+  // accounts exist; today the single seeded user sees everything.
+  { label: "Account Penetration", href: "/sales/account-penetration", icon: Thermometer },
 ];
 
 /**
