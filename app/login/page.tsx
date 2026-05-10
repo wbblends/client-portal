@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { safeNextPath } from "@/lib/safe-redirect";
 import { LoginForm } from "./login-form";
 import { Logo } from "@/components/ui/logo";
 
@@ -11,7 +12,7 @@ export const metadata = {
 export default async function LoginPage(props: PageProps<"/login">) {
   const session = await getSession();
   const params = await props.searchParams;
-  const next = typeof params.next === "string" ? params.next : "/dashboard";
+  const next = safeNextPath(params.next);
   if (session) redirect(next);
 
   return (
