@@ -1,8 +1,8 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { isSafeNextPath } from "@/lib/utils";
 import { LoginForm } from "./login-form";
+import { SwirlBackground } from "./swirl-background";
 import { Logo } from "@/components/ui/logo";
 
 export const metadata = {
@@ -86,14 +86,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
         {/* ──────── Right: brand hero ──────── */}
         <aside className="relative hidden lg:block">
           <div className="absolute inset-0 overflow-hidden">
-            <Image
-              src="/brand/swirl.jpg"
-              alt=""
-              fill
-              priority
-              sizes="60vw"
-              className="object-cover object-center"
-            />
+            <SwirlBackground />
 
             {/* Tinted wash — pushes the swirl back so foreground text stays
                 high-contrast while keeping the brand color story intact. */}

@@ -6,12 +6,15 @@ import {
   getUser,
   getUserByEmail,
   updateUser,
+  type CustomerAssignment,
+  type CustomerPermission,
   type UserRole,
 } from "@/lib/users/store";
 import { listDashboards } from "@/lib/dashboards/registry";
 import { listCustomers } from "@/lib/customers/registry";
 
 const ALLOWED_ROLES: UserRole[] = ["admin", "internal", "customer"];
+const ALLOWED_PERMISSIONS: CustomerPermission[] = ["viewer", "editor"];
 
 export async function PATCH(
   request: NextRequest,
@@ -29,6 +32,7 @@ export async function PATCH(
     name?: string;
     company?: string;
     role?: string;
+    customers?: Array<{ id: string; permission?: CustomerPermission }>;
     customerIds?: string[];
     dashboards?: string[];
     avatarUrl?: string | null;
@@ -63,9 +67,29 @@ export async function PATCH(
     }
     patch.role = body.role as UserRole;
   }
-  if (body.customerIds !== undefined) {
-    const valid = new Set(listCustomers().map(c => c.id));
-    patch.customerIds = body.customerIds.filter(id => valid.has(id));
+  if (body.customers !== undefined || body.customerIds !== undefined) {
+    const validIds = new Set(listCustomers().map(c => c.id));
+    const assignments: CustomerAssignment[] = [];
+    if (Array.isArray(body.customers)) {
+      for (const raw of body.customers) {
+        if (!raw || typeof raw !== "object") continue;
+        const r = raw as { id?: unknown; permission?: unknown };
+        if (typeof r.id !== "string" || !validIds.has(r.id)) continue;
+        const permission =
+          typeof r.permission === "string" &&
+          (ALLOWED_PERMISSIONS as string[]).includes(r.permission)
+            ? (r.permission as CustomerPermission)
+            : "viewer";
+        assignments.push({ id: r.id, permission });
+      }
+    } else if (Array.isArray(body.customerIds)) {
+      for (const id of body.customerIds) {
+        if (typeof id === "string" && validIds.has(id)) {
+          assignments.push({ id, permission: "viewer" });
+        }
+      }
+    }
+    patch.customers = assignments;
   }
   if (body.dashboards !== undefined) {
     const valid = new Set(listDashboards().map(d => d.id));
@@ -115,6 +139,11 @@ function serialize(u: Awaited<ReturnType<typeof getUser>>) {
     company: u.company,
     role: u.role,
     customerIds: u.customerIds,
+    customerPermissions: u.customerPermissions,
+    customers: u.customerIds.map(id => ({
+      id,
+      permission: u.customerPermissions[id] ?? "viewer",
+    })),
     dashboards: u.dashboards,
     avatarUrl: u.avatarUrl,
     hasPassword: u.hasPassword,

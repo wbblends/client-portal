@@ -1,8 +1,18 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { authenticateUser, getUser, type UserRole } from "@/lib/users/store";
-import { customerForUser, getCustomer, type Customer } from "@/lib/customers/registry";
+import {
+  authenticateUser,
+  getUser,
+  type CustomerPermission,
+  type UserRole,
+} from "@/lib/users/store";
+import {
+  customerForUser,
+  customerPermissionFor,
+  getCustomer,
+  type Customer,
+} from "@/lib/customers/registry";
 
 /**
  * Session auth.
@@ -45,6 +55,10 @@ export type SessionUser = {
   /** Customer IDs this user can access. For role=customer, the only allowed
    *  scope; for admin/internal, ignored (they can see everything). */
   customerIds: string[];
+  /** Per-customer permission tier (viewer | editor). Customer-role only;
+   *  admin and internal are always treated as editor regardless of contents
+   *  (see `customerPermissionFor` in lib/customers/registry.ts). */
+  customerPermissions: Record<string, CustomerPermission>;
   role: UserRole;
   /** Dashboard IDs from `lib/dashboards/registry.ts`. */
   dashboards: string[];
@@ -125,19 +139,41 @@ export async function requireCustomerSession(): Promise<
 }
 
 /**
- * Guard for routes under `/c/[customerId]/...`. Returns the user and the
- * resolved customer when access is allowed; redirects otherwise.
+ * Guard for routes under `/c/[customerId]/...`. Returns the user, the
+ * resolved customer, and their effective permission tier when access is
+ * allowed; redirects otherwise.
  *
  *  - Customer users may only see customer ids in their `customerIds` list.
- *  - Admin and internal users may see any customer in the registry.
+ *  - Admin and internal users may see any customer in the registry, always
+ *    as 'editor'.
  *  - Unknown customer IDs always redirect home.
  */
 export async function requireCustomerAccess(
   customerId: string,
-): Promise<{ user: SessionUser; customer: Customer }> {
+): Promise<{ user: SessionUser; customer: Customer; permission: CustomerPermission }> {
   const user = await requireSession();
   const customer = customerForUser(user, customerId);
   if (!customer) redirect("/");
+  const permission = customerPermissionFor(user, customer.id);
+  return { user, customer, permission };
+}
+
+/**
+ * Same as `requireCustomerAccess` but additionally requires editor
+ * permission on the customer. Use this from server actions / route handlers
+ * that mutate customer-scoped data (e.g. adding a folder or document).
+ *
+ * Throws (rather than redirects) on failed permission checks so misuse from
+ * a non-editor surfaces as an error to the caller instead of silently
+ * navigating away from the page that triggered the action.
+ */
+export async function requireCustomerEditor(
+  customerId: string,
+): Promise<{ user: SessionUser; customer: Customer }> {
+  const { user, customer, permission } = await requireCustomerAccess(customerId);
+  if (permission !== "editor") {
+    throw new Error("Forbidden: editor permission required for this customer.");
+  }
   return { user, customer };
 }
 
@@ -186,6 +222,7 @@ function toSessionUser(u: {
   email: string;
   company: string;
   customerIds: string[];
+  customerPermissions: Record<string, CustomerPermission>;
   role: UserRole;
   dashboards: string[];
   avatarUrl?: string | null;
@@ -197,6 +234,7 @@ function toSessionUser(u: {
     email: u.email,
     company: u.company,
     customerIds: u.customerIds,
+    customerPermissions: u.customerPermissions,
     role: u.role,
     dashboards: u.dashboards,
     avatarUrl: u.avatarUrl,

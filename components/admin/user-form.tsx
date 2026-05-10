@@ -2,11 +2,12 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import type { UserRole } from "@/lib/users/store";
+import type { CustomerPermission, UserRole } from "@/lib/users/store";
 
 type DashboardOption = { id: string; name: string; category: string };
 type CustomerOption = { id: string; name: string };
@@ -18,6 +19,8 @@ export type UserFormInitial = {
   company: string;
   role: UserRole;
   customerIds: string[];
+  /** Per-customer permission. Missing entries default to 'viewer'. */
+  customerPermissions: Record<string, CustomerPermission>;
   dashboards: string[];
 };
 
@@ -49,6 +52,9 @@ export function UserForm({
   const [pickedCustomers, setPickedCustomers] = useState<Set<string>>(
     new Set(initial?.customerIds ?? []),
   );
+  const [customerPermissions, setCustomerPermissions] = useState<
+    Record<string, CustomerPermission>
+  >(initial?.customerPermissions ?? {});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,6 +76,16 @@ export function UserForm({
     setter(next);
   }
 
+  function setPermission(customerId: string, permission: CustomerPermission) {
+    setCustomerPermissions(prev => ({ ...prev, [customerId]: permission }));
+    // Picking a permission for a customer also implies they have access.
+    if (!pickedCustomers.has(customerId)) {
+      const next = new Set(pickedCustomers);
+      next.add(customerId);
+      setPickedCustomers(next);
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -80,7 +96,10 @@ export function UserForm({
       name: name.trim(),
       company: company.trim(),
       role,
-      customerIds: [...pickedCustomers],
+      customers: [...pickedCustomers].map(id => ({
+        id,
+        permission: customerPermissions[id] ?? "viewer",
+      })),
       dashboards: [...pickedDashboards],
     };
     try {
@@ -159,21 +178,36 @@ export function UserForm({
         <div className="text-sm font-medium text-foreground mb-1">Customers</div>
         <p className="text-xs text-muted mb-3">
           {role === "customer"
-            ? "Pick every customer this user can see. They'll get full access (Documents, Invoices, Quality, Contact) for each."
-            : "Internal/admin users see all customers automatically — these picks are ignored."}
+            ? "Check every customer this user can see, then pick their permission for the Documents area. Viewers can browse files; editors can also add folders and documents. (Invoices, Quality, and Contact are read-only for everyone.)"
+            : "Internal/admin users see all customers automatically — these picks are ignored. They are always treated as editors in every customer's Documents area."}
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 rounded-lg border border-border p-4 bg-card">
-          {customers.map(c => (
-            <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox
-                checked={pickedCustomers.has(c.id)}
-                onChange={() => toggle(pickedCustomers, setPickedCustomers, c.id)}
-              />
-              <span className="text-foreground-soft">
-                {c.name} <span className="text-muted-soft text-[11px] ml-1">({c.id})</span>
-              </span>
-            </label>
-          ))}
+        <div className="rounded-lg border border-border bg-card divide-y divide-border">
+          {customers.map(c => {
+            const checked = pickedCustomers.has(c.id);
+            const perm = customerPermissions[c.id] ?? "viewer";
+            return (
+              <div
+                key={c.id}
+                className="flex items-center gap-3 px-3 py-2 sm:px-4 sm:py-2.5"
+              >
+                <label className="flex items-center gap-2 text-sm cursor-pointer flex-1 min-w-0">
+                  <Checkbox
+                    checked={checked}
+                    onChange={() => toggle(pickedCustomers, setPickedCustomers, c.id)}
+                  />
+                  <span className="text-foreground-soft truncate">
+                    {c.name}
+                    <span className="text-muted-soft text-[11px] ml-1">({c.id})</span>
+                  </span>
+                </label>
+                <PermissionToggle
+                  value={perm}
+                  disabled={!checked}
+                  onChange={p => setPermission(c.id, p)}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 

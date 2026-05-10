@@ -35,8 +35,36 @@ CREATE TABLE IF NOT EXISTS user_dashboards (
 CREATE TABLE IF NOT EXISTS user_customers (
   username    TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
   customer_id TEXT NOT NULL,
+  -- 'viewer' (read-only) or 'editor' (can add/remove folders + documents
+  -- inside this customer's Documents area). Admin and internal roles are
+  -- always treated as editor regardless of what's stored here.
+  permission  TEXT NOT NULL DEFAULT 'viewer'
+              CHECK (permission IN ('viewer', 'editor')),
   PRIMARY KEY (username, customer_id)
 );
+
+-- Editor-added folders + documents in a customer's Documents area. Lives
+-- alongside the seeded mock tree from `lib/data/documents.ts` (the
+-- placeholder data the portal still ships with). Only metadata is stored —
+-- there is no blob storage yet, so `download_url` is null and the UI shows a
+-- placeholder "coming soon" affordance. Swap this for a real DAM when the
+-- rest of the data layer gets wired up to Acumatica / proprietary APIs.
+CREATE TABLE IF NOT EXISTS customer_documents (
+  id           TEXT PRIMARY KEY,
+  customer_id  TEXT NOT NULL,
+  parent_id    TEXT,
+  name         TEXT NOT NULL,
+  kind         TEXT NOT NULL CHECK (kind IN ('folder', 'file')),
+  file_type    TEXT,    -- pdf|xlsx|docx|csv|png|jpg|txt; NULL for folders
+  size_bytes   INTEGER, -- NULL for folders
+  download_url TEXT,    -- NULL until real blob storage lands
+  created_by   TEXT REFERENCES users(username) ON DELETE SET NULL,
+  created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (parent_id) REFERENCES customer_documents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_customer_documents_lookup
+  ON customer_documents(customer_id, parent_id);
 
 -- Single-use tokens for invite (initial password set) and forgot-password
 -- reset flows. The token is a 32-byte random hex string; we store it

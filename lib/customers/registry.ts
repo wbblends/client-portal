@@ -68,3 +68,23 @@ export function customerForUser(
   }
   return c;
 }
+
+/**
+ * Returns the user's effective permission for a customer they already have
+ * access to. Admin and internal roles are always editors; customer-role users
+ * fall back to whatever was stored in user_customers.permission, defaulting
+ * to 'viewer' if missing.
+ *
+ * Callers should resolve access via `customerForUser` first — this function
+ * only answers "what tier" once "can they see it at all" is established.
+ */
+export function customerPermissionFor(
+  user: {
+    role: "admin" | "internal" | "customer";
+    customerPermissions: Record<string, "viewer" | "editor">;
+  },
+  customerId: string,
+): "viewer" | "editor" {
+  if (user.role === "admin" || user.role === "internal") return "editor";
+  return user.customerPermissions[customerId] ?? "viewer";
+}

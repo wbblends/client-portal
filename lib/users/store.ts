@@ -17,6 +17,12 @@ import { ensureDb } from "@/lib/db";
 
 export type UserRole = "admin" | "internal" | "customer";
 
+/** Per-customer access tier. Editors can add/remove folders and documents
+ *  inside that customer's Documents area; viewers can only browse. Admin and
+ *  internal roles are treated as editor for every customer regardless of what
+ *  is stored here (see `customerPermissionFor` in lib/customers/registry.ts). */
+export type CustomerPermission = "viewer" | "editor";
+
 export type StoredUser = {
   username: string;
   email: string;
@@ -24,8 +30,12 @@ export type StoredUser = {
   company: string;
   role: UserRole;
   /** Empty list = customer can't see any customer scope yet. Internal/admin
-   *  users see all customers regardless of this list (enforced in callers). */
+   *  users see all customers regardless of this list (enforced in callers).
+   *  Always equal to Object.keys(customerPermissions). */
   customerIds: string[];
+  /** Per-customer permission tier. Keys are a subset of customerIds; missing
+   *  keys default to 'viewer' on read. */
+  customerPermissions: Record<string, CustomerPermission>;
   /** Dashboard IDs from `lib/dashboards/registry.ts`. */
   dashboards: string[];
   avatarUrl?: string | null;
@@ -35,6 +45,13 @@ export type StoredUser = {
   active: boolean;
   mfaEnabled: boolean;
   createdAt: string;
+};
+
+/** Input shape for a customer assignment when creating/updating a user.
+ *  Permission defaults to 'viewer' when omitted. */
+export type CustomerAssignment = {
+  id: string;
+  permission?: CustomerPermission;
 };
 
 const HASH_ROUNDS = 10;
@@ -55,12 +72,7 @@ export async function listUsers(): Promise<StoredUser[]> {
     "dashboard_id",
     usernames,
   );
-  const custByUser = await fetchManyToMany(
-    client,
-    "user_customers",
-    "customer_id",
-    usernames,
-  );
+  const custByUser = await fetchCustomerPermissions(client, usernames);
   return rows.map(r => rowToUser(r, dashByUser, custByUser));
 }
 
@@ -81,13 +93,17 @@ export async function getUser(username: string): Promise<StoredUser | null> {
     args: [row.username as string],
   });
   const custRows = await client.execute({
-    sql: `SELECT customer_id FROM user_customers WHERE username = ?`,
+    sql: `SELECT customer_id, permission FROM user_customers WHERE username = ?`,
     args: [row.username as string],
   });
+  const perms: Record<string, CustomerPermission> = {};
+  for (const r of custRows.rows) {
+    perms[r.customer_id as string] = r.permission as CustomerPermission;
+  }
   return rowToUser(
     row,
     new Map([[row.username as string, dashRows.rows.map(r => r.dashboard_id as string)]]),
-    new Map([[row.username as string, custRows.rows.map(r => r.customer_id as string)]]),
+    new Map([[row.username as string, perms]]),
   );
 }
 
@@ -134,7 +150,8 @@ export type CreateUserInput = {
   name: string;
   company: string;
   role: UserRole;
-  customerIds: string[];
+  /** Per-customer assignments. Permission defaults to 'viewer' when omitted. */
+  customers: CustomerAssignment[];
   dashboards: string[];
   avatarUrl?: string | null;
 };
@@ -153,7 +170,7 @@ export async function createUser(input: CreateUserInput): Promise<StoredUser> {
       input.avatarUrl ?? null,
     ],
   });
-  await replacePermissions(input.username, input.customerIds, input.dashboards);
+  await replacePermissions(input.username, input.customers, input.dashboards);
   const u = await getUser(input.username);
   if (!u) throw new Error("createUser: user disappeared after insert");
   return u;
@@ -164,7 +181,7 @@ export type UpdateUserInput = {
   name?: string;
   company?: string;
   role?: UserRole;
-  customerIds?: string[];
+  customers?: CustomerAssignment[];
   dashboards?: string[];
   avatarUrl?: string | null;
   active?: boolean;
@@ -206,12 +223,16 @@ export async function updateUser(username: string, patch: UpdateUserInput): Prom
       args,
     });
   }
-  if (patch.customerIds !== undefined || patch.dashboards !== undefined) {
+  if (patch.customers !== undefined || patch.dashboards !== undefined) {
     const current = await getUser(username);
     if (!current) throw new Error("updateUser: not found");
+    const currentCustomers: CustomerAssignment[] = current.customerIds.map(id => ({
+      id,
+      permission: current.customerPermissions[id] ?? "viewer",
+    }));
     await replacePermissions(
       username,
-      patch.customerIds ?? current.customerIds,
+      patch.customers ?? currentCustomers,
       patch.dashboards ?? current.dashboards,
     );
   }
@@ -301,7 +322,7 @@ export async function replaceRecoveryHashes(username: string, hashes: string[]):
 
 async function replacePermissions(
   username: string,
-  customerIds: string[],
+  customers: CustomerAssignment[],
   dashboards: string[],
 ): Promise<void> {
   const client = await ensureDb();
@@ -319,18 +340,22 @@ async function replacePermissions(
       args: [username, id],
     });
   }
-  for (const id of customerIds) {
+  // Dedupe by id, last write wins (so callers can pass a noisy list).
+  const seen = new Set<string>();
+  for (const c of customers) {
+    if (seen.has(c.id)) continue;
+    seen.add(c.id);
     await client.execute({
-      sql: `INSERT INTO user_customers (username, customer_id) VALUES (?, ?)`,
-      args: [username, id],
+      sql: `INSERT INTO user_customers (username, customer_id, permission) VALUES (?, ?, ?)`,
+      args: [username, c.id, c.permission ?? "viewer"],
     });
   }
 }
 
 async function fetchManyToMany(
   client: Awaited<ReturnType<typeof ensureDb>>,
-  table: "user_dashboards" | "user_customers",
-  valueColumn: "dashboard_id" | "customer_id",
+  table: "user_dashboards",
+  valueColumn: "dashboard_id",
   usernames: string[],
 ): Promise<Map<string, string[]>> {
   const out = new Map<string, string[]>();
@@ -350,19 +375,43 @@ async function fetchManyToMany(
   return out;
 }
 
+async function fetchCustomerPermissions(
+  client: Awaited<ReturnType<typeof ensureDb>>,
+  usernames: string[],
+): Promise<Map<string, Record<string, CustomerPermission>>> {
+  const out = new Map<string, Record<string, CustomerPermission>>();
+  if (usernames.length === 0) return out;
+  const placeholders = usernames.map(() => "?").join(", ");
+  const { rows } = await client.execute({
+    sql: `SELECT username, customer_id, permission
+            FROM user_customers
+           WHERE username IN (${placeholders})`,
+    args: usernames,
+  });
+  for (const r of rows) {
+    const u = r.username as string;
+    const map = out.get(u) ?? {};
+    map[r.customer_id as string] = r.permission as CustomerPermission;
+    out.set(u, map);
+  }
+  return out;
+}
+
 function rowToUser(
   row: Record<string, unknown>,
   dashByUser: Map<string, string[]>,
-  custByUser: Map<string, string[]>,
+  custByUser: Map<string, Record<string, CustomerPermission>>,
 ): StoredUser {
   const username = row.username as string;
+  const perms = custByUser.get(username) ?? {};
   return {
     username,
     email: row.email as string,
     name: row.name as string,
     company: row.company as string,
     role: row.role as UserRole,
-    customerIds: custByUser.get(username) ?? [],
+    customerIds: Object.keys(perms),
+    customerPermissions: perms,
     dashboards: dashByUser.get(username) ?? [],
     avatarUrl: (row.avatar_url as string | null) ?? null,
     hasPassword: row.password_hash !== null,

@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { createUser, getUser, getUserByEmail, type UserRole } from "@/lib/users/store";
+import {
+  createUser,
+  getUser,
+  getUserByEmail,
+  type CustomerAssignment,
+  type CustomerPermission,
+  type UserRole,
+} from "@/lib/users/store";
 import { createToken } from "@/lib/auth/tokens";
 import { sendEmail, publicBaseUrl } from "@/lib/email/sender";
 import { inviteEmail } from "@/lib/email/templates";
@@ -9,6 +16,38 @@ import { listDashboards } from "@/lib/dashboards/registry";
 import { listCustomers } from "@/lib/customers/registry";
 
 const ALLOWED_ROLES: UserRole[] = ["admin", "internal", "customer"];
+const ALLOWED_PERMISSIONS: CustomerPermission[] = ["viewer", "editor"];
+
+/** Normalizes a request body's customer assignments. Accepts the new
+ *  `customers: [{id, permission}]` shape and the legacy `customerIds: [id]`
+ *  shape (which defaults each entry to viewer). Filters out unknown
+ *  customer ids and unknown permission values. */
+function readCustomerAssignments(
+  body: { customers?: unknown; customerIds?: unknown },
+  validIds: Set<string>,
+): CustomerAssignment[] {
+  if (Array.isArray(body.customers)) {
+    const out: CustomerAssignment[] = [];
+    for (const raw of body.customers) {
+      if (!raw || typeof raw !== "object") continue;
+      const r = raw as { id?: unknown; permission?: unknown };
+      if (typeof r.id !== "string" || !validIds.has(r.id)) continue;
+      const permission =
+        typeof r.permission === "string" &&
+        (ALLOWED_PERMISSIONS as string[]).includes(r.permission)
+          ? (r.permission as CustomerPermission)
+          : "viewer";
+      out.push({ id: r.id, permission });
+    }
+    return out;
+  }
+  if (Array.isArray(body.customerIds)) {
+    return body.customerIds
+      .filter((id): id is string => typeof id === "string" && validIds.has(id))
+      .map(id => ({ id, permission: "viewer" as const }));
+  }
+  return [];
+}
 
 export async function POST(request: NextRequest) {
   const me = await requireAdmin();
@@ -19,6 +58,7 @@ export async function POST(request: NextRequest) {
     name?: string;
     company?: string;
     role?: string;
+    customers?: Array<{ id: string; permission?: CustomerPermission }>;
     customerIds?: string[];
     dashboards?: string[];
     avatarUrl?: string | null;
@@ -59,7 +99,7 @@ export async function POST(request: NextRequest) {
   const validDashboardIds = new Set(listDashboards().map(d => d.id));
   const validCustomerIds = new Set(listCustomers().map(c => c.id));
   const dashboards = (body.dashboards ?? []).filter(id => validDashboardIds.has(id));
-  const customerIds = (body.customerIds ?? []).filter(id => validCustomerIds.has(id));
+  const customers = readCustomerAssignments(body, validCustomerIds);
 
   const user = await createUser({
     username,
@@ -67,7 +107,7 @@ export async function POST(request: NextRequest) {
     name,
     company,
     role,
-    customerIds,
+    customers,
     dashboards,
     avatarUrl: body.avatarUrl ?? null,
   });

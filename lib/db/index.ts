@@ -42,6 +42,7 @@ export async function ensureDb(): Promise<Client> {
   const client = db();
   if (bootstrapped) return client;
   await applySchema(client);
+  await applyMigrations(client);
   await maybeImportSeedUsers(client);
   bootstrapped = true;
   return client;
@@ -63,6 +64,27 @@ function connectionConfig() {
 async function applySchema(client: Client) {
   const sql = readFileSync(SCHEMA_PATH, "utf8");
   await client.executeMultiple(sql);
+}
+
+/**
+ * In-place migrations for changes that CREATE TABLE IF NOT EXISTS can't
+ * handle — e.g. adding a column to a table that already exists locally.
+ * Each step is guarded by a PRAGMA check so re-runs are no-ops.
+ *
+ * If you find yourself adding more than a handful of these, promote this to
+ * a real numbered-migration system instead.
+ */
+async function applyMigrations(client: Client) {
+  // 2026-05 — per-customer permission on user_customers (viewer | editor)
+  const cols = await client.execute("PRAGMA table_info(user_customers)");
+  const hasPermission = cols.rows.some(r => (r.name as string) === "permission");
+  if (!hasPermission) {
+    await client.execute(
+      `ALTER TABLE user_customers
+         ADD COLUMN permission TEXT NOT NULL DEFAULT 'viewer'
+                    CHECK (permission IN ('viewer', 'editor'))`,
+    );
+  }
 }
 
 /** Import seed users from `lib/users/users.json` the first time we see an
@@ -103,7 +125,8 @@ async function maybeImportSeedUsers(client: Client) {
     }
     if (u.customerId) {
       await client.execute({
-        sql: `INSERT INTO user_customers (username, customer_id) VALUES (?, ?)`,
+        sql: `INSERT INTO user_customers (username, customer_id, permission)
+              VALUES (?, ?, 'viewer')`,
         args: [u.username, u.customerId],
       });
     }
