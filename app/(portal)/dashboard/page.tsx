@@ -21,6 +21,7 @@ import { SkuGrid } from "@/components/dashboard/sku-grid";
 import { SalesByProduct } from "@/components/dashboard/sales-by-product";
 import { OpenOrdersReport } from "@/components/dashboard/open-orders-report";
 import { OnboardingReport } from "@/components/dashboard/onboarding-report";
+import { ClientLogoBanner } from "@/components/portal/client-logo";
 import { formatCurrency, formatNumber, formatDate } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard — WB Blends" };
@@ -73,6 +74,9 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
 
   return (
     <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-7">
+      {/* Client logo — uploaded by the customer, displayed at full size */}
+      <ClientLogoBanner customerId={user.customerId} companyName={profile.name} />
+
       {/* Page header */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>

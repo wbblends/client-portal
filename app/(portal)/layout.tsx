@@ -2,6 +2,7 @@ import { requireSession } from "@/lib/auth";
 import { Logo } from "@/components/ui/logo";
 import { SidebarNav } from "@/components/portal/sidebar-nav";
 import { UserMenu } from "@/components/portal/user-menu";
+import { ClientLogoBadge } from "@/components/portal/client-logo";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const user = await requireSession();
@@ -16,7 +17,8 @@ export default async function PortalLayout({ children }: { children: React.React
         <div className="flex-1 overflow-y-auto py-2">
           <SidebarNav />
         </div>
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-border space-y-2">
+          <ClientLogoBadge customerId={user.customerId} companyName={user.company} />
           <UserMenu
             name={user.name}
             email={user.email}
