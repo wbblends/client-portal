@@ -27,7 +27,9 @@ export function UserMenu({
     .toUpperCase();
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    // Best-effort; if the request fails we still navigate so the user isn't
+    // stuck — the cookie expires on its own and a fresh sign-in resets it.
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     router.replace("/login");
     router.refresh();
   }

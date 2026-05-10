@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -67,12 +68,14 @@ export async function destroySession() {
   jar.delete(SESSION_COOKIE);
 }
 
-export async function getSession(): Promise<SessionUser | null> {
+// Memoized per request so the layout + page calling requireSession() don't
+// each pay for a Buffer/JSON.parse round trip on the cookie payload.
+export const getSession = cache(async (): Promise<SessionUser | null> => {
   const jar = await cookies();
   const cookie = jar.get(SESSION_COOKIE);
   if (!cookie) return null;
   return decodePayload(cookie.value);
-}
+});
 
 export async function requireSession(): Promise<SessionUser> {
   const user = await getSession();
