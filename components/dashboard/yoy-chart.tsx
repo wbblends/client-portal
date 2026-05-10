@@ -60,23 +60,25 @@ export function SalesByDurationChart({
           ))}
         </div>
       </div>
-      <div className="h-[280px] w-full">
+      <div className="h-[240px] sm:h-[280px] w-full">
         {mounted ? (
           <ResponsiveContainer>
-            <BarChart data={series} margin={{ top: 8, right: 16, left: 0, bottom: 0 }} barCategoryGap="22%">
+            <BarChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="22%">
               <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="bucket"
-                tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+                tick={{ fill: "var(--color-muted)", fontSize: 11 }}
                 tickLine={false}
                 axisLine={{ stroke: "var(--color-border)" }}
+                interval="preserveStartEnd"
+                minTickGap={8}
               />
               <YAxis
                 tickFormatter={fmt}
-                tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+                tick={{ fill: "var(--color-muted)", fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
-                width={64}
+                width={52}
               />
               <Tooltip
                 cursor={{ fill: "color-mix(in oklab, var(--color-primary) 8%, transparent)" }}

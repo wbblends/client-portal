@@ -11,12 +11,15 @@ export function UserMenu({
   company,
   avatarUrl,
   className,
+  compact = false,
 }: {
   name: string;
   email: string;
   company: string;
   avatarUrl?: string;
   className?: string;
+  /** Hide name + company; show avatar + sign-out only. Used in tight mobile bars. */
+  compact?: boolean;
 }) {
   const router = useRouter();
   const initials = name
@@ -35,10 +38,12 @@ export function UserMenu({
   return (
     <div className={cn("flex items-center gap-3 rounded-xl border border-border bg-card p-3", className)}>
       <Avatar name={name} initials={initials} src={avatarUrl} />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-foreground">{name}</div>
-        <div className="truncate text-xs text-muted">{company}</div>
-      </div>
+      {!compact && (
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium text-foreground">{name}</div>
+          <div className="truncate text-xs text-muted">{company}</div>
+        </div>
+      )}
       <button
         type="button"
         onClick={logout}

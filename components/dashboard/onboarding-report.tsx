@@ -21,12 +21,12 @@ export function OnboardingReport({
 }) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-[var(--shadow-card)]">
-      <div className="bg-primary text-primary-foreground px-5 py-3.5">
-        <h3 className="font-display text-[20px] leading-tight">
+      <div className="bg-primary text-primary-foreground px-4 sm:px-5 py-3 sm:py-3.5">
+        <h3 className="font-display text-[17px] sm:text-[20px] leading-tight">
           {customerName} — Onboarding Statuses
         </h3>
       </div>
-      <div className="bg-primary/15 text-primary px-5 py-1.5 text-[13px] font-semibold tracking-tight">
+      <div className="bg-primary/15 text-primary px-4 sm:px-5 py-1.5 text-[12px] sm:text-[13px] font-semibold tracking-tight">
         Commercialization Pipeline: {reportDate}
       </div>
 

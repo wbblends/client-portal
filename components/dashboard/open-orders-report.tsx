@@ -28,17 +28,17 @@ export function OpenOrdersReport({
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-[var(--shadow-card)]">
       {/* Title banner — same purple heading the PDF report uses */}
-      <div className="bg-primary text-primary-foreground px-5 py-3.5">
+      <div className="bg-primary text-primary-foreground px-4 sm:px-5 py-3 sm:py-3.5">
         <div className="flex items-baseline justify-between gap-3 flex-wrap">
-          <h3 className="font-display text-[20px] leading-tight">
+          <h3 className="font-display text-[17px] sm:text-[20px] leading-tight">
             {customerName} — Customer Supplied Label
           </h3>
-          <div className="text-xs opacity-90 tabular-nums">
+          <div className="text-[11px] sm:text-xs opacity-90 tabular-nums">
             Sales Rep: {salesRep} · Account Manager: {accountManager}
           </div>
         </div>
       </div>
-      <div className="bg-primary/15 text-primary px-5 py-1.5 text-[13px] font-semibold tracking-tight">
+      <div className="bg-primary/15 text-primary px-4 sm:px-5 py-1.5 text-[12px] sm:text-[13px] font-semibold tracking-tight">
         Open Order Status: {reportDate}
       </div>
 

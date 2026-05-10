@@ -17,9 +17,9 @@ export default async function InvoicesPage() {
   const totalOverdue = overdue.reduce((sum, i) => sum + (i.amount - i.paidAmount), 0);
 
   return (
-    <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">
       <div>
-        <h1 className="font-display text-[34px] leading-[1.1] tracking-tight text-foreground">
+        <h1 className="font-display text-[26px] sm:text-[34px] leading-[1.1] tracking-tight text-foreground">
           Invoices
         </h1>
         <p className="mt-1 text-sm text-muted">
@@ -28,7 +28,7 @@ export default async function InvoicesPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <SummaryTile label="Open Balance" value={formatCurrency(totalOpen)} count={open.length} />
         <SummaryTile label="Overdue" value={formatCurrency(totalOverdue)} count={overdue.length} tone="danger" />
         <SummaryTile label="Total Invoices" value={String(invoices.length)} count={invoices.length} subtitle="Last 12 Months" />
@@ -166,9 +166,9 @@ function SummaryTile({
   tone?: "neutral" | "danger";
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-[var(--shadow-card)]">
-      <div className="text-[13px] font-medium text-muted">{label}</div>
-      <div className={`mt-1.5 text-[26px] font-semibold tracking-tight tabular-nums ${tone === "danger" ? "text-danger" : "text-foreground"}`}>
+    <div className="rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5 sm:py-4 shadow-[var(--shadow-card)]">
+      <div className="text-[12px] sm:text-[13px] font-medium text-muted">{label}</div>
+      <div className={`mt-1.5 text-[22px] sm:text-[26px] font-semibold tracking-tight tabular-nums ${tone === "danger" ? "text-danger" : "text-foreground"}`}>
         {value}
       </div>
       <div className="mt-0.5 text-xs text-muted">

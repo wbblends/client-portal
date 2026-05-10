@@ -34,7 +34,8 @@ export default async function PortalLayout({ children }: { children: React.React
           email={user.email}
           company={user.company}
           avatarUrl={user.avatarUrl}
-          className="border-0 p-0 bg-transparent"
+          className="border-0 p-0 bg-transparent gap-2"
+          compact
         />
       </header>
 

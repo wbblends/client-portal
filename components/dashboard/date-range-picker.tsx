@@ -127,28 +127,30 @@ export function DateRangePicker({
   const label = activePreset?.label ?? `${formatDate(from, "short")} – ${formatDate(to, "short")}`;
 
   return (
-    <div className="relative inline-block">
+    <div className="relative w-full lg:inline-block lg:w-auto">
       <button
         ref={triggerRef}
         type="button"
         onClick={() => setOpen(o => !o)}
         className={cn(
-          "inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-border bg-card text-sm font-medium",
+          "inline-flex w-full lg:w-auto items-center justify-between lg:justify-start gap-2 h-10 px-3 rounded-lg border border-border bg-card text-sm font-medium",
           "hover:border-border-strong transition-colors",
         )}
       >
-        <Calendar className="h-4 w-4 text-muted" />
-        <span className="text-foreground">{label}</span>
-        <span className="text-muted-soft hidden sm:inline">
-          ({formatDate(from, "short")} – {formatDate(to, "short")})
+        <span className="inline-flex items-center gap-2 min-w-0">
+          <Calendar className="h-4 w-4 text-muted shrink-0" />
+          <span className="text-foreground truncate">{label}</span>
+          <span className="text-muted-soft hidden sm:inline">
+            ({formatDate(from, "short")} – {formatDate(to, "short")})
+          </span>
         </span>
-        <ChevronDown className="h-4 w-4 text-muted" />
+        <ChevronDown className="h-4 w-4 text-muted shrink-0" />
       </button>
 
       {open && (
         <div
           ref={popoverRef}
-          className="absolute right-0 z-20 mt-2 w-[320px] rounded-xl border border-border bg-card p-3 shadow-[var(--shadow-popover)]"
+          className="absolute left-0 right-0 lg:left-auto lg:right-0 z-20 mt-2 w-auto lg:w-[320px] max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-3 shadow-[var(--shadow-popover)]"
         >
           <div className="grid grid-cols-2 gap-1">
             {PRESETS.map(p => (

@@ -12,9 +12,9 @@ export default async function QualityPage() {
   const closed = tickets.filter(t => t.status === "closed").length;
 
   return (
-    <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">
       <div>
-        <h1 className="font-display text-[34px] leading-[1.1] tracking-tight text-foreground">
+        <h1 className="font-display text-[26px] sm:text-[34px] leading-[1.1] tracking-tight text-foreground">
           Quality
         </h1>
         <p className="mt-1 text-sm text-muted">
@@ -23,10 +23,15 @@ export default async function QualityPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         <SummaryTile label="Open Tickets" value={String(open)} />
         <SummaryTile label="Closed Tickets" value={String(closed)} subtitle="Last 12 Months" />
-        <SummaryTile label="Quality Contact" value="Marco Liu" subtitle="quality@wbblends.com" />
+        <SummaryTile
+          label="Quality Contact"
+          value="Marco Liu"
+          subtitle="quality@wbblends.com"
+          className="col-span-2 sm:col-span-1"
+        />
       </div>
 
       <Card>
@@ -78,14 +83,26 @@ export default async function QualityPage() {
   );
 }
 
-function SummaryTile({ label, value, subtitle }: { label: string; value: string; subtitle?: string }) {
+function SummaryTile({
+  label,
+  value,
+  subtitle,
+  className,
+}: {
+  label: string;
+  value: string;
+  subtitle?: string;
+  className?: string;
+}) {
   return (
-    <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-[var(--shadow-card)]">
-      <div className="text-[13px] font-medium text-muted">{label}</div>
-      <div className="mt-1.5 text-[26px] font-semibold tracking-tight tabular-nums text-foreground">
+    <div
+      className={`rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5 sm:py-4 shadow-[var(--shadow-card)] ${className ?? ""}`}
+    >
+      <div className="text-[12px] sm:text-[13px] font-medium text-muted">{label}</div>
+      <div className="mt-1.5 text-[22px] sm:text-[26px] font-semibold tracking-tight tabular-nums text-foreground">
         {value}
       </div>
-      {subtitle && <div className="mt-0.5 text-xs text-muted">{subtitle}</div>}
+      {subtitle && <div className="mt-0.5 text-xs text-muted truncate">{subtitle}</div>}
     </div>
   );
 }

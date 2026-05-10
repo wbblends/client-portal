@@ -45,15 +45,15 @@ export function KpiTile({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-[var(--shadow-card)]">
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="text-[13px] font-medium text-muted">{label}</div>
+    <div className="rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5 sm:py-4 shadow-[var(--shadow-card)]">
+      <div className="flex items-baseline justify-between gap-2 flex-wrap">
+        <div className="text-[12px] sm:text-[13px] font-medium text-muted">{label}</div>
         {deltaUi}
       </div>
-      <div className="mt-1.5 text-[28px] font-semibold tracking-tight tabular-nums text-foreground">
+      <div className="mt-1.5 text-[22px] sm:text-[28px] font-semibold tracking-tight tabular-nums text-foreground">
         {value}
       </div>
-      {hint && <div className="mt-0.5 text-xs text-muted">{hint}</div>}
+      {hint && <div className="mt-0.5 text-[11px] sm:text-xs text-muted">{hint}</div>}
     </div>
   );
 }

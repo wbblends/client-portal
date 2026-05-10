@@ -10,9 +10,9 @@ export default async function ContactPage() {
   const { team, resources } = await getContacts(user.customerId);
 
   return (
-    <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">
       <div>
-        <h1 className="font-display text-[34px] leading-[1.1] tracking-tight text-foreground">
+        <h1 className="font-display text-[26px] sm:text-[34px] leading-[1.1] tracking-tight text-foreground">
           Your <em className="not-italic text-primary">Team</em>.
         </h1>
         <p className="mt-1 text-sm text-muted">
@@ -82,17 +82,20 @@ export default async function ContactPage() {
         <CardContent className="px-0">
           <ul className="divide-y divide-border">
             {resources.map(r => (
-              <li key={r.label} className="px-5 py-3.5 flex items-center justify-between gap-4">
+              <li
+                key={r.label}
+                className="px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4"
+              >
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-foreground">{r.label}</div>
                   {r.description && <div className="text-sm text-muted mt-0.5">{r.description}</div>}
                 </div>
                 <a
                   href={r.email ? `mailto:${r.email}` : r.href}
-                  className="inline-flex items-center gap-1.5 shrink-0 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground-soft hover:border-border-strong hover:bg-accent transition-colors"
+                  className="inline-flex items-center gap-1.5 shrink-0 self-start rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground-soft hover:border-border-strong hover:bg-accent transition-colors max-w-full"
                 >
-                  {r.email ?? "Open"}
-                  <ArrowUpRight className="h-3.5 w-3.5" />
+                  <span className="truncate">{r.email ?? "Open"}</span>
+                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
                 </a>
               </li>
             ))}

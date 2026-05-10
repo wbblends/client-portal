@@ -21,7 +21,7 @@ import { SkuGrid } from "@/components/dashboard/sku-grid";
 import { SalesByProduct } from "@/components/dashboard/sales-by-product";
 import { OpenOrdersReport } from "@/components/dashboard/open-orders-report";
 import { OnboardingReport } from "@/components/dashboard/onboarding-report";
-import { formatCurrency, formatNumber, formatDate } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard — WB Blends" };
 
@@ -72,26 +72,25 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const reportDate = `${today.getMonth() + 1}/${today.getDate()}/${String(today.getFullYear()).slice(2)}`;
 
   return (
-    <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-7">
+    <div className="px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6 sm:space-y-7">
       {/* Page header */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm text-muted">Welcome back, {user.name.split(" ")[0]}.</p>
-          <h1 className="mt-0.5 font-display text-[34px] leading-[1.1] tracking-tight text-foreground">
+          <h1 className="mt-0.5 font-display text-[26px] sm:text-[34px] leading-[1.1] tracking-tight text-foreground">
             {profile.name}
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Customer #{profile.id} · Account Since {profile.accountSince} · Showing{" "}
-            <span className="text-foreground-soft font-medium">
-              {formatDate(range.from, "short")} – {formatDate(range.to, "short")}
-            </span>
+            Customer #{profile.id} · Account Since {profile.accountSince}
           </p>
         </div>
-        <DateRangePicker from={range.from} to={range.to} presetId={range.presetId} />
+        <div className="lg:shrink-0">
+          <DateRangePicker from={range.from} to={range.to} presetId={range.presetId} />
+        </div>
       </div>
 
       {/* KPIs — compare hint adapts to the selected window */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiTile
           label="Order Value"
           value={formatCurrency(cur.dollars)}
@@ -140,7 +139,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       {/* Sales By Product — top 5 products with annual + current + compare */}
       <section className="space-y-2">
         <div>
-          <h2 className="font-display text-[24px] leading-tight tracking-tight text-foreground">
+          <h2 className="font-display text-[20px] sm:text-[24px] leading-tight tracking-tight text-foreground">
             Sales By Product
           </h2>
           <p className="text-sm text-muted mt-0.5">
@@ -158,7 +157,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       {/* Onboarding Statuses — first per the brand's commercialization process */}
       <section className="space-y-2">
         <div>
-          <h2 className="font-display text-[24px] leading-tight tracking-tight text-foreground">
+          <h2 className="font-display text-[20px] sm:text-[24px] leading-tight tracking-tight text-foreground">
             Onboarding Statuses
           </h2>
           <p className="text-sm text-muted mt-0.5">
@@ -176,7 +175,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       {/* Open Orders — same data the customer success team sends every Friday */}
       <section className="space-y-2">
         <div>
-          <h2 className="font-display text-[24px] leading-tight tracking-tight text-foreground">
+          <h2 className="font-display text-[20px] sm:text-[24px] leading-tight tracking-tight text-foreground">
             Open Orders
           </h2>
           <p className="text-sm text-muted mt-0.5">
