@@ -1,53 +1,88 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
 
 /**
- * Demo-only auth. A single seeded user is hardcoded. Sessions are stored as a
- * base64-encoded JSON cookie — adequate for a placeholder portal so the user
- * can log in as a test account, but obviously not safe for production.
+ * Demo-only auth. Users live in SQLite (seeded on first DB open) and the
+ * session is a base64 JSON cookie holding the resolved user. Adequate for a
+ * placeholder portal; not safe for production.
  *
- * Future: replace with a real provider. Recommended path is to keep
- * `getSession()` and `requireSession()` as the only call sites and swap their
- * implementations (e.g. to Auth.js, Clerk, or your own JWT verification).
+ * To swap to a real provider, keep `getSession()` and `requireSession()` as the
+ * only call sites and replace their implementations (Auth.js, Clerk, custom
+ * JWT, etc.).
  *
  * Auth is enforced per page via `requireSession()` in server components — no
- * middleware/proxy is wired up. That keeps every page's runtime in Node so
- * Buffer-based session decoding works without Edge runtime constraints.
+ * proxy/middleware. That keeps every page in the Node runtime so Buffer-based
+ * session decoding works.
  */
 
 export const SESSION_COOKIE = "wbb_session";
 
+export type Role = "super_admin" | "internal" | "external";
+
 export type SessionUser = {
+  id: string;
   username: string;
   name: string;
   email: string;
   company: string;
+  /**
+   * The customer brand this session is currently scoped to. Always set so the
+   * brand-scoped portal pages (Dashboard, Invoices, etc.) can rely on it.
+   * For internal / super_admin users this is a default brand (the first
+   * channel they own); they can still chat across all customers.
+   */
   customerId: string;
+  /** True for users not tied to a customer (internal staff, super admin). */
+  internal: boolean;
+  role: Role;
   /** Optional path under `public/`. Falls back to initials avatar when absent. */
   avatarUrl?: string;
+  /** Hex color used for the initials avatar background. */
+  avatarColor?: string;
 };
 
-const SEEDED_USERS: Record<string, { password: string; user: SessionUser }> = {
-  dsimmons: {
-    password: "test",
-    user: {
-      username: "dsimmons",
-      name: "Devin Simmons",
-      email: "devin@devinstest.example",
-      company: "Devin's Test Brand",
-      customerId: "C-1042",
-      avatarUrl: "/avatars/dsimmons.jpg",
-    },
-  },
+type UserRow = {
+  id: string;
+  username: string;
+  password: string;
+  name: string;
+  email: string;
+  role: Role;
+  customer_id: string | null;
+  company: string | null;
+  avatar_url: string | null;
+  avatar_color: string | null;
 };
+
+/** Default brand context for internal staff so brand-scoped pages still load. */
+const DEFAULT_INTERNAL_CUSTOMER_ID = "C-1042";
+
+function rowToSession(row: UserRow): SessionUser {
+  const internal = row.customer_id == null;
+  return {
+    id: row.id,
+    username: row.username,
+    name: row.name,
+    email: row.email,
+    company: row.company ?? "",
+    customerId: row.customer_id ?? DEFAULT_INTERNAL_CUSTOMER_ID,
+    internal,
+    role: row.role,
+    avatarUrl: row.avatar_url ?? undefined,
+    avatarColor: row.avatar_color ?? undefined,
+  };
+}
 
 export async function authenticate(
   username: string,
   password: string,
 ): Promise<SessionUser | null> {
-  const entry = SEEDED_USERS[username.trim().toLowerCase()];
-  if (!entry || entry.password !== password) return null;
-  return entry.user;
+  const row = db()
+    .prepare("SELECT * FROM users WHERE username = ?")
+    .get(username.trim().toLowerCase()) as UserRow | undefined;
+  if (!row || row.password !== password) return null;
+  return rowToSession(row);
 }
 
 export async function createSession(user: SessionUser, remember: boolean) {
@@ -80,8 +115,15 @@ export async function requireSession(): Promise<SessionUser> {
   return user;
 }
 
+/** Refetch the user from DB. Use for role-sensitive checks in API routes. */
+export function loadUser(id: string): SessionUser | null {
+  const row = db().prepare("SELECT * FROM users WHERE id = ?").get(id) as
+    | UserRow
+    | undefined;
+  return row ? rowToSession(row) : null;
+}
+
 function encodePayload(user: SessionUser): string {
-  // Buffer is available because proxy/route handlers run in Node runtime.
   return Buffer.from(JSON.stringify(user)).toString("base64url");
 }
 
@@ -89,7 +131,12 @@ function decodePayload(value: string): SessionUser | null {
   try {
     const json = Buffer.from(value, "base64url").toString("utf8");
     const obj = JSON.parse(json);
-    if (typeof obj?.username === "string" && typeof obj?.customerId === "string") {
+    if (
+      typeof obj?.id === "string" &&
+      typeof obj?.username === "string" &&
+      typeof obj?.role === "string" &&
+      typeof obj?.customerId === "string"
+    ) {
       return obj as SessionUser;
     }
     return null;
