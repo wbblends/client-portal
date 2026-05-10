@@ -44,11 +44,11 @@ export function SidebarNav({
             key={item.href}
             href={item.href}
             className={cn(
-              "group flex items-center gap-2 rounded-lg text-sm font-medium transition-colors shrink-0",
+              "group flex items-center gap-2 rounded-xl text-sm font-medium transition-colors shrink-0",
               isHorizontal ? "px-3 py-1.5" : "px-3 py-2 gap-2.5",
               active
-                ? "bg-primary-soft text-primary"
-                : "text-foreground-soft hover:bg-accent hover:text-foreground",
+                ? "glass-pill text-primary"
+                : "text-foreground-soft hover:bg-white/40 hover:text-foreground",
             )}
           >
             <Icon

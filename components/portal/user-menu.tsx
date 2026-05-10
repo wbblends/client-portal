@@ -33,7 +33,7 @@ export function UserMenu({
   }
 
   return (
-    <div className={cn("flex items-center gap-3 rounded-xl border border-border bg-card p-3", className)}>
+    <div className={cn("glass-pill flex items-center gap-3 rounded-2xl p-3", className)}>
       <Avatar name={name} initials={initials} src={avatarUrl} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium text-foreground">{name}</div>

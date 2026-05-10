@@ -47,7 +47,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
               and any flags on every open order, anytime.
             </p>
 
-            <div className="mt-8 rounded-2xl border border-border bg-card p-7 shadow-[var(--shadow-card-hover)]">
+            <div className="glass-strong mt-8 rounded-2xl p-7">
               <LoginForm next={next} />
             </div>
 

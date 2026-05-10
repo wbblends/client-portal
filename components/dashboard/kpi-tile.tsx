@@ -45,7 +45,7 @@ export function KpiTile({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-[var(--shadow-card)]">
+    <div className="glass-tinted rounded-2xl px-5 py-4">
       <div className="flex items-baseline justify-between gap-3">
         <div className="text-[13px] font-medium text-muted">{label}</div>
         {deltaUi}

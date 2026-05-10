@@ -83,4 +83,106 @@
       radial-gradient(at 92% 22%, color-mix(in oklab, var(--color-primary) 14%, transparent) 0px, transparent 55%),
       radial-gradient(at 60% 100%, color-mix(in oklab, var(--color-primary) 10%, transparent) 0px, transparent 60%);
   }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     Liquid Glass
+     iOS-26-style translucent surfaces: a frosted base, a saturated blur,
+     a bright specular highlight on the top edge, and a soft inset shadow
+     on the bottom edge so the surface reads as a real pane of glass.
+
+     Pair with `.glass-bg` on a parent (or rely on the page surface) so
+     there's something colorful to refract through. */
+
+  /* Base pane — quiet glass, good default for most cards. */
+  .glass {
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, white 78%, transparent) 0%,
+        color-mix(in oklab, white 58%, transparent) 100%
+      );
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    border: 1px solid color-mix(in oklab, white 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+      inset 0 -1px 0 0 rgba(21, 16, 43, 0.04),
+      0 1px 2px 0 rgba(21, 16, 43, 0.05),
+      0 8px 24px -10px rgba(110, 91, 254, 0.18);
+  }
+
+  /* Stronger glass — for top-level chrome (sidebar, top bar, popovers)
+     where you want the surface to feel a touch more solid. */
+  .glass-strong {
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, white 88%, transparent) 0%,
+        color-mix(in oklab, white 72%, transparent) 100%
+      );
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid color-mix(in oklab, white 60%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.85),
+      inset 0 -1px 0 0 rgba(21, 16, 43, 0.05),
+      0 12px 32px -16px rgba(21, 16, 43, 0.18);
+  }
+
+  /* Brand-tinted glass — picks up the WB Blends purple. Use sparingly:
+     KPI tiles, hero cards, anywhere we want a hint of color through the pane. */
+  .glass-tinted {
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--color-primary-soft) 85%, transparent) 0%,
+        color-mix(in oklab, white 60%, transparent) 100%
+      );
+    backdrop-filter: blur(18px) saturate(190%);
+    -webkit-backdrop-filter: blur(18px) saturate(190%);
+    border: 1px solid color-mix(in oklab, var(--color-primary) 22%, white);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+      inset 0 -1px 0 0 color-mix(in oklab, var(--color-primary) 8%, transparent),
+      0 1px 2px 0 rgba(21, 16, 43, 0.05),
+      0 12px 28px -14px rgba(110, 91, 254, 0.28);
+  }
+
+  /* Pill — for nav items, segmented controls. Lighter, no big shadow. */
+  .glass-pill {
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, white 70%, transparent) 0%,
+      color-mix(in oklab, white 40%, transparent) 100%
+    );
+    backdrop-filter: blur(14px) saturate(170%);
+    -webkit-backdrop-filter: blur(14px) saturate(170%);
+    border: 1px solid color-mix(in oklab, white 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+      0 1px 2px 0 rgba(21, 16, 43, 0.06);
+  }
+
+  /* Ambient backdrop — soft, drifting purple/blue blobs that sit behind
+     glass surfaces to give them something to refract. Drop on a fixed
+     full-bleed div; let it fade on dark/print. */
+  .glass-bg {
+    background-color: var(--color-surface);
+    background-image:
+      radial-gradient(at 8% 4%, color-mix(in oklab, var(--color-primary) 22%, transparent) 0px, transparent 42%),
+      radial-gradient(at 96% 12%, color-mix(in oklab, #6ec6ff 30%, transparent) 0px, transparent 48%),
+      radial-gradient(at 78% 92%, color-mix(in oklab, var(--color-primary) 18%, transparent) 0px, transparent 55%),
+      radial-gradient(at 22% 88%, color-mix(in oklab, #ffb3e6 22%, transparent) 0px, transparent 50%);
+  }
+
+  /* Reduce-motion / no-backdrop fallback so the design degrades gracefully
+     on browsers without backdrop-filter (older Firefox, etc). */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass,
+    .glass-strong,
+    .glass-tinted,
+    .glass-pill {
+      background-color: var(--color-card);
+    }
+  }
 }
