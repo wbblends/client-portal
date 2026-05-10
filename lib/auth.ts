@@ -16,6 +16,11 @@ import { redirect } from "next/navigation";
  */
 
 export const SESSION_COOKIE = "wbb_session";
+/**
+ * Long-lived cookie that survives logout so the login page can greet a
+ * returning user by name. Stores only the first name — no auth value.
+ */
+export const LAST_USER_COOKIE = "wbb_last_user";
 
 export type SessionUser = {
   username: string;
@@ -60,6 +65,24 @@ export async function createSession(user: SessionUser, remember: boolean) {
     secure: process.env.NODE_ENV === "production",
     maxAge: remember ? 60 * 60 * 24 * 30 : 60 * 60 * 8,
   });
+  const firstName = user.name.split(" ")[0] ?? user.username;
+  jar.set(LAST_USER_COOKIE, firstName, {
+    httpOnly: false,
+    sameSite: "lax",
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+}
+
+export async function getLastUserFirstName(): Promise<string | null> {
+  const jar = await cookies();
+  const cookie = jar.get(LAST_USER_COOKIE);
+  if (!cookie?.value) return null;
+  // Trim and strip anything that isn't a sensible name character so a tampered
+  // cookie can't inject markup into the login page.
+  const cleaned = cookie.value.trim().replace(/[^\p{L}\p{M}'\-\. ]/gu, "");
+  return cleaned.length > 0 ? cleaned.slice(0, 40) : null;
 }
 
 export async function destroySession() {
