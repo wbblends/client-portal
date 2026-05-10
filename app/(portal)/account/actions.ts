@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { logEvent } from "@/lib/audit";
 import { requireSession } from "@/lib/auth";
+import { buildAvatarUrl, deleteAvatar, saveAvatar } from "@/lib/avatar-storage";
 import {
   checkPassword,
   setPassword,
@@ -105,8 +106,9 @@ export async function uploadMyAvatarAction(
       return { ok: false, message: "Image must be under 2 MB." };
     }
     const buf = Buffer.from(await file.arrayBuffer());
-    const dataUrl = `data:${file.type};base64,${buf.toString("base64")}`;
-    updateUser(me.id, { avatarUrl: dataUrl });
+    const saved = saveAvatar(me.id, buf);
+    if (!saved.ok) return { ok: false, message: saved.reason };
+    updateUser(me.id, { avatarUrl: buildAvatarUrl(me.id) });
     logEvent({
       action: "account.avatar_changed",
       actorId: me.id,
@@ -127,6 +129,7 @@ export async function removeMyAvatarAction(
 ): Promise<AccountActionResult> {
   const me = await requireSession();
   try {
+    deleteAvatar(me.id);
     updateUser(me.id, { avatarUrl: null });
     logEvent({
       action: "account.avatar_changed",

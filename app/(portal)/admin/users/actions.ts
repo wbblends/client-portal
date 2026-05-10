@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { requireSuperAdmin } from "@/lib/auth";
 import { logEvent } from "@/lib/audit";
+import { buildAvatarUrl, deleteAvatar, saveAvatar } from "@/lib/avatar-storage";
 import { buildResetUrl, sendEmail } from "@/lib/email";
 import { createResetToken } from "@/lib/reset-tokens";
 import {
@@ -28,11 +29,15 @@ import {
 const ALLOWED_ROLES: Role[] = ["super_admin", "admin", "user"];
 const ALLOWED_PERMISSION_IDS = new Set<Permission>(ALL_PERMISSIONS.map(p => p.id));
 
+// The cropper component on the client always emits a square JPEG. We accept a
+// modest cap server-side as a defense-in-depth — the canvas output is normally
+// well under 100 KB.
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = new Set([
-  "image/png",
   "image/jpeg",
   "image/jpg",
+  // Tolerate other types from older clients that may not run the cropper.
+  "image/png",
   "image/webp",
   "image/gif",
 ]);
@@ -327,9 +332,13 @@ export async function uploadAvatarAction(
     if (file.size > MAX_AVATAR_BYTES) {
       return { ok: false, message: "Image must be under 2 MB." };
     }
+    if (!getUser(userId)) return { ok: false, message: "User not found." };
+
     const buf = Buffer.from(await file.arrayBuffer());
-    const dataUrl = `data:${file.type};base64,${buf.toString("base64")}`;
-    const next = updateUser(userId, { avatarUrl: dataUrl });
+    const saved = saveAvatar(userId, buf);
+    if (!saved.ok) return { ok: false, message: saved.reason };
+
+    const next = updateUser(userId, { avatarUrl: buildAvatarUrl(userId) });
     logEvent({
       action: "user.avatar_changed",
       actorId: actor.id,
@@ -351,6 +360,7 @@ export async function removeAvatarAction(
 ): Promise<ActionResult> {
   const actor = await requireSuperAdmin();
   try {
+    deleteAvatar(userId);
     const next = updateUser(userId, { avatarUrl: null });
     logEvent({
       action: "user.avatar_removed",

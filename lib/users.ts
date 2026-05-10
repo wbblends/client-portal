@@ -1,4 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { deleteAvatar } from "./avatar-storage";
 import { readJson, writeJson } from "./persistence";
 import {
   ALL_PERMISSIONS,
@@ -386,6 +387,9 @@ export function deleteUser(id: string): void {
   }
   store.delete(id);
   persist();
+  // Cascade: drop any uploaded avatar so we don't leak files on disk.
+  // No-ops if there isn't one or if the FS is read-only.
+  deleteAvatar(id);
 }
 
 export function resetPermissions(id: string): PublicUser {

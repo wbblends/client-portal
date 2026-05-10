@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 
+/**
+ * Sidebar profile chip. The avatar + name area is the click target for
+ * `/account` — visually reinforced with a hover ring on the avatar and a
+ * chevron that fades in on hover, so it's clearly tappable rather than a
+ * passive label.
+ */
 export function UserMenu({
   name,
   email,
@@ -28,15 +34,36 @@ export function UserMenu({
   }
 
   return (
-    <div className={cn("flex items-center gap-3 rounded-xl border border-border bg-card p-3", className)}>
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-xl border border-border bg-card p-3",
+        className,
+      )}
+    >
       <Link
         href="/account"
-        className="flex flex-1 min-w-0 items-center gap-3 -m-1 p-1 rounded-md hover:bg-accent transition-colors"
-        title="Open my account"
+        className="group flex flex-1 min-w-0 items-center gap-3 -m-1 p-1 rounded-md hover:bg-accent transition-colors"
+        aria-label="Open my account"
+        title="My account"
       >
-        <Avatar name={name} src={avatarUrl} size={36} />
+        <span className="relative shrink-0">
+          <Avatar
+            name={name}
+            src={avatarUrl}
+            size={36}
+            className="transition-shadow group-hover:ring-2 group-hover:ring-primary/50"
+          />
+        </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-foreground" title={email}>{name}</div>
+          <div className="flex items-center gap-1">
+            <span className="truncate text-sm font-medium text-foreground" title={email}>
+              {name}
+            </span>
+            <ChevronRight
+              className="h-3.5 w-3.5 shrink-0 text-muted opacity-0 -ml-0.5 transition-opacity group-hover:opacity-100"
+              aria-hidden
+            />
+          </div>
           <div className="truncate text-xs text-muted">{company}</div>
         </div>
       </Link>
