@@ -28,6 +28,10 @@ export type PublicUser = {
   status: UserStatus;
   createdAt: string;
   updatedAt: string;
+  /** Bumped on role/status/password change to invalidate stale sessions. */
+  tokenVersion: number;
+  /** Whether the user has a TOTP secret enrolled and verified. */
+  twoFactorEnabled: boolean;
 };
 
 export const ROLE_LABELS: Record<Role, string> = {

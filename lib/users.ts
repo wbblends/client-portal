@@ -1,4 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { readJson, writeJson } from "./persistence";
 import {
   ALL_PERMISSIONS,
   DEFAULT_PERMISSIONS,
@@ -17,30 +18,34 @@ export type {
 export { ALL_PERMISSIONS, DEFAULT_PERMISSIONS, ROLE_LABELS } from "./users-shared";
 
 /**
- * In-memory user store for the demo portal. Seeded on module load. Mutations
- * (admin edits, password resets, deletes) live for the lifetime of the server
- * process — not persistent across restarts. Swap this for a real database when
- * a backend is wired in; the API surface (`listUsers`, `updateUser`, etc.) is
- * what the rest of the app calls and is what should be preserved.
+ * User store backed by `<DATA_DIR>/users.json`. Mutations write the file
+ * atomically; reads come from an in-memory cache hydrated on first access.
  *
- * Passwords are stored as scrypt hashes with a per-user salt — never plaintext.
+ * Passwords are stored as scrypt hashes with a per-user salt — never
+ * plaintext. TOTP secrets and recovery code hashes live alongside the
+ * password hash and are stripped from the public projection.
  */
 
 type UserRecord = PublicUser & {
   passwordSalt: string;
   passwordHash: string;
+  /** Base32-encoded TOTP secret. Present once 2FA is set up (verified or not). */
+  totpSecret?: string;
+  /** Hashed (scrypt) one-time recovery codes. Each entry is removed on use. */
+  recoveryCodeHashes?: string[];
 };
 
 const KEY_LENGTH = 64;
+const STORE_FILE = "users.json";
 
-function hashPassword(password: string, salt?: string): { salt: string; hash: string } {
+function hashSecret(secret: string, salt?: string): { salt: string; hash: string } {
   const useSalt = salt ?? randomBytes(16).toString("hex");
-  const hash = scryptSync(password, useSalt, KEY_LENGTH).toString("hex");
+  const hash = scryptSync(secret, useSalt, KEY_LENGTH).toString("hex");
   return { salt: useSalt, hash };
 }
 
-function verify(password: string, salt: string, hash: string): boolean {
-  const candidate = scryptSync(password, salt, KEY_LENGTH);
+function verifyHash(secret: string, salt: string, hash: string): boolean {
+  const candidate = scryptSync(secret, salt, KEY_LENGTH);
   const known = Buffer.from(hash, "hex");
   if (candidate.length !== known.length) return false;
   return timingSafeEqual(candidate, known);
@@ -55,12 +60,25 @@ function makeId(): string {
 }
 
 function toPublic(u: UserRecord): PublicUser {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { passwordHash, passwordSalt, ...rest } = u;
-  return rest;
+  return {
+    id: u.id,
+    username: u.username,
+    name: u.name,
+    email: u.email,
+    company: u.company,
+    customerId: u.customerId,
+    avatarUrl: u.avatarUrl,
+    role: u.role,
+    permissions: u.permissions,
+    status: u.status,
+    createdAt: u.createdAt,
+    updatedAt: u.updatedAt,
+    tokenVersion: u.tokenVersion,
+    twoFactorEnabled: u.twoFactorEnabled,
+  };
 }
 
-const SEED: Array<Omit<UserRecord, "passwordSalt" | "passwordHash" | "createdAt" | "updatedAt"> & {
+const SEED: Array<Omit<UserRecord, "passwordSalt" | "passwordHash" | "createdAt" | "updatedAt" | "tokenVersion" | "twoFactorEnabled"> & {
   password: string;
 }> = [
   {
@@ -128,20 +146,41 @@ const SEED: Array<Omit<UserRecord, "passwordSalt" | "passwordHash" | "createdAt"
 
 const store = new Map<string, UserRecord>();
 
-(function seed() {
+function persist() {
+  writeJson(STORE_FILE, Array.from(store.values()));
+}
+
+function hydrate() {
+  const persisted = readJson<UserRecord[]>(STORE_FILE, []);
+  if (persisted.length > 0) {
+    for (const raw of persisted) {
+      // Backfill defaults for older records.
+      store.set(raw.id, {
+        ...raw,
+        tokenVersion: typeof raw.tokenVersion === "number" ? raw.tokenVersion : 0,
+        twoFactorEnabled: typeof raw.twoFactorEnabled === "boolean" ? raw.twoFactorEnabled : false,
+      });
+    }
+    return;
+  }
   const ts = nowISO();
   for (const entry of SEED) {
     const { password, ...rest } = entry;
-    const { salt, hash } = hashPassword(password);
+    const { salt, hash } = hashSecret(password);
     store.set(rest.id, {
       ...rest,
       passwordSalt: salt,
       passwordHash: hash,
       createdAt: ts,
       updatedAt: ts,
+      tokenVersion: 0,
+      twoFactorEnabled: false,
     });
   }
-})();
+  persist();
+}
+
+hydrate();
 
 export function listUsers(): PublicUser[] {
   return Array.from(store.values())
@@ -162,15 +201,47 @@ export function getUserByUsername(username: string): PublicUser | null {
   return null;
 }
 
-export function verifyCredentials(username: string, password: string): PublicUser | null {
+export function getUserByEmail(email: string): PublicUser | null {
+  const target = email.trim().toLowerCase();
+  for (const u of store.values()) {
+    if (u.email.toLowerCase() === target) return toPublic(u);
+  }
+  return null;
+}
+
+/** Used by the session loader to compare token versions; never sent to clients. */
+export function getTokenVersion(id: string): number | null {
+  const u = store.get(id);
+  return u ? u.tokenVersion : null;
+}
+
+export function getTotpSecret(id: string): string | null {
+  const u = store.get(id);
+  return u?.totpSecret ?? null;
+}
+
+export type CredentialResult =
+  | { ok: true; user: PublicUser }
+  | { ok: false; reason: "not_found" | "disabled" | "bad_password" };
+
+export function verifyCredentials(username: string, password: string): CredentialResult {
   const target = username.trim().toLowerCase();
   for (const u of store.values()) {
     if (u.username.toLowerCase() !== target) continue;
-    if (u.status !== "active") return null;
-    if (!verify(password, u.passwordSalt, u.passwordHash)) return null;
-    return toPublic(u);
+    if (u.status !== "active") return { ok: false, reason: "disabled" };
+    if (!verifyHash(password, u.passwordSalt, u.passwordHash)) {
+      return { ok: false, reason: "bad_password" };
+    }
+    return { ok: true, user: toPublic(u) };
   }
-  return null;
+  return { ok: false, reason: "not_found" };
+}
+
+/** Verify a password without side effects — used for self-service password change. */
+export function checkPassword(id: string, password: string): boolean {
+  const u = store.get(id);
+  if (!u) return false;
+  return verifyHash(password, u.passwordSalt, u.passwordHash);
 }
 
 export type CreateUserInput = {
@@ -197,7 +268,7 @@ export function createUser(input: CreateUserInput): PublicUser {
     throw new Error("Password must be at least 6 characters.");
   }
   const ts = nowISO();
-  const { salt, hash } = hashPassword(input.password);
+  const { salt, hash } = hashSecret(input.password);
   const record: UserRecord = {
     id: makeId(),
     username,
@@ -211,10 +282,13 @@ export function createUser(input: CreateUserInput): PublicUser {
     status: "active",
     createdAt: ts,
     updatedAt: ts,
+    tokenVersion: 0,
+    twoFactorEnabled: false,
     passwordSalt: salt,
     passwordHash: hash,
   };
   store.set(record.id, record);
+  persist();
   return toPublic(record);
 }
 
@@ -235,6 +309,7 @@ export function updateUser(id: string, updates: UpdateUserInput): PublicUser {
   if (!existing) throw new Error("User not found.");
 
   const next: UserRecord = { ...existing };
+  let bumpToken = false;
 
   if (updates.username !== undefined) {
     const username = updates.username.trim().toLowerCase();
@@ -255,18 +330,24 @@ export function updateUser(id: string, updates: UpdateUserInput): PublicUser {
     if (existing.role === "super_admin" && updates.role !== "super_admin") {
       assertNotLastSuperAdmin(id);
     }
+    if (updates.role !== existing.role) bumpToken = true;
     next.role = updates.role;
   }
   if (updates.permissions !== undefined) {
     next.permissions = dedupePermissions(updates.permissions);
   }
-  if (updates.status !== undefined) next.status = updates.status;
+  if (updates.status !== undefined) {
+    if (updates.status !== existing.status) bumpToken = true;
+    next.status = updates.status;
+  }
   if (updates.avatarUrl !== undefined) {
     next.avatarUrl = updates.avatarUrl ?? undefined;
   }
 
+  if (bumpToken) next.tokenVersion = existing.tokenVersion + 1;
   next.updatedAt = nowISO();
   store.set(id, next);
+  persist();
   return toPublic(next);
 }
 
@@ -276,12 +357,18 @@ export function setPassword(id: string, newPassword: string): void {
   if (!newPassword || newPassword.length < 6) {
     throw new Error("Password must be at least 6 characters.");
   }
-  const { salt, hash } = hashPassword(newPassword);
-  store.set(id, { ...existing, passwordSalt: salt, passwordHash: hash, updatedAt: nowISO() });
+  const { salt, hash } = hashSecret(newPassword);
+  store.set(id, {
+    ...existing,
+    passwordSalt: salt,
+    passwordHash: hash,
+    tokenVersion: existing.tokenVersion + 1,
+    updatedAt: nowISO(),
+  });
+  persist();
 }
 
 export function generateTemporaryPassword(): string {
-  // 14-char URL-safe-ish password. Avoids visually confusing characters.
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   const buf = randomBytes(14);
   let out = "";
@@ -298,10 +385,121 @@ export function deleteUser(id: string): void {
     assertNotLastSuperAdmin(id);
   }
   store.delete(id);
+  persist();
 }
 
 export function resetPermissions(id: string): PublicUser {
   return updateUser(id, { permissions: [...DEFAULT_PERMISSIONS] });
+}
+
+/** Bulk operations — best-effort. Returns per-id success/failure. */
+export type BulkResult = { id: string; ok: boolean; message?: string }[];
+
+export function bulkUpdateStatus(ids: string[], status: UserStatus, excludeId?: string): BulkResult {
+  return ids.map(id => {
+    if (id === excludeId) return { id, ok: false, message: "Skipped self." };
+    try {
+      updateUser(id, { status });
+      return { id, ok: true };
+    } catch (err) {
+      return { id, ok: false, message: err instanceof Error ? err.message : "Failed." };
+    }
+  });
+}
+
+export function bulkResetPermissions(ids: string[]): BulkResult {
+  return ids.map(id => {
+    try {
+      resetPermissions(id);
+      return { id, ok: true };
+    } catch (err) {
+      return { id, ok: false, message: err instanceof Error ? err.message : "Failed." };
+    }
+  });
+}
+
+export function bulkDelete(ids: string[], excludeId?: string): BulkResult {
+  return ids.map(id => {
+    if (id === excludeId) return { id, ok: false, message: "Skipped self." };
+    try {
+      deleteUser(id);
+      return { id, ok: true };
+    } catch (err) {
+      return { id, ok: false, message: err instanceof Error ? err.message : "Failed." };
+    }
+  });
+}
+
+// 2FA helpers ---------------------------------------------------------------
+
+/** Stage a not-yet-verified TOTP secret. Doesn't enable 2FA on its own. */
+export function stageTotpSecret(id: string, base32Secret: string): void {
+  const existing = store.get(id);
+  if (!existing) throw new Error("User not found.");
+  store.set(id, { ...existing, totpSecret: base32Secret, updatedAt: nowISO() });
+  persist();
+}
+
+/** After a successful first-time TOTP code, mark 2FA enabled and store recovery codes. */
+export function enableTwoFactor(id: string, recoveryCodes: string[]): void {
+  const existing = store.get(id);
+  if (!existing) throw new Error("User not found.");
+  if (!existing.totpSecret) throw new Error("No staged TOTP secret to enable.");
+  const hashes = recoveryCodes.map(code => {
+    const { salt, hash } = hashSecret(code);
+    return `${salt}:${hash}`;
+  });
+  store.set(id, {
+    ...existing,
+    twoFactorEnabled: true,
+    recoveryCodeHashes: hashes,
+    tokenVersion: existing.tokenVersion + 1,
+    updatedAt: nowISO(),
+  });
+  persist();
+}
+
+export function disableTwoFactor(id: string): void {
+  const existing = store.get(id);
+  if (!existing) throw new Error("User not found.");
+  store.set(id, {
+    ...existing,
+    twoFactorEnabled: false,
+    totpSecret: undefined,
+    recoveryCodeHashes: undefined,
+    tokenVersion: existing.tokenVersion + 1,
+    updatedAt: nowISO(),
+  });
+  persist();
+}
+
+/** Try a recovery code; if it matches it's consumed (removed) and returns true. */
+export function consumeRecoveryCode(id: string, code: string): boolean {
+  const existing = store.get(id);
+  if (!existing?.recoveryCodeHashes?.length) return false;
+  const remaining: string[] = [];
+  let matched = false;
+  for (const stored of existing.recoveryCodeHashes) {
+    if (matched) {
+      remaining.push(stored);
+      continue;
+    }
+    const [salt, hash] = stored.split(":");
+    if (salt && hash && verifyHash(code.trim(), salt, hash)) {
+      matched = true;
+      continue;
+    }
+    remaining.push(stored);
+  }
+  if (matched) {
+    store.set(id, { ...existing, recoveryCodeHashes: remaining, updatedAt: nowISO() });
+    persist();
+  }
+  return matched;
+}
+
+export function countRecoveryCodes(id: string): number {
+  return store.get(id)?.recoveryCodeHashes?.length ?? 0;
 }
 
 function assertNotLastSuperAdmin(idBeingChanged: string) {

@@ -31,8 +31,11 @@ export function LoginForm({ next }: { next: string }) {
         setLoading(false);
         return;
       }
-      router.push(data.next ?? "/dashboard");
-      router.refresh();
+      const target = data.next ?? "/dashboard";
+      router.push(target);
+      // The 2FA challenge page reads the cookie set by /api/auth/login;
+      // refresh isn't needed there since it already runs server-side on load.
+      if (!data.twoFactorRequired) router.refresh();
     } catch {
       setError("Could not reach the server. Please try again.");
       setLoading(false);
@@ -56,9 +59,12 @@ export function LoginForm({ next }: { next: string }) {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label htmlFor="password">Password</Label>
-          <a href="#" className="text-xs text-muted hover:text-foreground transition-colors">
-            Forgot Password?
-          </a>
+          <span
+            className="text-xs text-muted"
+            title="Ask your administrator to send you a reset link"
+          >
+            Forgot? Ask your admin.
+          </span>
         </div>
         <Input
           id="password"

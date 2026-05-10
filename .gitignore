@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local persistence (users, audit log, reset tokens)
+/.data
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

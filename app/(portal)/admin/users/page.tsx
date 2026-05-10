@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, History } from "lucide-react";
 import { requireSuperAdmin } from "@/lib/auth";
 import { listUsers, ROLE_LABELS, type Role } from "@/lib/users";
 import { Card } from "@/components/ui/card";
@@ -37,6 +37,7 @@ export default async function UsersPage() {
     roleTone: roleTone[u.role],
     status: u.status,
     permissionsCount: u.permissions.length,
+    twoFactorEnabled: u.twoFactorEnabled,
     isMe: u.id === me.id,
   }));
 
@@ -52,13 +53,22 @@ export default async function UsersPage() {
             and passwords. Changes apply on the user&apos;s next page load.
           </p>
         </div>
-        <Link
-          href="/admin/users/new"
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 h-10 text-sm font-medium text-primary-foreground hover:bg-primary-hover transition-colors shadow-sm"
-        >
-          <Plus className="h-4 w-4" />
-          New user
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/admin/audit"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 h-10 text-sm font-medium text-foreground-soft hover:border-border-strong hover:bg-accent transition-colors"
+          >
+            <History className="h-4 w-4" />
+            Activity log
+          </Link>
+          <Link
+            href="/admin/users/new"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 h-10 text-sm font-medium text-primary-foreground hover:bg-primary-hover transition-colors shadow-sm"
+          >
+            <Plus className="h-4 w-4" />
+            New user
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
