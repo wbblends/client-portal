@@ -1,11 +1,24 @@
+import { applyPage, type Page, type PageOpts } from "@/lib/pagination";
 import { seededRng } from "@/lib/utils";
 import type { Invoice, InvoiceStatus } from "./types";
 
 /**
  * Mock invoice list. Future: pull from Acumatica AR Invoices, joined with
  * payment status from the proprietary AR system.
+ *
+ * Loaders return `{ items, total }` so the page never needs to materialize
+ * the full list to know how many rows exist for pagination.
  */
-export async function getInvoices(customerId: string): Promise<Invoice[]> {
+
+export type InvoiceSummary = {
+  totalCount: number;
+  openCount: number;
+  overdueCount: number;
+  openAmount: number;
+  overdueAmount: number;
+};
+
+async function generate(customerId: string): Promise<Invoice[]> {
   const rng = seededRng(hash(customerId) ^ 0xa53c1b);
   const today = new Date();
   const list: Invoice[] = [];
@@ -45,6 +58,32 @@ export async function getInvoices(customerId: string): Promise<Invoice[]> {
     });
   }
   return list.sort((a, b) => b.issueDate.getTime() - a.issueDate.getTime());
+}
+
+export async function getInvoices(
+  customerId: string,
+  opts: PageOpts = {},
+): Promise<Page<Invoice>> {
+  const all = await generate(customerId);
+  return applyPage(all, opts);
+}
+
+/**
+ * Account-level totals for the summary tiles. Real Acumatica integrations
+ * usually expose this as a separate aggregate endpoint so the listing page
+ * doesn't have to scan the full table.
+ */
+export async function getInvoiceSummary(customerId: string): Promise<InvoiceSummary> {
+  const all = await generate(customerId);
+  const open = all.filter(i => i.status === "open" || i.status === "partial");
+  const overdue = all.filter(i => i.status === "overdue");
+  return {
+    totalCount: all.length,
+    openCount: open.length,
+    overdueCount: overdue.length,
+    openAmount: open.reduce((sum, i) => sum + (i.amount - i.paidAmount), 0),
+    overdueAmount: overdue.reduce((sum, i) => sum + (i.amount - i.paidAmount), 0),
+  };
 }
 
 export const INVOICE_STATUS_META: Record<InvoiceStatus, { label: string; tone: "neutral" | "info" | "success" | "warning" | "danger" }> = {

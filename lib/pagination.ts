@@ -1,7 +1,8 @@
 /**
  * URL-driven pagination shared by every list view in the portal. Pages use
  * `parsePagination` against their `searchParams` to read the current page +
- * page size, then pass the result to `paginate` to slice the underlying data.
+ * page size, then forward `{ offset, limit }` to the data loader, which
+ * returns a `Page<T>` slice.
  *
  * Sizes are restricted to the `pageSizes` allowlist so URL tampering can't
  * coerce a server into materializing thousands of rows.
@@ -23,12 +24,16 @@ export type PaginationState = {
   pageSize: number;
 };
 
-export type PaginatedResult<T> = {
+/** Slice descriptor passed from a page's pagination state to a data loader. */
+export type PageOpts = {
+  offset?: number;
+  limit?: number;
+};
+
+/** Standard shape every paginated loader returns. */
+export type Page<T> = {
   items: T[];
-  page: number;
-  pageSize: number;
   total: number;
-  totalPages: number;
 };
 
 type RawSearchParams = Record<string, string | string[] | undefined>;
@@ -63,17 +68,30 @@ export function parsePagination(
   return { page, pageSize };
 }
 
-export function paginate<T>(items: readonly T[], state: PaginationState): PaginatedResult<T> {
-  const { pageSize } = state;
-  const total = items.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const page = Math.min(Math.max(1, state.page), totalPages);
-  const start = (page - 1) * pageSize;
+/** Translate a UI-facing pagination state into the loader's offset/limit. */
+export function toPageOpts(state: PaginationState): Required<PageOpts> {
   return {
-    items: items.slice(start, start + pageSize),
-    page,
-    pageSize,
-    total,
-    totalPages,
+    offset: Math.max(0, (state.page - 1) * state.pageSize),
+    limit: state.pageSize,
   };
 }
+
+/**
+ * In-memory slicer used by mock data loaders. Real-API loaders should
+ * replace this with the server's native paging (e.g. Acumatica `$top`/`$skip`)
+ * and report the unfiltered total alongside the slice.
+ *
+ * When called with no opts, returns the full list — useful for callers that
+ * still need every row (charts, aggregates) without changing the loader's
+ * return shape.
+ */
+export function applyPage<T>(items: readonly T[], opts: PageOpts = {}): Page<T> {
+  const total = items.length;
+  if (opts.offset == null && opts.limit == null) {
+    return { items: items.slice(), total };
+  }
+  const offset = Math.max(0, opts.offset ?? 0);
+  const limit = opts.limit ?? Math.max(0, total - offset);
+  return { items: items.slice(offset, offset + limit), total };
+}
+

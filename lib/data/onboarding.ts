@@ -1,3 +1,5 @@
+import { applyPage, type Page, type PageOpts } from "@/lib/pagination";
+
 /**
  * Onboarding Products Report — every active SKU we're working through with
  * a customer that hasn't yet hit recurring production. Mirrors the language
@@ -25,9 +27,7 @@ export type OnboardingProduct = {
   owner: string;       // who's holding the next step
 };
 
-export async function getOnboardingProducts(
-  _customerId: string,
-): Promise<OnboardingProduct[]> {
+async function generate(_customerId: string): Promise<OnboardingProduct[]> {
   return [
     {
       id: "ob-1",
@@ -90,6 +90,14 @@ export async function getOnboardingProducts(
       owner: "WB Production",
     },
   ];
+}
+
+export async function getOnboardingProducts(
+  customerId: string,
+  opts: PageOpts = {},
+): Promise<Page<OnboardingProduct>> {
+  const all = await generate(customerId);
+  return applyPage(all, opts);
 }
 
 export const ONBOARDING_STAGE_META: Record<

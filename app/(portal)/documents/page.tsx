@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { ChevronRight, Download, Folder, FileText, FileSpreadsheet, Image as ImageIcon, FolderOpen } from "lucide-react";
 import { requireSession } from "@/lib/auth";
-import { getDocuments, getChildren, getBreadcrumb, findNode } from "@/lib/data/documents";
+import {
+  getCurrentFolder,
+  getFolderBreadcrumb,
+  getFolderContents,
+} from "@/lib/data/documents";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
-import { paginate, parsePagination } from "@/lib/pagination";
+import { parsePagination, toPageOpts } from "@/lib/pagination";
 import { getPersistedPageSize } from "@/lib/pagination-server";
 import { formatDate, cn } from "@/lib/utils";
 import type { DocNode } from "@/lib/data/types";
@@ -37,13 +41,14 @@ export default async function DocumentsPage(props: PageProps<"/documents">) {
   const sp = await props.searchParams;
   const folderId = typeof sp.folder === "string" ? sp.folder : null;
 
-  const tree = await getDocuments(user.customerId);
-  const current = folderId ? findNode(tree, folderId) ?? null : null;
-  const items = getChildren(tree, folderId);
-  const crumbs = getBreadcrumb(tree, folderId);
-
   const defaultPageSize = await getPersistedPageSize();
-  const paged = paginate(items, parsePagination(sp, { defaultPageSize }));
+  const state = parsePagination(sp, { defaultPageSize });
+
+  const [{ items, total }, current, crumbs] = await Promise.all([
+    getFolderContents(user.customerId, folderId, toPageOpts(state)),
+    getCurrentFolder(user.customerId, folderId),
+    getFolderBreadcrumb(user.customerId, folderId),
+  ]);
 
   return (
     <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-6">
@@ -90,17 +95,17 @@ export default async function DocumentsPage(props: PageProps<"/documents">) {
         <CardHeader>
           <CardTitle>{current ? current.name : "All Files"}</CardTitle>
           <CardDescription>
-            {items.length === 0
+            {total === 0
               ? "This folder is empty."
-              : `${items.length} item${items.length === 1 ? "" : "s"}`}
+              : `${total} item${total === 1 ? "" : "s"}`}
           </CardDescription>
         </CardHeader>
         <CardContent className="px-0">
-          {items.length === 0 ? (
+          {total === 0 ? (
             <EmptyState />
           ) : (
             <ul className="divide-y divide-border">
-              {paged.items.map(item => {
+              {items.map(item => {
                 const Icon = fileIcon(item);
                 return (
                   <li key={item.id}>
@@ -142,11 +147,11 @@ export default async function DocumentsPage(props: PageProps<"/documents">) {
             </ul>
           )}
 
-          {items.length > 0 && (
+          {total > 0 && (
             <Pagination
-              total={paged.total}
-              page={paged.page}
-              pageSize={paged.pageSize}
+              total={total}
+              page={state.page}
+              pageSize={state.pageSize}
               itemLabel="items"
             />
           )}

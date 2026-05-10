@@ -133,10 +133,35 @@ export function Pagination({
         >
           <ChevronLeft className="h-4 w-4" />
         </PageButton>
-        <span className="px-2 text-xs tabular-nums text-foreground-soft">
-          Page <span className="font-semibold text-foreground">{safePage}</span> of{" "}
+
+        {/* Mobile: compact "Page X of Y" — desktop: numbered links with ellipsis */}
+        <span className="sm:hidden px-2 text-xs tabular-nums text-foreground-soft">
+          <span className="font-semibold text-foreground">{safePage}</span>
+          <span className="text-muted"> / </span>
           <span className="font-semibold text-foreground">{totalPages}</span>
         </span>
+        <div className="hidden sm:flex items-center gap-1">
+          {buildPageRange(safePage, totalPages).map((entry, idx) =>
+            entry === "ellipsis" ? (
+              <span
+                key={`gap-${idx}`}
+                aria-hidden
+                className="px-1 text-xs text-muted-soft select-none"
+              >
+                …
+              </span>
+            ) : (
+              <PageNumberButton
+                key={entry}
+                page={entry}
+                active={entry === safePage}
+                onClick={() => go(entry)}
+                disabled={pending}
+              />
+            ),
+          )}
+        </div>
+
         <PageButton
           onClick={() => go(safePage + 1)}
           disabled={!canNext || pending}
@@ -156,6 +181,28 @@ export function Pagination({
   );
 }
 
+/**
+ * Returns the visible page entries: always shows page 1 and the last page,
+ * a one-page window around the current page, and inserts an `"ellipsis"`
+ * marker whenever a gap exists. Up to 7 numeric entries — the markup stays
+ * compact even at 1000+ pages.
+ */
+function buildPageRange(current: number, total: number): (number | "ellipsis")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const result: (number | "ellipsis")[] = [1];
+  if (current > 4) result.push("ellipsis");
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) result.push(i);
+
+  if (current < total - 3) result.push("ellipsis");
+  result.push(total);
+  return result;
+}
+
 function PageButton({ className, ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
@@ -168,5 +215,31 @@ function PageButton({ className, ...rest }: ButtonHTMLAttributes<HTMLButtonEleme
       )}
       {...rest}
     />
+  );
+}
+
+function PageNumberButton({
+  page,
+  active,
+  className,
+  ...rest
+}: { page: number; active: boolean } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="button"
+      aria-current={active ? "page" : undefined}
+      aria-label={`Go to page ${page}`}
+      className={cn(
+        "inline-flex h-8 min-w-[2rem] items-center justify-center rounded-md border px-2 text-xs font-medium tabular-nums transition-colors",
+        "disabled:opacity-50 disabled:pointer-events-none",
+        active
+          ? "border-primary bg-primary text-primary-foreground hover:bg-primary-hover"
+          : "border-border bg-card text-foreground-soft hover:border-border-strong hover:bg-accent",
+        className,
+      )}
+      {...rest}
+    >
+      {page}
+    </button>
   );
 }

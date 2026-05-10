@@ -1,3 +1,4 @@
+import { applyPage, type Page, type PageOpts } from "@/lib/pagination";
 import { seededRng } from "@/lib/utils";
 
 /**
@@ -6,7 +7,9 @@ import { seededRng } from "@/lib/utils";
  * without retraining the team's eye.
  *
  * Future: replace this loader with a join across Acumatica sales orders +
- * the proprietary label-approval system + production scheduling.
+ * the proprietary label-approval system + production scheduling. The
+ * `{ items, total }` return shape lines up with how those upstream APIs
+ * typically return paged results.
  */
 
 export type OpenOrderType = "Capsules" | "Powders" | "Liquids";
@@ -27,7 +30,7 @@ export type OpenOrder = {
   onTrack: "on_track" | "watch" | "at_risk";
 };
 
-export async function getOpenOrders(customerId: string): Promise<OpenOrder[]> {
+async function generate(customerId: string): Promise<OpenOrder[]> {
   const rng = seededRng(hash(customerId) ^ 0x4f0c91);
   // Stable sample tuned to feel like a real Friday report — most lines on
   // track, one with a small flag, mix of label / raw material states.
@@ -125,6 +128,14 @@ export async function getOpenOrders(customerId: string): Promise<OpenOrder[]> {
       onTrack: "on_track",
     },
   ];
+}
+
+export async function getOpenOrders(
+  customerId: string,
+  opts: PageOpts = {},
+): Promise<Page<OpenOrder>> {
+  const all = await generate(customerId);
+  return applyPage(all, opts);
 }
 
 export const ON_TRACK_META: Record<

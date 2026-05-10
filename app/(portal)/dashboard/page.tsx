@@ -15,7 +15,7 @@ import { getOnboardingProducts } from "@/lib/data/onboarding";
 import { buildSalesByProduct } from "@/lib/data/sales-products";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
-import { paginate, parsePagination } from "@/lib/pagination";
+import { parsePagination, toPageOpts } from "@/lib/pagination";
 import { getPersistedPageSize } from "@/lib/pagination-server";
 import { DateRangePicker } from "@/components/dashboard/date-range-picker";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
@@ -34,14 +34,31 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const range = resolveRange(sp);
   const compare = getCompareRange(range);
 
-  const [profile, currentOrders, priorOrders, allOrders, openOrders, onboarding] =
+  // Two paginated reports share this page, so each owns its own param namespace.
+  // Default to 10 rows on the dashboard — these are widgets, not full list pages.
+  const [openOrdersDefault, onboardingDefault] = await Promise.all([
+    getPersistedPageSize({ sizeParam: "ooSize", fallback: 10 }),
+    getPersistedPageSize({ sizeParam: "obSize", fallback: 10 }),
+  ]);
+  const openOrdersState = parsePagination(sp, {
+    pageParam: "ooPage",
+    sizeParam: "ooSize",
+    defaultPageSize: openOrdersDefault,
+  });
+  const onboardingState = parsePagination(sp, {
+    pageParam: "obPage",
+    sizeParam: "obSize",
+    defaultPageSize: onboardingDefault,
+  });
+
+  const [profile, currentOrders, priorOrders, allOrders, openOrdersPage, onboardingPage] =
     await Promise.all([
       getCustomerProfile(user.customerId),
       getOrdersInRange(user.customerId, range.from, range.to),
       getOrdersInRange(user.customerId, compare.from, compare.to),
       getAllOrders(user.customerId),
-      getOpenOrders(user.customerId),
-      getOnboardingProducts(user.customerId),
+      getOpenOrders(user.customerId, toPageOpts(openOrdersState)),
+      getOnboardingProducts(user.customerId, toPageOpts(onboardingState)),
     ]);
 
   const cur = sumOrders(currentOrders);
@@ -73,29 +90,6 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
 
   const today = new Date();
   const reportDate = `${today.getMonth() + 1}/${today.getDate()}/${String(today.getFullYear()).slice(2)}`;
-
-  // Two paginated reports share this page, so each owns its own param namespace.
-  // Default to 10 rows on the dashboard — these are widgets, not full list pages.
-  const [openOrdersDefault, onboardingDefault] = await Promise.all([
-    getPersistedPageSize({ sizeParam: "ooSize", fallback: 10 }),
-    getPersistedPageSize({ sizeParam: "obSize", fallback: 10 }),
-  ]);
-  const openOrdersPaged = paginate(
-    openOrders,
-    parsePagination(sp, {
-      pageParam: "ooPage",
-      sizeParam: "ooSize",
-      defaultPageSize: openOrdersDefault,
-    }),
-  );
-  const onboardingPaged = paginate(
-    onboarding,
-    parsePagination(sp, {
-      pageParam: "obPage",
-      sizeParam: "obSize",
-      defaultPageSize: onboardingDefault,
-    }),
-  );
 
   return (
     <div className="px-6 lg:px-8 py-6 lg:py-8 max-w-[1400px] mx-auto space-y-7">
@@ -193,14 +187,14 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
           </p>
         </div>
         <OnboardingReport
-          products={onboardingPaged.items}
+          products={onboardingPage.items}
           reportDate={reportDate}
           customerName={profile.name}
           footer={
             <Pagination
-              total={onboardingPaged.total}
-              page={onboardingPaged.page}
-              pageSize={onboardingPaged.pageSize}
+              total={onboardingPage.total}
+              page={onboardingState.page}
+              pageSize={onboardingState.pageSize}
               pageParam="obPage"
               sizeParam="obSize"
               itemLabel="products"
@@ -221,16 +215,16 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
           </p>
         </div>
         <OpenOrdersReport
-          orders={openOrdersPaged.items}
+          orders={openOrdersPage.items}
           reportDate={reportDate}
           customerName={profile.name}
           salesRep="Priya Patel"
           accountManager="Jordan Reyes"
           footer={
             <Pagination
-              total={openOrdersPaged.total}
-              page={openOrdersPaged.page}
-              pageSize={openOrdersPaged.pageSize}
+              total={openOrdersPage.total}
+              page={openOrdersState.page}
+              pageSize={openOrdersState.pageSize}
               pageParam="ooPage"
               sizeParam="ooSize"
               itemLabel="orders"

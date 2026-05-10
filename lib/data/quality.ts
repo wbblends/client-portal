@@ -1,3 +1,5 @@
+import { applyPage, type Page, type PageOpts } from "@/lib/pagination";
+
 /**
  * Quality tickets — anything customer-facing that the WB QA team is working
  * with the customer to resolve. Future: pull from the proprietary QA tracker.
@@ -18,7 +20,13 @@ export type QualityTicket = {
   owner: string;
 };
 
-export async function getQualityTickets(_customerId: string): Promise<QualityTicket[]> {
+export type QualitySummary = {
+  open: number;
+  closed: number;
+  total: number;
+};
+
+async function generate(_customerId: string): Promise<QualityTicket[]> {
   return [
     {
       id: "qa-1",
@@ -46,6 +54,23 @@ export async function getQualityTickets(_customerId: string): Promise<QualityTic
       owner: "Marco Liu (WB Quality)",
     },
   ];
+}
+
+export async function getQualityTickets(
+  customerId: string,
+  opts: PageOpts = {},
+): Promise<Page<QualityTicket>> {
+  const all = await generate(customerId);
+  return applyPage(all, opts);
+}
+
+export async function getQualitySummary(customerId: string): Promise<QualitySummary> {
+  const all = await generate(customerId);
+  return {
+    open: all.filter(t => t.status !== "closed").length,
+    closed: all.filter(t => t.status === "closed").length,
+    total: all.length,
+  };
 }
 
 export const QUALITY_STATUS_META: Record<
