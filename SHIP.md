@@ -121,8 +121,11 @@ When Acumatica + the proprietary system are wired in, you'll need to:
 
 1. Add their API credentials as **environment variables** in Vercel
    (Project → Settings → Environment Variables — never put secrets in code).
+   The full list of Acumatica vars is in `.env.example`.
 2. Replace the mock implementations in `lib/data/*.ts` with real API
-   calls. Pages and components don't need to change.
+   calls. The Acumatica client is already scaffolded — see
+   `lib/acumatica/README.md` for the swap pattern. Pages and components
+   don't need to change.
 
 That part is for whoever is wiring the integrations — none of it affects the
 deploy flow above.
