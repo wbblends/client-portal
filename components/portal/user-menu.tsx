@@ -7,13 +7,11 @@ import { cn } from "@/lib/utils";
 
 export function UserMenu({
   name,
-  email,
   company,
   avatarUrl,
   className,
 }: {
   name: string;
-  email: string;
   company: string;
   avatarUrl?: string;
   className?: string;

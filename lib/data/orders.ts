@@ -22,13 +22,6 @@ const SKUS: Array<{ sku: string; name: string; category: string; unitPrice: numb
   { sku: "RAW-LMB-100", name: "Lemon Balm Powder", category: "Calm", unitPrice: 19.5 },
 ];
 
-const STATUS_FLOW: OrderStatus[] = [
-  "open",
-  "in_production",
-  "shipped",
-  "delivered",
-];
-
 function pickStatus(rng: () => number, daysSinceOrder: number, dueIn: number): OrderStatus {
   // Recently placed -> open / in_production. Past promise date and not delivered -> delayed (rare).
   if (daysSinceOrder < 5) return rng() < 0.5 ? "open" : "in_production";

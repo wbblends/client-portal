@@ -19,7 +19,6 @@ export default async function PortalLayout({ children }: { children: React.React
         <div className="p-3 border-t border-border">
           <UserMenu
             name={user.name}
-            email={user.email}
             company={user.company}
             avatarUrl={user.avatarUrl}
           />
@@ -31,7 +30,6 @@ export default async function PortalLayout({ children }: { children: React.React
         <Logo />
         <UserMenu
           name={user.name}
-          email={user.email}
           company={user.company}
           avatarUrl={user.avatarUrl}
           className="border-0 p-0 bg-transparent"
