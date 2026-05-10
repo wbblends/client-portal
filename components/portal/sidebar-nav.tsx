@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderClosed, FileText, Users, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, FolderClosed, FileText, Users, ShieldCheck, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -11,6 +11,10 @@ const NAV = [
   { label: "Invoices", href: "/invoices", icon: FileText },
   { label: "Quality", href: "/quality", icon: ShieldCheck },
   { label: "Contact", href: "/contact", icon: Users },
+];
+
+const ADMIN_NAV = [
+  { label: "Customers", href: "/admin/customers", icon: Building2 },
 ];
 
 /**
@@ -22,11 +26,40 @@ const NAV = [
  */
 export function SidebarNav({
   orientation = "vertical",
+  showAdmin = false,
 }: {
   orientation?: "vertical" | "horizontal";
+  showAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const isHorizontal = orientation === "horizontal";
+
+  function renderItem(item: { label: string; href: string; icon: typeof NAV[number]["icon"] }) {
+    const active = pathname === item.href || pathname.startsWith(item.href + "/");
+    const Icon = item.icon;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={cn(
+          "group flex items-center gap-2 rounded-lg text-sm font-medium transition-colors shrink-0",
+          isHorizontal ? "px-3 py-1.5" : "px-3 py-2 gap-2.5",
+          active
+            ? "bg-primary-soft text-primary"
+            : "text-foreground-soft hover:bg-accent hover:text-foreground",
+        )}
+      >
+        <Icon
+          className={cn(
+            "shrink-0",
+            isHorizontal ? "h-4 w-4" : "h-[17px] w-[17px]",
+            active ? "text-primary" : "text-muted group-hover:text-foreground-soft",
+          )}
+        />
+        {item.label}
+      </Link>
+    );
+  }
 
   return (
     <nav
@@ -36,32 +69,17 @@ export function SidebarNav({
           : "flex flex-col gap-0.5 px-3",
       )}
     >
-      {NAV.map(item => {
-        const active = pathname === item.href || pathname.startsWith(item.href + "/");
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "group flex items-center gap-2 rounded-lg text-sm font-medium transition-colors shrink-0",
-              isHorizontal ? "px-3 py-1.5" : "px-3 py-2 gap-2.5",
-              active
-                ? "bg-primary-soft text-primary"
-                : "text-foreground-soft hover:bg-accent hover:text-foreground",
-            )}
-          >
-            <Icon
-              className={cn(
-                "shrink-0",
-                isHorizontal ? "h-4 w-4" : "h-[17px] w-[17px]",
-                active ? "text-primary" : "text-muted group-hover:text-foreground-soft",
-              )}
-            />
-            {item.label}
-          </Link>
-        );
-      })}
+      {NAV.map(renderItem)}
+      {showAdmin && (
+        <>
+          {!isHorizontal && (
+            <div className="mt-3 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted">
+              Admin
+            </div>
+          )}
+          {ADMIN_NAV.map(renderItem)}
+        </>
+      )}
     </nav>
   );
 }

@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getUserByUsername, type Role } from "@/lib/data/store";
 
 /**
- * Demo-only auth. A single seeded user is hardcoded. Sessions are stored as a
- * base64-encoded JSON cookie — adequate for a placeholder portal so the user
- * can log in as a test account, but obviously not safe for production.
+ * Demo-only auth. Users live in `data/users.json`. Sessions are stored as a
+ * base64-encoded JSON cookie — adequate for a placeholder portal but not safe
+ * for production.
  *
  * Future: replace with a real provider. Recommended path is to keep
  * `getSession()` and `requireSession()` as the only call sites and swap their
@@ -23,31 +24,40 @@ export type SessionUser = {
   email: string;
   company: string;
   customerId: string;
+  role: Role;
+  permissions: string[];
   /** Optional path under `public/`. Falls back to initials avatar when absent. */
   avatarUrl?: string;
-};
-
-const SEEDED_USERS: Record<string, { password: string; user: SessionUser }> = {
-  dsimmons: {
-    password: "test",
-    user: {
-      username: "dsimmons",
-      name: "Devin Simmons",
-      email: "devin@devinstest.example",
-      company: "Devin's Test Brand",
-      customerId: "C-1042",
-      avatarUrl: "/avatars/dsimmons.jpg",
-    },
-  },
 };
 
 export async function authenticate(
   username: string,
   password: string,
 ): Promise<SessionUser | null> {
-  const entry = SEEDED_USERS[username.trim().toLowerCase()];
-  if (!entry || entry.password !== password) return null;
-  return entry.user;
+  const stored = await getUserByUsername(username);
+  if (!stored || stored.password !== password) return null;
+  return toSessionUser(stored);
+}
+
+export function toSessionUser(stored: {
+  username: string;
+  name: string;
+  email: string;
+  customerId: string;
+  role: Role;
+  permissions: string[];
+  avatarUrl?: string;
+}): SessionUser {
+  return {
+    username: stored.username,
+    name: stored.name,
+    email: stored.email,
+    company: "", // Resolved at request time from the customer store.
+    customerId: stored.customerId,
+    role: stored.role,
+    permissions: stored.permissions,
+    avatarUrl: stored.avatarUrl,
+  };
 }
 
 export async function createSession(user: SessionUser, remember: boolean) {
@@ -80,6 +90,12 @@ export async function requireSession(): Promise<SessionUser> {
   return user;
 }
 
+export async function requireSuperAdmin(): Promise<SessionUser> {
+  const user = await requireSession();
+  if (user.role !== "super_admin") redirect("/dashboard");
+  return user;
+}
+
 function encodePayload(user: SessionUser): string {
   // Buffer is available because proxy/route handlers run in Node runtime.
   return Buffer.from(JSON.stringify(user)).toString("base64url");
@@ -89,8 +105,14 @@ function decodePayload(value: string): SessionUser | null {
   try {
     const json = Buffer.from(value, "base64url").toString("utf8");
     const obj = JSON.parse(json);
-    if (typeof obj?.username === "string" && typeof obj?.customerId === "string") {
-      return obj as SessionUser;
+    if (
+      typeof obj?.username === "string" &&
+      typeof obj?.customerId === "string" &&
+      typeof obj?.role === "string"
+    ) {
+      // `permissions` may be missing on older sessions issued before role was added.
+      const permissions = Array.isArray(obj.permissions) ? obj.permissions : [];
+      return { ...obj, permissions } as SessionUser;
     }
     return null;
   } catch {

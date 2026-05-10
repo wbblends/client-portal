@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Runtime-uploaded customer assets (avatar/logo). Seed data lives in /data,
+# but uploaded image files are user content and shouldn't be committed.
+/public/customer-assets/*
+!/public/customer-assets/.gitkeep

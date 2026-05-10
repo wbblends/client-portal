@@ -1,0 +1,15 @@
+{
+  "customers": [
+    {
+      "id": "C-1042",
+      "name": "Devin's Test Brand",
+      "email": "billing@devinstest.example",
+      "primaryContact": "Devin Simmons",
+      "phone": "",
+      "websiteUrl": "https://devinstest.example",
+      "avatarUrl": "/avatars/dsimmons.jpg",
+      "logoUrl": null,
+      "accountSince": 2018
+    }
+  ]
+}

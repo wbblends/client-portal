@@ -77,7 +77,12 @@ export type ResourceLink = {
 export type CustomerProfile = {
   id: string;
   name: string;
+  email: string;
   primaryContact: string;
+  phone: string;
+  websiteUrl: string;
+  avatarUrl: string | null;
+  logoUrl: string | null;
   accountSince: number; // year
 };
 

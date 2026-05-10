@@ -1,10 +1,16 @@
 import { requireSession } from "@/lib/auth";
+import { getCustomerProfile } from "@/lib/data/customer";
 import { Logo } from "@/components/ui/logo";
 import { SidebarNav } from "@/components/portal/sidebar-nav";
 import { UserMenu } from "@/components/portal/user-menu";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const user = await requireSession();
+  // Source the company name from the store so renames are visible immediately,
+  // without requiring users to re-authenticate.
+  const profile = await getCustomerProfile(user.customerId);
+  const company = profile.name;
+  const isSuperAdmin = user.role === "super_admin";
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">
@@ -14,13 +20,13 @@ export default async function PortalLayout({ children }: { children: React.React
           <Logo />
         </div>
         <div className="flex-1 overflow-y-auto py-2">
-          <SidebarNav />
+          <SidebarNav showAdmin={isSuperAdmin} />
         </div>
         <div className="p-3 border-t border-border">
           <UserMenu
             name={user.name}
             email={user.email}
-            company={user.company}
+            company={company}
             avatarUrl={user.avatarUrl}
           />
         </div>
@@ -32,7 +38,7 @@ export default async function PortalLayout({ children }: { children: React.React
         <UserMenu
           name={user.name}
           email={user.email}
-          company={user.company}
+          company={company}
           avatarUrl={user.avatarUrl}
           className="border-0 p-0 bg-transparent"
         />
@@ -40,7 +46,7 @@ export default async function PortalLayout({ children }: { children: React.React
 
       {/* Mobile inline nav — horizontal strip */}
       <div className="lg:hidden border-b border-border bg-card py-2">
-        <SidebarNav orientation="horizontal" />
+        <SidebarNav orientation="horizontal" showAdmin={isSuperAdmin} />
       </div>
 
       <main className="min-w-0">{children}</main>

@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "username": "dsimmons",
+      "password": "test",
+      "name": "Devin Simmons",
+      "email": "devin@devinstest.example",
+      "customerId": "C-1042",
+      "role": "super_admin",
+      "permissions": ["dashboard", "documents", "invoices", "quality", "contact"],
+      "avatarUrl": "/avatars/dsimmons.jpg"
+    }
+  ]
+}
