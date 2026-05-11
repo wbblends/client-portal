@@ -130,7 +130,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
               <h2 className="mt-6 font-display text-[56px] leading-[1.08] tracking-normal text-foreground xl:text-[64px]">
                 Excellence in
                 <br />
-                Every <em className="text-primary">Blend</em>.
+                Every <span className="text-primary italic">Blend</span>.
               </h2>
 
               <p className="mt-5 max-w-[440px] text-[16px] leading-relaxed text-foreground/75">
