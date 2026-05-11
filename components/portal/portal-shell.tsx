@@ -93,7 +93,11 @@ export function PortalShell({
 
       {mobile}
 
-      <main className="min-w-0 pb-[calc(env(safe-area-inset-bottom)+64px)] lg:pb-0">
+      {/* Bottom-bar spacing is owned by <BottomTabBar /> — it renders its
+          own in-flow spacer when (and only when) the fixed bar is visible,
+          so pages outside `/c/<id>/...` (dashboard, admin, account) don't
+          carry ~64px of empty space at the bottom on mobile. */}
+      <main className="min-w-0">
         {children}
       </main>
 

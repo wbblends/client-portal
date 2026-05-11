@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Plus, Mail, KeyRound, ShieldCheck } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { listUsers } from "@/lib/users/store";
@@ -6,6 +6,7 @@ import { listDashboards, getDashboardById } from "@/lib/dashboards/registry";
 import { listCustomers, getCustomer } from "@/lib/customers/registry";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { buttonClasses } from "@/components/ui/button";
 import { UserRowActions } from "@/components/admin/user-row-actions";
 import { TeamAvatar } from "@/components/portal/team-avatar";
 
@@ -25,7 +26,7 @@ export default async function AdminUsersPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm text-muted">Admin</p>
-          <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
+          <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
             Users
           </h1>
           <p className="mt-1 text-sm text-muted">
@@ -33,10 +34,7 @@ export default async function AdminUsersPage() {
             link to choose their own password.
           </p>
         </div>
-        <Link
-          href="/admin/users/new"
-          className="inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-60 select-none whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm h-10 px-4 text-sm"
-        >
+        <Link href="/admin/users/new" className={buttonClasses({ size: "md" })}>
           <Plus className="h-4 w-4" />
           New user
         </Link>
@@ -56,13 +54,17 @@ export default async function AdminUsersPage() {
             <table className="w-full text-sm">
               <thead className="border-y border-border bg-accent/30 text-xs uppercase tracking-wide text-muted">
                 <tr>
-                  <th className="text-left font-medium px-6 py-2 w-12"></th>
-                  <th className="text-left font-medium px-3 py-2">User</th>
-                  <th className="text-left font-medium px-3 py-2">Role</th>
-                  <th className="text-left font-medium px-3 py-2">Status</th>
-                  <th className="text-left font-medium px-3 py-2">Customers</th>
-                  <th className="text-left font-medium px-6 py-2">Dashboards</th>
-                  <th className="text-right font-medium px-3 py-2 w-12"></th>
+                  <th scope="col" className="text-left font-medium px-6 py-2 w-12">
+                    <span className="sr-only">Avatar</span>
+                  </th>
+                  <th scope="col" className="text-left font-medium px-3 py-2">User</th>
+                  <th scope="col" className="text-left font-medium px-3 py-2">Role</th>
+                  <th scope="col" className="text-left font-medium px-3 py-2">Status</th>
+                  <th scope="col" className="text-left font-medium px-3 py-2">Customers</th>
+                  <th scope="col" className="text-left font-medium px-6 py-2">Dashboards</th>
+                  <th scope="col" className="text-right font-medium px-3 py-2 w-12">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
