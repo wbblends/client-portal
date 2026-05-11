@@ -12,11 +12,8 @@
  * a new value here — the sidebar reads it dynamically.
  */
 export type DashboardCategory =
-  | "Executive"
-  | "Sales"
-  | "Department"
   | "Board"
-  | "Customer Success"
+  | "Sales"
   | "Marketing";
 
 export type Dashboard = {
@@ -47,36 +44,12 @@ export const DASHBOARDS: readonly Dashboard[] = [
   // app/(portal)/dashboards/[slug]/page.tsx, the page falls back to a
   // "coming soon" placeholder.
   {
-    id: "exec-sales",
-    slug: "exec-sales",
-    name: "Sales Executive",
-    category: "Executive",
-    description: "Cross-customer sales performance for the leadership team.",
-    iconName: "TrendingUp",
-  },
-  {
-    id: "exec-operations",
-    slug: "exec-operations",
-    name: "Operations Executive",
-    category: "Executive",
-    description: "Throughput, on-time rate, and quality holds across the plant.",
-    iconName: "Factory",
-  },
-  {
     id: "board-summary",
     slug: "board-summary",
     name: "Board Summary",
     category: "Board",
     description: "The monthly board pack — same shape every month.",
     iconName: "Briefcase",
-  },
-  {
-    id: "account-health",
-    slug: "account-health",
-    name: "Account Health",
-    category: "Customer Success",
-    description: "Per-account stop-light view for the customer success team.",
-    iconName: "PieChart",
   },
   {
     id: "orders-portal",

@@ -92,9 +92,9 @@ export function SidebarNav({
 
   return (
     <nav className="flex flex-col gap-4 px-3">
-      {/* Switcher view (admin/internal, desktop): picker + Account links live
-           in one bordered card so it's obvious switching the customer swaps
-           every link below. */}
+      {/* Customer Dashboard section — drilldown into a single customer.
+           Admin/internal get a picker + scoped account links; customer-role
+           users see only their own account links. */}
       {canSwitchCustomers && (
         <CustomerScopePanel
           customers={customers}
@@ -102,10 +102,8 @@ export function SidebarNav({
           pathname={pathname}
         />
       )}
-
-      {/* Non-switchers (customer-role): classic Account section. */}
       {!canSwitchCustomers && accountTargetId && (
-        <Group label="Account">
+        <Group label="Customer Dashboard">
           {ACCOUNT_LINKS.map(link => (
             <NavLink
               key={link.rel}
@@ -118,7 +116,7 @@ export function SidebarNav({
         </Group>
       )}
 
-      {/* Cross-customer dashboards. */}
+      {/* Cross-customer dashboards — Board, Sales, Marketing. */}
       {grouped.map(({ category, items }) => (
         <Group key={category} label={category}>
           {items.map(d => (
@@ -133,6 +131,7 @@ export function SidebarNav({
         </Group>
       ))}
 
+      {/* Admin sits last so it's right above the user-menu footer. */}
       {isAdmin && (
         <Group label="Admin">
           <NavLink
@@ -173,28 +172,33 @@ function CustomerScopePanel({
   }, [accountTargetId]);
 
   return (
-    <div className="px-1">
-      <div
-        key={pulseKey}
-        className="overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-card)] animate-scope-pulse"
-      >
-        <CustomerPicker customers={customers} activeCustomerId={accountTargetId} />
-        {accountTargetId && (
-          <div className="border-t border-border/70 bg-surface/50 px-2 py-1.5">
-            <ul className="relative ml-4 border-l border-border-strong/70 pl-2">
-              {ACCOUNT_LINKS.map(link => (
-                <li key={link.rel}>
-                  <NavLink
-                    href={`/c/${accountTargetId}/${link.rel}`}
-                    label={link.label}
-                    icon={link.icon}
-                    pathname={pathname}
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+    <div className="flex flex-col gap-0.5">
+      <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-soft">
+        Customer Dashboard
+      </div>
+      <div className="px-1">
+        <div
+          key={pulseKey}
+          className="overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-card)] animate-scope-pulse"
+        >
+          <CustomerPicker customers={customers} activeCustomerId={accountTargetId} />
+          {accountTargetId && (
+            <div className="border-t border-border/70 bg-surface/50 px-2 py-1.5">
+              <ul className="relative ml-4 border-l border-border-strong/70 pl-2">
+                {ACCOUNT_LINKS.map(link => (
+                  <li key={link.rel}>
+                    <NavLink
+                      href={`/c/${accountTargetId}/${link.rel}`}
+                      label={link.label}
+                      icon={link.icon}
+                      pathname={pathname}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -258,14 +262,7 @@ function extractCustomerIdFromPath(pathname: string): string | null {
 function groupByCategory(
   dashboards: Dashboard[],
 ): { category: DashboardCategory; items: Dashboard[] }[] {
-  const order: DashboardCategory[] = [
-    "Executive",
-    "Sales",
-    "Department",
-    "Board",
-    "Customer Success",
-    "Marketing",
-  ];
+  const order: DashboardCategory[] = ["Board", "Sales", "Marketing"];
   const map = new Map<DashboardCategory, Dashboard[]>();
   for (const d of dashboards) {
     if (!map.has(d.category)) map.set(d.category, []);
