@@ -820,6 +820,207 @@ async function searchOpenDealsForCompanies(
   return Array.from(seen.values());
 }
 
+// ─── Deal notes ─────────────────────────────────────────────────────────────
+//
+// Most recent notes for a single deal, sorted newest first. Used by the deal
+// detail modal on the Sales Pipeline / Account Expansion dashboards so the
+// rep can glance at recent context without leaving the portal.
+
+export type DealNote = {
+  id: string;
+  /** Plain-text body. HubSpot stores notes as HTML; we strip tags for safe
+   *  rendering — the modal shows them as preformatted text. */
+  body: string;
+  /** ISO timestamp of when the note was created. */
+  timestamp: string | null;
+  owner: DealOwner | null;
+};
+
+export type DealNotesResult = {
+  source: "live" | "placeholder";
+  notes: DealNote[];
+};
+
+const PLACEHOLDER_NOTES: DealNotesResult = {
+  source: "placeholder",
+  notes: [],
+};
+
+function stripHtml(html: string): string {
+  // Replace common block-level closers with newlines so the visual line breaks
+  // survive, then strip the remaining tags and decode the handful of HTML
+  // entities HubSpot actually emits.
+  return html
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6])\s*>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** Look up a HubSpot owner id by email. Used to attribute a note created from
+ *  the portal to the right HubSpot user when their portal email matches.
+ *  Returns null if no owner has that email. */
+async function findOwnerIdByEmail(email: string): Promise<string | null> {
+  const t = token();
+  if (!t) return null;
+  const lower = email.trim().toLowerCase();
+  if (!lower) return null;
+  let after: string | undefined;
+  do {
+    const url = new URL(`${HUBSPOT_API}/crm/v3/owners`);
+    url.searchParams.set("limit", "100");
+    url.searchParams.set("email", lower);
+    if (after) url.searchParams.set("after", after);
+    const res = await timedFetch(url, {
+      headers: { Authorization: `Bearer ${t}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      results: RawOwner[];
+      paging?: { next?: { after: string } };
+    };
+    for (const o of data.results) {
+      if ((o.email ?? "").toLowerCase() === lower) return o.id;
+    }
+    after = data.paging?.next?.after;
+  } while (after);
+  return null;
+}
+
+export type CreatedDealNote = {
+  source: "live" | "placeholder";
+  note: DealNote | null;
+  /** If the portal user's email didn't match a HubSpot owner, the note is
+   *  still created but unattributed; this flag lets the UI mention it. */
+  ownerMatched: boolean;
+};
+
+export async function createDealNote(
+  dealId: string,
+  body: string,
+  authorEmail: string,
+): Promise<CreatedDealNote> {
+  const t = token();
+  if (!t) return { source: "placeholder", note: null, ownerMatched: false };
+  if (!/^\d+$/.test(dealId)) throw new Error("Invalid deal id");
+  const trimmed = body.trim();
+  if (!trimmed) throw new Error("Empty note body");
+
+  const ownerId = await findOwnerIdByEmail(authorEmail);
+
+  // HubSpot stores note bodies as HTML; we wrap user input in <p> with line
+  // breaks preserved so newlines from the textarea survive a round trip.
+  const html = `<p>${trimmed
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>")}</p>`;
+
+  const payload = {
+    properties: {
+      hs_note_body: html,
+      hs_timestamp: new Date().toISOString(),
+      ...(ownerId ? { hubspot_owner_id: ownerId } : {}),
+    },
+    // Association type 214 is the HubSpot-defined "note → deal" link.
+    associations: [
+      {
+        to: { id: dealId },
+        types: [{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: 214 }],
+      },
+    ],
+  };
+
+  const res = await timedFetch(`${HUBSPOT_API}/crm/v3/objects/notes`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`HubSpot note create failed: ${res.status} ${await res.text()}`);
+  }
+  const data = (await res.json()) as {
+    id: string;
+    properties: Record<string, string | null>;
+  };
+
+  const owners = ownerId ? await fetchAllOwners() : new Map<string, DealOwner>();
+  const note: DealNote = {
+    id: data.id,
+    body: trimmed,
+    timestamp: data.properties.hs_timestamp ?? new Date().toISOString(),
+    owner: ownerId ? owners.get(ownerId) ?? null : null,
+  };
+  return { source: "live", note, ownerMatched: ownerId !== null };
+}
+
+export async function getDealNotes(dealId: string, limit = 5): Promise<DealNotesResult> {
+  if (!token()) return PLACEHOLDER_NOTES;
+  if (!/^\d+$/.test(dealId)) return { source: "live", notes: [] };
+
+  try {
+    const owners = await fetchAllOwners();
+    const t = token()!;
+
+    const body = {
+      filterGroups: [
+        {
+          filters: [
+            { propertyName: "associations.deal", operator: "EQ", value: dealId },
+          ],
+        },
+      ],
+      sorts: [{ propertyName: "hs_timestamp", direction: "DESCENDING" }],
+      properties: ["hs_note_body", "hs_timestamp", "hubspot_owner_id"],
+      limit,
+    };
+
+    const res = await searchFetch(`${HUBSPOT_API}/crm/v3/objects/notes/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${t}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      throw new Error(`HubSpot notes search failed: ${res.status} ${await res.text()}`);
+    }
+
+    const data = (await res.json()) as {
+      results: { id: string; properties: Record<string, string | null> }[];
+    };
+
+    const notes: DealNote[] = data.results.map(r => {
+      const rawBody = r.properties.hs_note_body ?? "";
+      const ownerId = r.properties.hubspot_owner_id;
+      return {
+        id: r.id,
+        body: stripHtml(rawBody),
+        timestamp: r.properties.hs_timestamp,
+        owner: ownerId ? owners.get(ownerId) ?? null : null,
+      };
+    });
+
+    return { source: "live", notes };
+  } catch (err) {
+    console.error("[marketing/hubspot] getDealNotes failed:", err);
+    return { source: "live", notes: [] };
+  }
+}
+
 export async function getMarketingAttribution(): Promise<MarketingAttribution> {
   if (!token()) return PLACEHOLDER_ATTRIBUTION;
   try {

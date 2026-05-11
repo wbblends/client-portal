@@ -1,15 +1,13 @@
-﻿import { Fragment } from "react";
-import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { Fragment } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
   getPipelineKanban,
   type KanbanData,
   type PipelineKanban,
   type StageColumn,
-  type DealCard,
-  type DealTier,
-  type DealFormat,
 } from "@/lib/marketing/hubspot";
+import { DealCardView } from "./deal-card";
 
 export async function SalesPipelineDashboard() {
   const data = await getPipelineKanban();
@@ -18,7 +16,7 @@ export async function SalesPipelineDashboard() {
     <SinglePipelinePage
       kicker="Sales"
       title="Sales Pipeline"
-      description="Open deals in the Sales Pipeline, grouped by stage. Click any card to open the deal in HubSpot."
+      description="Open deals in the Sales Pipeline, grouped by stage. Click any card to see the most recent notes from HubSpot."
       pipeline={pipeline}
       source={data.source}
     />
@@ -32,7 +30,7 @@ export async function AccountExpansionDashboard() {
     <SinglePipelinePage
       kicker="Sales"
       title="Account Expansion"
-      description="Open deals in the Account Expansion pipeline, grouped by stage. Click any card to open the deal in HubSpot."
+      description="Open deals in the Account Expansion pipeline, grouped by stage. Click any card to see the most recent notes from HubSpot."
       pipeline={pipeline}
       source={data.source}
     />
@@ -80,7 +78,7 @@ function SinglePipelinePage({
   source: "live" | "placeholder";
 }) {
   return (
-    <div className="page-container page-pad-x page-pad-y space-y-5 sm:space-y-7">
+    <div className="page-container page-pad-x page-pad-y flex flex-col h-dvh gap-5 sm:gap-7">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div>
           <p className="text-sm text-muted">{kicker}</p>
@@ -95,7 +93,7 @@ function SinglePipelinePage({
       </div>
 
       {pipeline ? (
-        <PipelineSection pipeline={pipeline} hideTitle />
+        <PipelineSection pipeline={pipeline} hideTitle fillHeight />
       ) : (
         <Card className="px-5 py-8 text-sm text-muted">No data for this pipeline.</Card>
       )}
@@ -386,13 +384,27 @@ function StageChipRow({ breakdown }: { breakdown: PipelineBreakdown }) {
   );
 }
 
-function PipelineSection({ pipeline, hideTitle }: { pipeline: PipelineKanban; hideTitle?: boolean }) {
+function PipelineSection({
+  pipeline,
+  hideTitle,
+  fillHeight,
+}: {
+  pipeline: PipelineKanban;
+  hideTitle?: boolean;
+  fillHeight?: boolean;
+}) {
   const total = pipeline.stages.reduce((s, st) => s + st.totalAmount, 0);
   const dealCount = pipeline.stages.reduce((s, st) => s + st.dealCount, 0);
   const dotColor = pipeline.key === "sales" ? "bg-primary" : "bg-info";
 
   return (
-    <section className="space-y-3">
+    <section
+      className={
+        fillHeight
+          ? "flex flex-col flex-1 min-h-0 gap-3"
+          : "space-y-3"
+      }
+    >
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         {hideTitle ? (
           <span />
@@ -415,10 +427,19 @@ function PipelineSection({ pipeline, hideTitle }: { pipeline: PipelineKanban; hi
         </div>
       </div>
 
-      <div className="-mx-[clamp(1rem,3vw,2.5rem)] page-pad-x overflow-x-auto pb-3">
-        <div className="flex gap-4 min-w-max">
+      <div
+        className={`-mx-[clamp(1rem,3vw,2.5rem)] page-pad-x overflow-x-auto pb-3 ${
+          fillHeight ? "flex-1 min-h-0" : ""
+        }`}
+      >
+        <div className={`flex gap-4 min-w-max ${fillHeight ? "h-full" : ""}`}>
           {pipeline.stages.map(stage => (
-            <StageColumnView key={stage.id} stage={stage} pipelineKey={pipeline.key} />
+            <StageColumnView
+              key={stage.id}
+              stage={stage}
+              pipelineKey={pipeline.key}
+              fillHeight={fillHeight}
+            />
           ))}
         </div>
       </div>
@@ -426,11 +447,23 @@ function PipelineSection({ pipeline, hideTitle }: { pipeline: PipelineKanban; hi
   );
 }
 
-function StageColumnView({ stage, pipelineKey }: { stage: StageColumn; pipelineKey: string }) {
+function StageColumnView({
+  stage,
+  pipelineKey,
+  fillHeight,
+}: {
+  stage: StageColumn;
+  pipelineKey: string;
+  fillHeight?: boolean;
+}) {
   const probabilityPct = Math.round(stage.probability * 100);
   const barColor = pipelineKey === "sales" ? "bg-primary" : "bg-info";
   return (
-    <div className="w-[300px] shrink-0 rounded-xl bg-surface/60 border border-border flex flex-col max-h-[720px]">
+    <div
+      className={`w-[300px] shrink-0 rounded-xl bg-surface/60 border border-border flex flex-col ${
+        fillHeight ? "h-full min-h-[480px]" : "max-h-[720px]"
+      }`}
+    >
       <div className="px-3.5 pt-3.5 pb-3 border-b border-border/70">
         <div className="flex items-center justify-between gap-2">
           <div className="text-[13px] font-semibold text-foreground truncate" title={stage.label}>
@@ -471,77 +504,6 @@ function StageColumnView({ stage, pipelineKey }: { stage: StageColumn; pipelineK
   );
 }
 
-const TIER_TONE: Record<DealTier, BadgeTone> = {
-  AA: "info",
-  A: "success",
-  B: "warning",
-  C: "neutral",
-};
-
-const FORMAT_DOT: Record<DealFormat, string> = {
-  Liquid: "bg-info",
-  Capsule: "bg-primary",
-  Powder: "bg-warning",
-};
-
-function DealCardView({ deal }: { deal: DealCard }) {
-  return (
-    <a
-      href={deal.hubspotUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block rounded-lg bg-card border border-border px-3 py-2.5 shadow-[var(--shadow-card)] hover:border-primary/40 hover:shadow-[var(--shadow-card-hover)] transition-all"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <div
-            className="text-[13px] font-medium text-foreground leading-snug line-clamp-2"
-            title={deal.name}
-          >
-            {deal.name}
-          </div>
-          {deal.companyName && deal.companyName !== deal.name && (
-            <div className="mt-0.5 text-[11px] text-muted truncate" title={deal.companyName}>
-              {deal.companyName}
-            </div>
-          )}
-        </div>
-        {deal.owner && <OwnerAvatar name={deal.owner.name} initials={deal.owner.initials} />}
-      </div>
-
-      <div className="mt-2.5 flex items-center justify-between gap-2">
-        <span className="font-semibold text-foreground tabular-nums text-[14px]">
-          {fmtMoneyCompact(deal.amount)}
-        </span>
-        <span className="text-[11px] text-muted tabular-nums">
-          {formatCloseDate(deal.closeDate, deal.monthExpected)}
-        </span>
-      </div>
-
-      {(deal.tier || deal.format || deal.productCategory) && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {deal.tier && (
-            <Badge tone={TIER_TONE[deal.tier]} className="px-1.5 py-0 text-[10px]">
-              Tier {deal.tier}
-            </Badge>
-          )}
-          {deal.format && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-foreground-soft bg-surface border border-border rounded-md px-1.5 py-0.5">
-              <span className={`h-1.5 w-1.5 rounded-full ${FORMAT_DOT[deal.format]}`} />
-              {deal.format}
-            </span>
-          )}
-          {!deal.format && deal.productCategory && (
-            <span className="inline-flex items-center text-[10px] text-foreground-soft bg-surface border border-border rounded-md px-1.5 py-0.5">
-              {deal.productCategory}
-            </span>
-          )}
-        </div>
-      )}
-    </a>
-  );
-}
-
 function OwnerAvatar({ name, initials }: { name: string; initials: string }) {
   return (
     <div
@@ -563,13 +525,3 @@ function fmtMoneyCompact(n: number): string {
   return `$${n.toFixed(0)}`;
 }
 
-function formatCloseDate(iso: string | null, monthExpected: string | null): string {
-  if (iso) {
-    const d = new Date(iso);
-    if (!Number.isNaN(d.getTime())) {
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    }
-  }
-  if (monthExpected) return monthExpected.slice(0, 3);
-  return "—";
-}
