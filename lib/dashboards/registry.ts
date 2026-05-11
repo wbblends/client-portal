@@ -54,20 +54,35 @@ export const DASHBOARDS: readonly Dashboard[] = [
   {
     id: "orders-portal",
     slug: "orders-portal",
-    name: "Orders Portal",
+    name: "Orders",
     category: "Sales",
     description:
       "Booked POs by customer for the year — editable spreadsheet seeded from the 2026 POs workbook, swappable for an Acumatica feed.",
     iconName: "Truck",
   },
   {
-    id: "pipeline-kanban",
-    slug: "pipeline",
-    name: "Pipeline",
+    id: "sales-pipeline",
+    slug: "sales-pipeline",
+    name: "Sales Pipeline",
     category: "Sales",
-    description:
-      "Kanban view of open deals across both HubSpot pipelines — Sales Pipeline and Account Expansion.",
+    description: "Kanban view of open deals in the HubSpot Sales Pipeline.",
     iconName: "Kanban",
+  },
+  {
+    id: "account-expansion",
+    slug: "account-expansion",
+    name: "Account Expansion",
+    category: "Sales",
+    description: "Kanban view of open deals in the HubSpot Account Expansion pipeline.",
+    iconName: "TrendingUp",
+  },
+  {
+    id: "pipeline-analytics",
+    slug: "pipeline-analytics",
+    name: "Pipeline Analytics",
+    category: "Sales",
+    description: "Top-line totals and per-rep breakdown across both HubSpot pipelines.",
+    iconName: "PieChart",
   },
   {
     id: "marketing-overview",
