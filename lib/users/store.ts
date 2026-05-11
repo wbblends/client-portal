@@ -142,7 +142,7 @@ export async function authenticateUser(
     args: [username.trim().toLowerCase()],
   });
   if (rows.length === 0) return null;
-  const { password_hash, active } = rows[0] as {
+  const { password_hash, active } = rows[0] as unknown as {
     username: string;
     password_hash: string | null;
     active: number;
@@ -300,7 +300,7 @@ export async function getMfaState(username: string): Promise<{
     args: [username],
   });
   if (rows.length === 0) return null;
-  const r = rows[0] as {
+  const r = rows[0] as unknown as {
     mfa_enabled: number;
     mfa_secret: string | null;
     mfa_recovery_codes_json: string | null;

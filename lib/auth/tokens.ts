@@ -55,7 +55,7 @@ export async function findValidToken(token: string, kind: TokenKind): Promise<To
     args: [token, kind],
   });
   if (rows.length === 0) return null;
-  const row = rows[0] as {
+  const row = rows[0] as unknown as {
     token: string;
     username: string;
     kind: TokenKind;
