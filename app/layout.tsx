@@ -81,16 +81,14 @@ export const viewport: Viewport = {
 /**
  * Pre-paint theme script. Runs before React hydrates so the page never flashes
  * the wrong theme on initial load. Reads the user's saved preference from
- * localStorage; falls back to OS preference if nothing's stored. Kept inline
- * (not a module) so it can run synchronously in the document head.
+ * localStorage; defaults to light if nothing's stored. Kept inline (not a
+ * module) so it can run synchronously in the document head.
  */
 const themeBootScript = `
 (function () {
   try {
     var saved = localStorage.getItem('wbb.theme');
-    var theme = saved === 'dark' || saved === 'light'
-      ? saved
-      : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var theme = saved === 'dark' || saved === 'light' ? saved : 'light';
     document.documentElement.setAttribute('data-theme', theme);
   } catch (e) {
     document.documentElement.setAttribute('data-theme', 'light');
