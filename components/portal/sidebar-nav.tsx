@@ -16,6 +16,7 @@ import {
   Factory,
   Truck,
   Kanban,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -136,7 +137,7 @@ export function SidebarNav({
           <NavLink
             href="/admin/users"
             label="Users"
-            icon={Users}
+            icon={Settings}
             pathname={pathname}
           />
         </Group>
@@ -212,7 +213,7 @@ function Group({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-soft">
+      <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-soft">
         {label}
       </div>
       {children}

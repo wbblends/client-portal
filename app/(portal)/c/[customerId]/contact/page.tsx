@@ -1,4 +1,4 @@
-﻿import { Mail, Phone, ArrowUpRight } from "lucide-react";
+import { Mail, Phone, ArrowUpRight } from "lucide-react";
 import { requireCustomerAccess } from "@/lib/auth";
 import { getContacts } from "@/lib/data/contacts";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -15,8 +15,8 @@ export default async function ContactPage(props: PageProps<"/c/[customerId]/cont
     <div className="page-container page-pad-x page-pad-y space-y-5 sm:space-y-6">
       <div>
         <p className="text-sm text-muted">{customer.name}</p>
-        <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
-          Your <span className="text-primary">Team</span>.
+        <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
+          Your <em className="not-italic text-primary">Team</em>.
         </h1>
         <p className="mt-1 text-sm text-muted">
           The people you&apos;ll work with day to day. Day-to-day questions go to your account
