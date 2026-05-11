@@ -63,6 +63,7 @@ export default async function PortalLayout({ children }: { children: React.React
             email={user.email}
             company={user.company}
             avatarUrl={user.avatarUrl ?? undefined}
+            homeUrl={user.homeUrl}
           />
         </div>
       </aside>
