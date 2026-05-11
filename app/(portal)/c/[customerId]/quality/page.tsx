@@ -1,4 +1,4 @@
-import { requireCustomerAccess } from "@/lib/auth";
+﻿import { requireCustomerAccess } from "@/lib/auth";
 import { getQualityTickets, QUALITY_STATUS_META } from "@/lib/data/quality";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ export const metadata = { title: "Quality — WB Blends" };
 export default async function QualityPage(props: PageProps<"/c/[customerId]/quality">) {
   const { customerId } = await props.params;
   const { customer } = await requireCustomerAccess(customerId);
+
   const tickets = await getQualityTickets(customer.id);
   const open = tickets.filter(t => t.status !== "closed").length;
   const closed = tickets.filter(t => t.status === "closed").length;
@@ -16,7 +17,7 @@ export default async function QualityPage(props: PageProps<"/c/[customerId]/qual
     <div className="page-container page-pad-x page-pad-y space-y-5 sm:space-y-6">
       <div>
         <p className="text-sm text-muted">{customer.name}</p>
-        <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
+        <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
           Quality
         </h1>
         <p className="mt-1 text-sm text-muted">
@@ -35,45 +36,51 @@ export default async function QualityPage(props: PageProps<"/c/[customerId]/qual
         <CardHeader>
           <CardTitle>All Tickets</CardTitle>
           <CardDescription>
-            Most recent first. Closed tickets retain the resolution decision so you have a written
-            record of the call.
+            Most recent first. Closed tickets retain the resolution decision so you have a
+            written record of the call.
           </CardDescription>
         </CardHeader>
         <CardContent className="px-0">
-          <ul className="divide-y divide-border">
-            {tickets.map(t => {
-              const meta = QUALITY_STATUS_META[t.status];
-              return (
-                <li key={t.id} className="px-4 sm:px-5 py-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge tone={meta.tone}>{meta.label}</Badge>
-                        <span className="font-mono text-[11px] text-muted">{t.ticketNumber}</span>
-                        {t.affectedLot && (
-                          <span className="text-[11px] text-muted">· {t.affectedLot}</span>
+          {tickets.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-muted">
+              No quality tickets yet.
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {tickets.map(t => {
+                const meta = QUALITY_STATUS_META[t.status];
+                return (
+                  <li key={t.id} className="px-4 sm:px-5 py-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge tone={meta.tone}>{meta.label}</Badge>
+                          <span className="font-mono text-[11px] text-muted">{t.ticketNumber}</span>
+                          {t.affectedLot && (
+                            <span className="text-[11px] text-muted">· {t.affectedLot}</span>
+                          )}
+                        </div>
+                        <h3 className="mt-1.5 text-base font-semibold text-foreground">{t.name}</h3>
+                        <p className="mt-1 text-sm text-foreground-soft leading-snug">
+                          {t.description}
+                        </p>
+                        {t.decision && (
+                          <div className="mt-2.5 rounded-md border border-success/15 bg-success-soft px-3 py-2 text-[13px] text-success">
+                            <span className="font-semibold">Decision:</span> {t.decision}
+                          </div>
                         )}
                       </div>
-                      <h3 className="mt-1.5 text-base font-semibold text-foreground">{t.name}</h3>
-                      <p className="mt-1 text-sm text-foreground-soft leading-snug">
-                        {t.description}
-                      </p>
-                      {t.decision && (
-                        <div className="mt-2.5 rounded-md border border-success/15 bg-success-soft px-3 py-2 text-[13px] text-success">
-                          <span className="font-semibold">Decision:</span> {t.decision}
-                        </div>
-                      )}
+                      <div className="flex flex-row flex-wrap gap-x-4 gap-y-0.5 sm:flex-col sm:text-right text-xs text-muted shrink-0 tabular-nums">
+                        <div>Opened {t.openedDate}</div>
+                        <div>Updated {t.lastUpdated}</div>
+                        <div className="text-foreground-soft sm:mt-1.5">{t.owner}</div>
+                      </div>
                     </div>
-                    <div className="flex flex-row flex-wrap gap-x-4 gap-y-0.5 sm:flex-col sm:text-right text-xs text-muted shrink-0 tabular-nums">
-                      <div>Opened {t.openedDate}</div>
-                      <div>Updated {t.lastUpdated}</div>
-                      <div className="text-foreground-soft sm:mt-1.5">{t.owner}</div>
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </CardContent>
       </Card>
     </div>
