@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,27 +81,42 @@ export function LoginForm({ next }: { next: string }) {
           <Label htmlFor="code">Authenticator code</Label>
           <Input
             id="code"
+            type="text"
             inputMode="numeric"
+            pattern="[0-9]*"
             autoComplete="one-time-code"
             autoFocus
+            maxLength={8}
             value={code}
             onChange={e => setCode(e.target.value)}
             placeholder="123456"
             required
+            aria-describedby="code-hint"
           />
-          <p className="text-[11px] text-muted">
+          <p id="code-hint" className="text-[11px] text-muted">
             Enter the 6-digit code from your authenticator app, or one of your recovery codes.
           </p>
         </div>
 
         {error && (
-          <div className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
+          <div
+            role="alert"
+            aria-live="polite"
+            className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger"
+          >
             {error}
           </div>
         )}
 
         <Button type="submit" size="lg" className="w-full" disabled={loading}>
-          {loading ? "Verifying…" : "Verify and sign in"}
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              Verifying…
+            </>
+          ) : (
+            "Verify and sign in"
+          )}
         </Button>
 
         <button
@@ -158,18 +174,33 @@ export function LoginForm({ next }: { next: string }) {
       </label>
 
       {error && (
-        <div className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger"
+        >
           {error}
         </div>
       )}
 
       <Button type="submit" size="lg" className="w-full" disabled={loading}>
-        {loading ? "Signing in…" : "Sign in"}
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Signing in…
+          </>
+        ) : (
+          "Sign in"
+        )}
       </Button>
 
-      <div className="rounded-md border border-dashed border-border bg-accent/40 px-3 py-2 text-xs text-muted">
-        <span className="font-medium text-foreground-soft">Demo credentials:</span> dsimmons / test
-      </div>
+      {/* Demo credential hint — only shown in non-production builds so the
+          production login screen doesn't expose a working account. */}
+      {process.env.NODE_ENV !== "production" && (
+        <div className="rounded-md border border-dashed border-border bg-accent/40 px-3 py-2 text-xs text-muted">
+          <span className="font-medium text-foreground-soft">Demo credentials:</span> dsimmons / test
+        </div>
+      )}
     </form>
   );
 }

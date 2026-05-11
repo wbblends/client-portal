@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Download, Folder, FileText, FileSpreadsheet, Image as ImageIcon, FolderOpen, Eye, Pencil } from "lucide-react";
+import { ChevronRight, Folder, FileText, FileSpreadsheet, Image as ImageIcon, FolderOpen, Eye, Pencil } from "lucide-react";
 import { requireCustomerAccess } from "@/lib/auth";
 import {
   getDocuments,
@@ -14,6 +14,14 @@ import { DocumentsEditorControls } from "@/components/portal/documents-editor-co
 import { DocumentsDeleteButton } from "@/components/portal/documents-delete-button";
 import { formatDate, cn } from "@/lib/utils";
 import type { DocNode } from "@/lib/data/types";
+import { FilterBar } from "@/components/filters/filter-bar";
+import { readEnum, readSort, readString } from "@/lib/filters/url-state";
+import { applyEnumEquals, applySort, applyTextSearch } from "@/lib/filters/apply";
+
+type DocSortColumn = "name" | "kind" | "type" | "size" | "modified";
+const DOC_SORT_COLUMNS: readonly DocSortColumn[] = ["name", "kind", "type", "size", "modified"] as const;
+const DOC_KINDS = ["folder", "file"] as const;
+const DOC_FILE_TYPES = ["pdf", "xlsx", "docx", "csv", "png", "jpg", "txt"] as const;
 
 export const metadata = { title: "Documents — WB Blends" };
 
@@ -47,10 +55,46 @@ export default async function DocumentsPage(props: PageProps<"/c/[customerId]/do
 
   const tree = await getDocuments(customer.id);
   const current = folderId ? findNode(tree, folderId) ?? null : null;
-  const items = getChildren(tree, folderId);
+  const allItems = getChildren(tree, folderId);
   const crumbs = getBreadcrumb(tree, folderId);
 
   const base = `/c/${customer.id}/documents`;
+
+  // Folder navigation lives in `?folder=` and is preserved across filter changes.
+  const query = readString(sp, "q");
+  const kind = readEnum(sp, "kind", DOC_KINDS);
+  const fileType = readEnum(sp, "type", DOC_FILE_TYPES);
+  const sort = readSort<DocSortColumn>(sp, DOC_SORT_COLUMNS, { column: "name", direction: "asc" });
+
+  let items = applyTextSearch(allItems, query, [n => n.name]);
+  items = applyEnumEquals(items, kind, n => n.kind);
+  if (fileType) {
+    items = items.filter(n => n.kind === "file" && n.fileType === fileType);
+  }
+  // Always keep folders first, then apply the user's sort within each group so
+  // file-type/size sorts don't bury subfolders below the file list.
+  items = applySort(
+    items,
+    n => {
+      switch (sort.column) {
+        case "name":
+          return n.name.toLowerCase();
+        case "kind":
+          return n.kind;
+        case "type":
+          return n.kind === "file" ? n.fileType ?? "" : null;
+        case "size":
+          return n.kind === "file" ? n.size ?? 0 : null;
+        case "modified":
+          return n.modified ?? null;
+      }
+    },
+    sort.direction,
+  );
+  items = [...items].sort((a, b) => {
+    if (a.kind === b.kind) return 0;
+    return a.kind === "folder" ? -1 : 1;
+  });
 
   return (
     <div className="page-container page-pad-x page-pad-y space-y-5 sm:space-y-6">
@@ -115,14 +159,66 @@ export default async function DocumentsPage(props: PageProps<"/c/[customerId]/do
         <CardHeader>
           <CardTitle>{current ? current.name : "All Files"}</CardTitle>
           <CardDescription>
-            {items.length === 0
+            {allItems.length === 0
               ? "This folder is empty."
-              : `${items.length} item${items.length === 1 ? "" : "s"}`}
+              : items.length === allItems.length
+                ? `${items.length} item${items.length === 1 ? "" : "s"}`
+                : `Showing ${items.length} of ${allItems.length} items.`}
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-0">
-          {items.length === 0 ? (
+        <CardContent className="space-y-4 px-0">
+          <div className="px-4 sm:px-5">
+            <FilterBar
+              search={{ param: "q", placeholder: "Search file or folder…" }}
+              selects={[
+                {
+                  kind: "select",
+                  param: "kind",
+                  label: "Kind",
+                  options: [
+                    { value: "", label: "Files & folders" },
+                    { value: "folder", label: "Folders only" },
+                    { value: "file", label: "Files only" },
+                  ],
+                },
+                {
+                  kind: "select",
+                  param: "type",
+                  label: "Type",
+                  options: [
+                    { value: "", label: "Any type" },
+                    ...DOC_FILE_TYPES.map(t => ({ value: t, label: t.toUpperCase() })),
+                  ],
+                },
+                {
+                  kind: "select",
+                  param: "sort",
+                  label: "Sort",
+                  options: [
+                    { value: "", label: "Name" },
+                    { value: "modified", label: "Modified" },
+                    { value: "size", label: "Size" },
+                    { value: "type", label: "Type" },
+                  ],
+                },
+                {
+                  kind: "select",
+                  param: "dir",
+                  label: "Order",
+                  options: [
+                    { value: "", label: "Asc" },
+                    { value: "desc", label: "Desc" },
+                  ],
+                },
+              ]}
+            />
+          </div>
+          {allItems.length === 0 ? (
             <EmptyState isEditor={isEditor} />
+          ) : items.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-muted">
+              No items match the current filters.
+            </div>
           ) : (
             <ul className="divide-y divide-border">
               {items.map(item => {
@@ -167,16 +263,15 @@ export default async function DocumentsPage(props: PageProps<"/c/[customerId]/do
                             {item.modified && ` · Modified ${formatDate(item.modified, "short")}`}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          disabled
-                          aria-disabled="true"
-                          className="inline-flex items-center gap-1.5 shrink-0 rounded-md border border-border px-2.5 min-h-11 sm:min-h-0 sm:py-1.5 text-xs font-medium text-foreground-soft opacity-60 cursor-not-allowed"
-                          title="Download coming soon"
+                        {/* Download is not built yet — show a small "Soon"
+                            badge instead of a dead disabled button so it
+                            reads as "feature pending" rather than broken. */}
+                        <span
+                          className="hidden sm:inline-flex items-center gap-1 shrink-0 rounded-md border border-dashed border-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-soft"
+                          aria-label="Download coming soon"
                         >
-                          <Download className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                          <span className="hidden sm:inline">Download</span>
-                        </button>
+                          Soon
+                        </span>
                         {showDelete && (
                           <DocumentsDeleteButton
                             customerId={customer.id}

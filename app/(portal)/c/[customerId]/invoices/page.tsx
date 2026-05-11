@@ -1,21 +1,61 @@
-import { Download } from "lucide-react";
 import { requireCustomerAccess } from "@/lib/auth";
 import { getInvoices, INVOICE_STATUS_META } from "@/lib/data/invoices";
+import type { InvoiceStatus } from "@/lib/data/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { FilterBar } from "@/components/filters/filter-bar";
+import { SortableHeader } from "@/components/filters/sortable-header";
+import { readEnum, readSort, readString } from "@/lib/filters/url-state";
+import { applyEnumEquals, applySort, applyTextSearch } from "@/lib/filters/apply";
 
 export const metadata = { title: "Invoices — WB Blends" };
+
+const SORTABLE_COLUMNS = ["number", "po", "issueDate", "dueDate", "amount", "paid", "status"] as const;
+const STATUSES: InvoiceStatus[] = ["paid", "open", "overdue", "partial", "draft"];
 
 export default async function InvoicesPage(props: PageProps<"/c/[customerId]/invoices">) {
   const { customerId } = await props.params;
   const { customer } = await requireCustomerAccess(customerId);
-  const invoices = await getInvoices(customer.id);
+  const sp = await props.searchParams;
 
-  const open = invoices.filter(i => i.status === "open" || i.status === "partial");
-  const overdue = invoices.filter(i => i.status === "overdue");
+  const all = await getInvoices(customer.id);
+
+  // Summary tiles always reflect the customer's full book — filters only
+  // affect the table below so totals stay meaningful even mid-filter.
+  const open = all.filter(i => i.status === "open" || i.status === "partial");
+  const overdue = all.filter(i => i.status === "overdue");
   const totalOpen = open.reduce((sum, i) => sum + (i.amount - i.paidAmount), 0);
   const totalOverdue = overdue.reduce((sum, i) => sum + (i.amount - i.paidAmount), 0);
+
+  const query = readString(sp, "q");
+  const status = readEnum<InvoiceStatus>(sp, "status", STATUSES);
+  const sort = readSort(sp, SORTABLE_COLUMNS, { column: "issueDate", direction: "desc" });
+
+  let invoices = applyTextSearch(all, query, [i => i.number, i => i.poNumber]);
+  invoices = applyEnumEquals(invoices, status, i => i.status);
+  invoices = applySort(
+    invoices,
+    i => {
+      switch (sort.column) {
+        case "number":
+          return i.number;
+        case "po":
+          return i.poNumber ?? null;
+        case "issueDate":
+          return i.issueDate;
+        case "dueDate":
+          return i.dueDate;
+        case "amount":
+          return i.amount;
+        case "paid":
+          return i.paidAmount;
+        case "status":
+          return i.status;
+      }
+    },
+    sort.direction,
+  );
 
   return (
     <div className="page-container page-pad-x page-pad-y space-y-5 sm:space-y-6">
@@ -33,15 +73,36 @@ export default async function InvoicesPage(props: PageProps<"/c/[customerId]/inv
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <SummaryTile label="Open Balance" value={formatCurrency(totalOpen)} count={open.length} />
         <SummaryTile label="Overdue" value={formatCurrency(totalOverdue)} count={overdue.length} tone="danger" />
-        <SummaryTile label="Total Invoices" value={String(invoices.length)} count={invoices.length} subtitle="Last 12 Months" />
+        <SummaryTile label="Total Invoices" value={String(all.length)} count={all.length} subtitle="Last 12 Months" />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>All Invoices</CardTitle>
-          <CardDescription>Most recent first.</CardDescription>
+          <CardDescription>
+            {invoices.length === all.length
+              ? "Most recent first."
+              : `Showing ${invoices.length} of ${all.length} invoices.`}
+          </CardDescription>
         </CardHeader>
-        <CardContent className="px-0">
+        <CardContent className="space-y-4 px-0">
+          <div className="px-4 sm:px-5">
+            <FilterBar
+              search={{ param: "q", placeholder: "Search invoice or PO number…" }}
+              selects={[
+                {
+                  kind: "select",
+                  param: "status",
+                  label: "Status",
+                  options: [
+                    { value: "", label: "All statuses" },
+                    ...STATUSES.map(s => ({ value: s, label: INVOICE_STATUS_META[s].label })),
+                  ],
+                },
+              ]}
+            />
+          </div>
+
           {/* Desktop table — header sticks to the page so long invoice lists
               keep column context as you scroll. Wrapper deliberately omits
               vertical overflow so `position: sticky` resolves against the
@@ -50,18 +111,24 @@ export default async function InvoicesPage(props: PageProps<"/c/[customerId]/inv
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10 bg-card text-left text-[11px] font-semibold uppercase tracking-wide text-muted shadow-[0_1px_0_0_var(--color-border)]">
                 <tr>
-                  <th className="px-5 py-2.5 font-semibold">Invoice</th>
-                  <th className="px-3 py-2.5 font-semibold">PO</th>
-                  <th className="px-3 py-2.5 font-semibold">Issue Date</th>
-                  <th className="px-3 py-2.5 font-semibold">Due Date</th>
-                  <th className="px-3 py-2.5 font-semibold text-right">Amount</th>
-                  <th className="px-3 py-2.5 font-semibold text-right">Paid</th>
-                  <th className="px-3 py-2.5 font-semibold">Status</th>
-                  <th className="px-5 py-2.5 font-semibold sr-only">Actions</th>
+                  <SortableHeader column="number" label="Invoice" className="px-5 py-2.5" />
+                  <SortableHeader column="po" label="PO" className="px-3 py-2.5" />
+                  <SortableHeader column="issueDate" label="Issue Date" className="px-3 py-2.5" defaultDirection="desc" />
+                  <SortableHeader column="dueDate" label="Due Date" className="px-3 py-2.5" defaultDirection="desc" />
+                  <SortableHeader column="amount" label="Amount" className="px-3 py-2.5 text-right" align="right" defaultDirection="desc" />
+                  <SortableHeader column="paid" label="Paid" className="px-3 py-2.5 text-right" align="right" defaultDirection="desc" />
+                  <SortableHeader column="status" label="Status" className="px-3 py-2.5" />
+                  <th scope="col" className="px-5 py-2.5 font-semibold sr-only">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {invoices.map(inv => {
+                {invoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-5 py-10 text-center text-sm text-muted">
+                      No invoices match the current filters.
+                    </td>
+                  </tr>
+                ) : invoices.map(inv => {
                   const meta = INVOICE_STATUS_META[inv.status];
                   return (
                     <tr
@@ -90,16 +157,15 @@ export default async function InvoicesPage(props: PageProps<"/c/[customerId]/inv
                         <Badge tone={meta.tone}>{meta.label}</Badge>
                       </td>
                       <td className="px-5 py-3 align-top">
-                        <button
-                          type="button"
-                          disabled
-                          aria-disabled="true"
-                          title="PDF download coming soon"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground-soft opacity-60 cursor-not-allowed"
+                        {/* PDF download is not built yet — small badge instead
+                            of a dead disabled button so the column reads as
+                            "feature pending" rather than broken. */}
+                        <span
+                          className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-soft"
+                          aria-label="PDF download coming soon"
                         >
-                          <Download className="h-3.5 w-3.5" />
-                          PDF
-                        </button>
+                          PDF soon
+                        </span>
                       </td>
                     </tr>
                   );
@@ -110,7 +176,11 @@ export default async function InvoicesPage(props: PageProps<"/c/[customerId]/inv
 
           {/* Mobile card stack */}
           <ul className="md:hidden divide-y divide-border">
-            {invoices.map(inv => {
+            {invoices.length === 0 ? (
+              <li className="px-4 py-8 text-center text-sm text-muted">
+                No invoices match the current filters.
+              </li>
+            ) : invoices.map(inv => {
               const meta = INVOICE_STATUS_META[inv.status];
               return (
                 <li key={inv.id} className="p-4">
@@ -143,19 +213,16 @@ export default async function InvoicesPage(props: PageProps<"/c/[customerId]/inv
                       <div className="tabular-nums text-foreground-soft">{formatCurrency(inv.paidAmount)}</div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    disabled
-                    aria-disabled="true"
-                    title="PDF download coming soon"
-                    className="mt-3 inline-flex h-11 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground-soft opacity-60 cursor-not-allowed"
+                  <span
+                    className="mt-3 inline-flex items-center gap-1 rounded-md border border-dashed border-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-soft"
+                    aria-label="PDF download coming soon"
                   >
-                    <Download className="h-4 w-4" />
-                    PDF
-                  </button>
+                    PDF soon
+                  </span>
                 </li>
               );
-            })}
+            })
+            }
           </ul>
         </CardContent>
       </Card>

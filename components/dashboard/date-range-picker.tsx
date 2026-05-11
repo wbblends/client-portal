@@ -177,7 +177,7 @@ export function DateRangePicker({
                   type="date"
                   value={customFrom}
                   onChange={e => setCustomFrom(e.target.value)}
-                  className="h-9 w-full rounded-md border border-border bg-card px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="h-11 sm:h-9 w-full rounded-md border border-border bg-card px-2 text-base sm:text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </label>
               <label className="block">
@@ -186,14 +186,14 @@ export function DateRangePicker({
                   type="date"
                   value={customTo}
                   onChange={e => setCustomTo(e.target.value)}
-                  className="h-9 w-full rounded-md border border-border bg-card px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="h-11 sm:h-9 w-full rounded-md border border-border bg-card px-2 text-base sm:text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </label>
             </div>
             <button
               type="button"
               onClick={applyCustom}
-              className="mt-3 h-9 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-hover transition-colors"
+              className="mt-3 h-11 sm:h-9 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-hover transition-colors"
             >
               Apply custom range
             </button>
