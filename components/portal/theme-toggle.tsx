@@ -28,7 +28,13 @@ export function ThemeToggle({ className }: { className?: string }) {
   function toggle() {
     const next: Theme = theme === "dark" ? "light" : "dark";
     setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
+    // Add the transient `theme-switching` class so colors crossfade during
+    // the swap, then remove it so we don't keep paying for transitions on
+    // every subsequent hover/focus interaction on the page.
+    const html = document.documentElement;
+    html.classList.add("theme-switching");
+    html.setAttribute("data-theme", next);
+    window.setTimeout(() => html.classList.remove("theme-switching"), 260);
     try {
       localStorage.setItem(STORAGE_KEY, next);
     } catch {

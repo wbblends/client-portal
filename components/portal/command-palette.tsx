@@ -144,7 +144,10 @@ export function CommandPalette({
         run: () => {
           const cur = getCurrentTheme();
           const next = cur === "dark" ? "light" : "dark";
-          document.documentElement.setAttribute("data-theme", next);
+          const html = document.documentElement;
+          html.classList.add("theme-switching");
+          html.setAttribute("data-theme", next);
+          window.setTimeout(() => html.classList.remove("theme-switching"), 260);
           try {
             localStorage.setItem("wbb.theme", next);
           } catch {

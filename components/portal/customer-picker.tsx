@@ -39,7 +39,10 @@ export function CustomerPicker({
   }
 
   return (
-    <div className="relative group">
+    // `focus-within` lets the keyboard ring sit on the styled trigger
+    // instead of revealing the hidden native <select> on top of it (which
+    // was creating a visual "ghost" overlap on focus).
+    <div className="relative group focus-within:ring-2 focus-within:ring-primary/40 focus-within:ring-offset-0 rounded-t-xl">
       <div className="flex items-center gap-2.5 rounded-t-xl px-3 py-2.5 transition-colors group-hover:bg-primary-soft/60">
         <span
           aria-hidden
@@ -61,7 +64,7 @@ export function CustomerPicker({
         aria-label="Active customer"
         value={activeCustomerId ?? ""}
         onChange={onChange}
-        className="absolute inset-0 w-full cursor-pointer appearance-none bg-transparent text-transparent opacity-0 focus:opacity-100 focus:ring-2 focus:ring-primary/40 focus:outline-none rounded-t-xl"
+        className="absolute inset-0 w-full cursor-pointer appearance-none bg-transparent text-transparent opacity-0 focus:outline-none rounded-t-xl"
       >
         {!activeCustomerId && (
           <option value="" disabled>

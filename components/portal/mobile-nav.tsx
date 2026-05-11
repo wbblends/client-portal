@@ -39,6 +39,7 @@ export function MobileNav({
     email: string;
     company: string;
     avatarUrl?: string;
+    homeUrl: string | null;
   };
 }) {
   const [open, setOpen] = useState(false);
@@ -50,16 +51,36 @@ export function MobileNav({
   }, [pathname]);
 
   // Lock body scroll while open + Esc-to-close.
+  //
+  // iOS Safari ignores `overflow: hidden` on body for scroll locking, so we
+  // pin the body at the current scroll position with `position: fixed` and
+  // restore it on close. The old overflow-only approach caused the page to
+  // jump to the top on iOS after closing the drawer.
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const prev = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+    };
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
+      body.style.overflow = prev.overflow;
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.width = prev.width;
+      window.scrollTo(0, scrollY);
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
@@ -89,6 +110,7 @@ export function MobileNav({
             email={user.email}
             company={user.company}
             avatarUrl={user.avatarUrl}
+            homeUrl={user.homeUrl}
             className="border-0 p-0 bg-transparent gap-2"
             compact
           />
@@ -140,6 +162,7 @@ export function MobileNav({
                 email={user.email}
                 company={user.company}
                 avatarUrl={user.avatarUrl}
+                homeUrl={user.homeUrl}
               />
             </div>
           </aside>
