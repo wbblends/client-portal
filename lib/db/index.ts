@@ -14,17 +14,16 @@
  * `IF NOT EXISTS`, so re-runs are safe.
  */
 import { createClient, type Client } from "@libsql/client";
-import { readFileSync, existsSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { SCHEMA_SQL } from "./schema";
+import seedUsersData from "../users/users.json";
 
-// Resolve schema/seed paths from THIS file's location, not process.cwd() —
-// the Vercel-style build can run from anywhere, and locally `next dev` is
-// sometimes started from a parent directory.
+// Local-dev fallback DB lives at <project>/data/wbb.db; gitignored. Vercel
+// uses DATABASE_URL instead, so this directory is never created in prod.
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(HERE, "..", "..");
-const SCHEMA_PATH = join(PROJECT_ROOT, "lib", "db", "schema.sql");
-const SEED_USERS_PATH = join(PROJECT_ROOT, "lib", "users", "users.json");
 const DEFAULT_DB_DIR = join(PROJECT_ROOT, "data");
 
 let cached: Client | null = null;
@@ -62,8 +61,7 @@ function connectionConfig() {
 }
 
 async function applySchema(client: Client) {
-  const sql = readFileSync(SCHEMA_PATH, "utf8");
-  await client.executeMultiple(sql);
+  await client.executeMultiple(SCHEMA_SQL);
 }
 
 /**
@@ -138,8 +136,6 @@ async function maybeImportSeedUsers(client: Client) {
   const { rows } = await client.execute("SELECT COUNT(*) AS n FROM users");
   if ((rows[0]?.n as number) > 0) return;
 
-  if (!existsSync(SEED_USERS_PATH)) return;
-
   type SeedUser = {
     username: string;
     password: string;
@@ -151,7 +147,7 @@ async function maybeImportSeedUsers(client: Client) {
     dashboards: string[];
     avatarUrl?: string;
   };
-  const data = JSON.parse(readFileSync(SEED_USERS_PATH, "utf8")) as { users: SeedUser[] };
+  const data = seedUsersData as { users: SeedUser[] };
   const bcrypt = await import("bcryptjs");
 
   for (const u of data.users ?? []) {
