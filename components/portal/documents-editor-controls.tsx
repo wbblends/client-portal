@@ -5,6 +5,7 @@ import { FolderPlus, FilePlus, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   addDocumentAction,
   createFolderAction,
@@ -154,14 +155,11 @@ function AddDocumentDialog({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="doc-type">File type</Label>
-            <select
+            <Select
               id="doc-type"
               name="fileType"
               defaultValue="pdf"
               disabled={pending}
-              className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm
-                focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none
-                disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
             >
               <option value="pdf">PDF</option>
               <option value="xlsx">XLSX</option>
@@ -170,7 +168,7 @@ function AddDocumentDialog({
               <option value="png">PNG</option>
               <option value="jpg">JPG</option>
               <option value="txt">TXT</option>
-            </select>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="doc-size">Size (bytes, optional)</Label>

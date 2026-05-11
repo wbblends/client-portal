@@ -93,4 +93,28 @@ CREATE TABLE IF NOT EXISTS comment_mentions (
   username    TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
   PRIMARY KEY (comment_id, username)
 );
+
+-- Orders Portal rows. One row per customer-year line, mirroring the in-grid
+-- spreadsheet shape. Edits made by any admin become visible to every other
+-- user the next time their grid polls. The 12 monthly values are stored as a
+-- JSON array (sparse — null slots render as blank). On the first connection
+-- to an empty table, the API seed-imports ORDERS_PORTAL_SEED so existing
+-- environments still come up with the 2026 PO snapshot.
+CREATE TABLE IF NOT EXISTS orders_portal_rows (
+  id           TEXT PRIMARY KEY,
+  customer     TEXT NOT NULL DEFAULT '',
+  rep          TEXT NOT NULL DEFAULT '',
+  cs           TEXT NOT NULL DEFAULT '',
+  tier         TEXT NOT NULL DEFAULT ''
+               CHECK (tier IN ('', 'AA', 'A', 'B', 'C')),
+  projection   REAL NOT NULL DEFAULT 0,
+  -- 12-element JSON array of (number | null), Jan..Dec.
+  months_json  TEXT NOT NULL DEFAULT '[null,null,null,null,null,null,null,null,null,null,null,null]',
+  position     INTEGER NOT NULL DEFAULT 0,
+  updated_by   TEXT REFERENCES users(username) ON DELETE SET NULL,
+  updated_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_portal_rows_position
+  ON orders_portal_rows(position);
 `;

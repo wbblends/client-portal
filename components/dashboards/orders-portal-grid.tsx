@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { Plus, Trash2, RotateCcw, Download, ChevronDown, FilePlus2 } from "lucide-react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import {
+  Plus,
+  Trash2,
+  RotateCcw,
+  Download,
+  ChevronDown,
+  FilePlus2,
+  Lock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  ORDERS_PORTAL_SEED,
   MONTHLY_TARGETS,
   MONTH_LABELS,
   MONTH_SHORT,
@@ -19,133 +26,242 @@ import {
 } from "@/lib/data/orders-portal";
 import { NewOrderForm } from "./new-order-form";
 
-// v2 — schema changed (notes/health removed). Bumping the key avoids
-// hydrating old rows that still carry those fields.
-const STORAGE_KEY = "wbb.orders-portal.rows.v2";
-
 /**
- * Editable, spreadsheet-style grid mirroring the "2026 POs" tab. Rows are
- * stored locally (localStorage) until the ERP integration replaces this with
- * a server-side fetch + mutation API. YTD, Remaining-to-Target, MTD, Q1..Q4,
- * and Target deltas are all derived live from the rows below.
+ * Editable, spreadsheet-style grid mirroring the "2026 POs" tab. Rows live in
+ * the `orders_portal_rows` table — any admin's edit becomes visible to every
+ * other user on their next poll (every 10s). Read-only viewers see the same
+ * data but can't change it. YTD, Remaining-to-Target, MTD, Q1..Q4, current-
+ * month thermometer, and column auto-sums are all derived live from the rows
+ * below.
  */
-export function OrdersPortalGrid() {
-  const [rows, setRows] = useState<OrdersPortalRow[]>(ORDERS_PORTAL_SEED);
-  const [hydrated, setHydrated] = useState(false);
+export function OrdersPortalGrid({
+  initialRows,
+  canEdit,
+}: {
+  initialRows: OrdersPortalRow[];
+  canEdit: boolean;
+}) {
+  const [rows, setRows] = useState<OrdersPortalRow[]>(initialRows);
   const [orderFormOpen, setOrderFormOpen] = useState(false);
   /** Group rows visually by rep so the rep-color bands sit together. */
   const [groupByRep, setGroupByRep] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  /**
+   * Track which row.field combinations have a pending local edit. While a
+   * cell is "dirty" (mid-typing) the poll loop won't clobber it with the
+   * server's older value. Cleared when the PATCH for that row resolves.
+   */
+  const dirtyRef = useRef<Set<string>>(new Set());
 
+  // ── Polling: every 10s pick up edits from other users. We pause polling
+  // while there's a pending write so we don't race our own optimistic update.
+  const pendingWritesRef = useRef(0);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setRows(parsed as OrdersPortalRow[]);
+    let cancelled = false;
+    const refresh = async () => {
+      if (pendingWritesRef.current > 0) return;
+      if (dirtyRef.current.size > 0) return;
+      try {
+        const res = await fetch("/api/orders-portal/rows", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { rows: OrdersPortalRow[] };
+        if (!cancelled && Array.isArray(data.rows)) {
+          setRows(data.rows);
+        }
+      } catch {
+        // ignore — next tick will retry
       }
-    } catch {
-      // ignore — fall through to seed
-    }
-    setHydrated(true);
+    };
+    const id = setInterval(refresh, 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
-    } catch {
-      // quota / private mode — silently degrade to in-memory only
-    }
-  }, [rows, hydrated]);
+  // ── Mutations through the API. All write helpers patch local state
+  // optimistically, then send the change to the server. canEdit guards the
+  // UI affordances; the server also enforces admin-only writes.
+  const patchRow = useCallback(
+    async (id: string, patch: Partial<OrdersPortalRow>) => {
+      pendingWritesRef.current += 1;
+      try {
+        const res = await fetch(`/api/orders-portal/rows/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          setSyncError(data.error ?? "Save failed — your edit hasn't been shared yet.");
+        } else {
+          setSyncError(null);
+        }
+      } catch {
+        setSyncError("Network error — your edit hasn't been shared yet.");
+      } finally {
+        pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
+        // Clear dirty markers for this row so polling can refresh it again.
+        const prefix = `${id}.`;
+        for (const k of Array.from(dirtyRef.current)) {
+          if (k.startsWith(prefix)) dirtyRef.current.delete(k);
+        }
+      }
+    },
+    [],
+  );
 
   const updateRow = useCallback(
     (id: string, patch: Partial<OrdersPortalRow>) => {
+      // Mark every patched field dirty so a poll mid-flight won't revert.
+      for (const k of Object.keys(patch)) dirtyRef.current.add(`${id}.${k}`);
       setRows(prev => prev.map(r => (r.id === id ? { ...r, ...patch } : r)));
+      void patchRow(id, patch);
     },
-    [],
+    [patchRow],
   );
 
   const updateMonth = useCallback(
     (id: string, monthIdx: number, value: number | null) => {
-      setRows(prev =>
-        prev.map(r => {
+      dirtyRef.current.add(`${id}.months`);
+      setRows(prev => {
+        const next = prev.map(r => {
           if (r.id !== id) return r;
           const months = r.months.slice();
           months[monthIdx] = value;
           return { ...r, months };
-        }),
-      );
+        });
+        const updated = next.find(r => r.id === id);
+        if (updated) void patchRow(id, { months: updated.months });
+        return next;
+      });
     },
-    [],
+    [patchRow],
   );
 
-  const addRow = () => {
-    setRows(prev => [
-      ...prev,
-      {
-        id: `r-new-${Date.now().toString(36)}`,
-        customer: "",
-        rep: "",
-        cs: "",
-        tier: "",
-        projection: 0,
-        months: Array(12).fill(null),
-      },
-    ]);
+  const addRow = async () => {
+    pendingWritesRef.current += 1;
+    try {
+      const res = await fetch("/api/orders-portal/rows", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          row: {
+            customer: "",
+            rep: "",
+            cs: "",
+            tier: "",
+            projection: 0,
+            months: Array(12).fill(null),
+          },
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setSyncError(data.error ?? "Couldn't add a row.");
+        return;
+      }
+      const { row } = (await res.json()) as { row: OrdersPortalRow };
+      setRows(prev => [...prev, row]);
+      setSyncError(null);
+    } catch {
+      setSyncError("Network error — couldn't add a row.");
+    } finally {
+      pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
+    }
   };
 
-  const deleteRow = (id: string) => {
+  const deleteRow = async (id: string) => {
+    // Optimistic remove.
     setRows(prev => prev.filter(r => r.id !== id));
+    pendingWritesRef.current += 1;
+    try {
+      const res = await fetch(`/api/orders-portal/rows/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setSyncError(data.error ?? "Couldn't delete that row.");
+      } else {
+        setSyncError(null);
+      }
+    } catch {
+      setSyncError("Network error — couldn't delete that row.");
+    } finally {
+      pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
+    }
   };
 
   /**
-   * When the new-order form submits, fold the order revenue into the grid.
-   * If a row already exists for that customer, bump the current month;
-   * otherwise create a new row keyed off the form data.
+   * When the new-order form submits, hand the order to the server which
+   * folds it into the appropriate row (creating a customer row if needed).
+   * The response carries the canonical row so we can update local state in
+   * one shot — no double-write.
    */
-  const onOrderSubmit = (draft: OrderDraft) => {
-    const monthIdx = new Date(draft.createdAt).getMonth();
-    const revenue = draft.totalRevenue ?? 0;
-    setRows(prev => {
-      const matchIdx = prev.findIndex(
-        r => r.customer.trim().toLowerCase() === draft.customer.trim().toLowerCase(),
-      );
-      if (matchIdx === -1) {
-        const newRow: OrdersPortalRow = {
-          id: `r-${draft.id}`,
+  const onOrderSubmit = async (draft: OrderDraft) => {
+    pendingWritesRef.current += 1;
+    try {
+      const res = await fetch("/api/orders-portal/rows", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "order",
           customer: draft.customer,
           rep: draft.rep,
           cs: draft.cs,
-          tier: "",
-          projection: revenue, // first projection = the order itself; user can edit
-          months: Array(12).fill(null).map((_, i) => (i === monthIdx ? revenue : null)),
-        };
-        return [...prev, newRow];
+          revenue: draft.totalRevenue ?? 0,
+          createdAt: draft.createdAt,
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setSyncError(data.error ?? "Order didn't sync — try again.");
+        return;
       }
-      const next = prev.slice();
-      const existing = next[matchIdx];
-      const months = existing.months.slice();
-      months[monthIdx] = (months[monthIdx] ?? 0) + revenue;
-      next[matchIdx] = {
-        ...existing,
-        rep: existing.rep || draft.rep,
-        cs: existing.cs || draft.cs,
-        months,
+      const { row, created } = (await res.json()) as {
+        row: OrdersPortalRow;
+        created: boolean;
       };
-      return next;
-    });
+      setRows(prev => {
+        if (created) return [...prev, row];
+        return prev.map(r => (r.id === row.id ? row : r));
+      });
+      setSyncError(null);
+    } catch {
+      setSyncError("Network error — order didn't sync.");
+    } finally {
+      pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
+    }
   };
 
-  const resetToSeed = () => {
+  const resetToSeed = async () => {
     if (
       typeof window !== "undefined" &&
-      !window.confirm("Reset all rows to the original 2026 POs snapshot? Local edits will be lost.")
-    )
+      !window.confirm(
+        "Reset all rows to the original 2026 POs snapshot? This affects every user.",
+      )
+    ) {
       return;
-    setRows(ORDERS_PORTAL_SEED);
+    }
+    pendingWritesRef.current += 1;
+    try {
+      const res = await fetch("/api/orders-portal/reset", { method: "POST" });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setSyncError(data.error ?? "Couldn't reset the grid.");
+        return;
+      }
+      const { rows: fresh } = (await res.json()) as { rows: OrdersPortalRow[] };
+      setRows(fresh);
+      setSyncError(null);
+    } catch {
+      setSyncError("Network error — couldn't reset the grid.");
+    } finally {
+      pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
+    }
   };
 
-  // Aggregates
+  // ── Aggregates
   const monthTotals = useMemo(() => {
     const out = Array(12).fill(0);
     for (const r of rows) {
@@ -164,16 +280,27 @@ export function OrdersPortalGrid() {
     [monthTotals],
   );
 
-  const targetGrand = useMemo(
-    () => MONTHLY_TARGETS.reduce((s, v) => s + v, 0),
-    [],
-  );
+  const targetGrand = useMemo(() => MONTHLY_TARGETS.reduce((s, v) => s + v, 0), []);
 
-  /**
-   * Visible rows. When grouped by rep, rows are bucketed by rep and rep
-   * groups are ordered by REP_SUGGESTIONS (then any leftovers alphabetically).
-   * Otherwise, the natural order from the seed/edits is preserved.
-   */
+  // Today's month — drives the "Orders this month" / "Orders target" pair and
+  // the thermometer at the top of the page. Initialized after mount so the
+  // user's clock (not the server's) decides which month is "current"; avoids
+  // a hydration mismatch at the month boundary across timezones.
+  const [currentMonthIdx, setCurrentMonthIdx] = useState(() => {
+    if (typeof window === "undefined") return new Date().getMonth();
+    return new Date().getMonth();
+  });
+  useEffect(() => {
+    setCurrentMonthIdx(new Date().getMonth());
+  }, []);
+  const currentMonthLabel = MONTH_LABELS[currentMonthIdx];
+  const monthActual = monthTotals[currentMonthIdx];
+  const monthTarget = MONTHLY_TARGETS[currentMonthIdx];
+  const monthProgress = monthTarget > 0 ? monthActual / monthTarget : 0;
+
+  /** Visible rows. When grouped by rep, rows are bucketed by rep and rep
+   *  groups are ordered by REP_SUGGESTIONS (then any leftovers alphabetically).
+   *  Otherwise, the natural server order is preserved. */
   const displayedRows = useMemo(() => {
     if (!groupByRep) return rows;
     const order = [...REP_SUGGESTIONS];
@@ -236,52 +363,105 @@ export function OrdersPortalGrid() {
 
   return (
     <div className="space-y-6">
-      {/* KPI band — overall position vs plan */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── Current-month focus row ────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <KpiCard
-          label="YTD Booked"
-          value={fmtCurrency(ytdGrand)}
-          sub={`${pct(ytdGrand, projectionTotal)} of $${fmtCompact(projectionTotal)} projected`}
+          label={`Orders this month · ${currentMonthLabel}`}
+          value={fmtCurrency(monthActual)}
+          sub={
+            <span className="text-xs text-muted">
+              {monthActual > 0
+                ? `${pct(monthActual, monthTarget)} of monthly target`
+                : "No POs booked yet"}
+            </span>
+          }
           tone="primary"
         />
         <KpiCard
-          label="Target YTD"
-          value={fmtCurrency(targetGrand)}
-          sub="Sum of monthly targets"
-          tone="muted"
-        />
-        <KpiCard
-          label="Δ vs Target"
-          value={`${ytdGrand - targetGrand >= 0 ? "+" : ""}${fmtCurrency(ytdGrand - targetGrand)}`}
-          sub={ytdGrand >= targetGrand ? "On / ahead of plan" : "Behind plan"}
-          tone={ytdGrand >= targetGrand ? "success" : "warning"}
-        />
-        <KpiCard
-          label="Customers"
-          value={String(rows.length)}
+          label="Orders target"
+          value={fmtCurrency(monthTarget)}
           sub={
-            <span className="flex items-center gap-1.5 text-xs">
-              <TierChip tier="AA" count={rows.filter(r => r.tier === "AA").length} />
-              <TierChip tier="A" count={rows.filter(r => r.tier === "A").length} />
-              <TierChip tier="B" count={rows.filter(r => r.tier === "B").length} />
-              <TierChip tier="C" count={rows.filter(r => r.tier === "C").length} />
+            <span className="text-xs text-muted">
+              Monthly plan for {currentMonthLabel}
             </span>
           }
-          tone="neutral"
+          tone="muted"
         />
+        <div className="md:col-span-2 rounded-xl border border-border bg-card shadow-[var(--shadow-card)] p-5">
+          <Thermometer
+            label={`${currentMonthLabel} progress`}
+            actual={monthActual}
+            target={monthTarget}
+            progress={monthProgress}
+          />
+        </div>
       </div>
 
-      {/* Monthly totals strip — full year visible without scrolling the grid */}
+      {/* ── Quarter cards ──────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {quarters.map(q => {
+          const delta = q.actual - q.target;
+          const onTrack = delta >= 0;
+          return (
+            <div
+              key={q.label}
+              className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  {q.label}
+                </div>
+                <div
+                  className={cn(
+                    "text-[11px] font-medium px-2 py-0.5 rounded-full",
+                    onTrack
+                      ? "bg-success-soft text-success"
+                      : "bg-warning-soft text-warning",
+                  )}
+                >
+                  {onTrack ? "+" : ""}
+                  {fmtCurrencyShort(delta)}
+                </div>
+              </div>
+              <div className="mt-2 text-[22px] font-semibold tabular-nums text-foreground">
+                {fmtCurrency(q.actual)}
+              </div>
+              <div className="mt-0.5 text-xs text-muted">
+                of {fmtCurrency(q.target)} ({pct(q.actual, q.target)})
+              </div>
+              <div className="mt-3 h-1.5 w-full rounded-full bg-accent overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full", onTrack ? "bg-success" : "bg-primary")}
+                  style={{ width: `${Math.min(100, (q.actual / Math.max(1, q.target)) * 100)}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Monthly Booked vs Target (below the Quarters) ─────────────── */}
       <section className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
         <header className="flex items-center justify-between px-5 pt-4 pb-2">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Monthly Booked vs Target</h2>
             <p className="mt-0.5 text-xs text-muted">
-              Rolled up across all customers · green = at or above plan
+              Rolled up across all customers · green = at or above plan ·
+              YTD <span className="text-foreground-soft font-medium">{fmtCurrency(ytdGrand)}</span>
+              {" "}of <span className="text-foreground-soft font-medium">{fmtCurrency(targetGrand)}</span>
             </p>
           </div>
           <div className="text-xs text-muted">
-            <span className="text-foreground-soft font-medium">{fmtCurrency(ytdGrand)}</span> YTD
+            <span
+              className={cn(
+                "font-medium",
+                ytdGrand >= targetGrand ? "text-success" : "text-warning",
+              )}
+            >
+              {ytdGrand >= targetGrand ? "+" : ""}
+              {fmtCurrencyShort(ytdGrand - targetGrand)}
+            </span>{" "}
+            vs YTD plan
           </div>
         </header>
         <div className="grid grid-cols-6 lg:grid-cols-12 gap-2 px-3 pb-4">
@@ -330,55 +510,19 @@ export function OrdersPortalGrid() {
         </div>
       </section>
 
-      {/* Quarter cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {quarters.map(q => {
-          const delta = q.actual - q.target;
-          const onTrack = delta >= 0;
-          return (
-            <div
-              key={q.label}
-              className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]"
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  {q.label}
-                </div>
-                <div
-                  className={cn(
-                    "text-[11px] font-medium px-2 py-0.5 rounded-full",
-                    onTrack
-                      ? "bg-success-soft text-success"
-                      : "bg-warning-soft text-warning",
-                  )}
-                >
-                  {onTrack ? "+" : ""}
-                  {fmtCurrencyShort(delta)}
-                </div>
-              </div>
-              <div className="mt-2 text-[22px] font-semibold tabular-nums text-foreground">
-                {fmtCurrency(q.actual)}
-              </div>
-              <div className="mt-0.5 text-xs text-muted">
-                of {fmtCurrency(q.target)} ({pct(q.actual, q.target)})
-              </div>
-              <div className="mt-3 h-1.5 w-full rounded-full bg-accent overflow-hidden">
-                <div
-                  className={cn("h-full rounded-full", onTrack ? "bg-success" : "bg-primary")}
-                  style={{ width: `${Math.min(100, (q.actual / Math.max(1, q.target)) * 100)}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Toolbar */}
+      {/* ── Toolbar ───────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
         <div className="flex flex-wrap items-center gap-3">
           <div className="text-xs text-muted">
             <span className="text-foreground-soft font-medium">{rows.length}</span>{" "}
-            customers · edits persist in your browser
+            customers ·{" "}
+            {canEdit ? (
+              <span>edits sync to every user</span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-foreground-soft">
+                <Lock className="h-3 w-3" /> read-only
+              </span>
+            )}
           </div>
           <label className="inline-flex items-center gap-1.5 text-xs text-foreground-soft cursor-pointer select-none">
             <input
@@ -403,26 +547,35 @@ export function OrdersPortalGrid() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {syncError && (
+            <span className="text-xs text-danger font-medium" role="status">
+              {syncError}
+            </span>
+          )}
           <Button size="sm" variant="outline" onClick={downloadCsv}>
             <Download className="h-3.5 w-3.5" />
             Export CSV
           </Button>
-          <Button size="sm" variant="outline" onClick={resetToSeed}>
-            <RotateCcw className="h-3.5 w-3.5" />
-            Reset
-          </Button>
-          <Button size="sm" variant="outline" onClick={addRow}>
-            <Plus className="h-3.5 w-3.5" />
-            Add row
-          </Button>
-          <Button size="sm" variant="primary" onClick={() => setOrderFormOpen(true)}>
-            <FilePlus2 className="h-3.5 w-3.5" />
-            Enter new order
-          </Button>
+          {canEdit && (
+            <>
+              <Button size="sm" variant="outline" onClick={resetToSeed}>
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset
+              </Button>
+              <Button size="sm" variant="outline" onClick={addRow}>
+                <Plus className="h-3.5 w-3.5" />
+                Add row
+              </Button>
+              <Button size="sm" variant="primary" onClick={() => setOrderFormOpen(true)}>
+                <FilePlus2 className="h-3.5 w-3.5" />
+                Enter new order
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Spreadsheet */}
+      {/* ── Spreadsheet ──────────────────────────────────────────────── */}
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
         <table className="w-full border-separate border-spacing-0 text-[13px] tabular-nums">
           <thead>
@@ -447,6 +600,62 @@ export function OrdersPortalGrid() {
                 Remaining
               </Th>
             </tr>
+            {/* Autosum row — column totals across all visible customers,
+                pinned right below the header so the per-month grand totals
+                stay visible while scrolling the row body. */}
+            <tr className="bg-card/95 text-[11px] font-semibold border-b border-border">
+              <Th sticky="left-0" className="w-10 text-muted" />
+              <Th
+                sticky="left-10"
+                className="min-w-[220px] border-l border-border text-[10px] uppercase tracking-wide text-muted"
+              >
+                Σ totals
+              </Th>
+              <Th className="min-w-[120px]" />
+              <Th className="min-w-[120px]" />
+              <Th className="w-[110px] text-center" />
+              <Th className="text-right min-w-[140px] text-foreground">
+                {fmtCurrency(projectionTotal)}
+              </Th>
+              {MONTH_SHORT.map((m, i) => {
+                const actual = monthTotals[i];
+                const target = MONTHLY_TARGETS[i];
+                const onTrack = actual >= target;
+                const hasData = actual > 0;
+                const isCurrent = i === currentMonthIdx;
+                return (
+                  <Th
+                    key={m}
+                    className={cn(
+                      "text-right min-w-[128px]",
+                      isCurrent && "bg-primary-soft/40",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "tabular-nums",
+                        hasData
+                          ? onTrack
+                            ? "text-success"
+                            : "text-foreground"
+                          : "text-muted-soft font-normal",
+                      )}
+                    >
+                      {hasData ? fmtCurrencyShort(actual) : "—"}
+                    </div>
+                    <div className="mt-0.5 text-[10px] font-normal text-muted">
+                      tgt {fmtCurrencyShort(target)}
+                    </div>
+                  </Th>
+                );
+              })}
+              <Th className="text-right min-w-[140px] bg-primary-soft/60 text-primary">
+                {fmtCurrency(ytdGrand)}
+              </Th>
+              <Th className="text-right min-w-[160px] bg-primary-soft/60 text-primary">
+                {fmtCurrency(projectionTotal - ytdGrand)}
+              </Th>
+            </tr>
           </thead>
           <tbody>
             {displayedRows.map((r, idx) => (
@@ -454,6 +663,7 @@ export function OrdersPortalGrid() {
                 key={r.id}
                 row={r}
                 striped={idx % 2 === 1}
+                canEdit={canEdit}
                 onPatch={patch => updateRow(r.id, patch)}
                 onMonth={(i, v) => updateMonth(r.id, i, v)}
                 onDelete={() => deleteRow(r.id)}
@@ -463,14 +673,16 @@ export function OrdersPortalGrid() {
         </table>
       </div>
 
-      <NewOrderForm
-        open={orderFormOpen}
-        onClose={() => setOrderFormOpen(false)}
-        customers={Array.from(
-          new Set(rows.map(r => r.customer).filter(Boolean)),
-        ).sort()}
-        onSubmit={onOrderSubmit}
-      />
+      {canEdit && (
+        <NewOrderForm
+          open={orderFormOpen}
+          onClose={() => setOrderFormOpen(false)}
+          customers={Array.from(
+            new Set(rows.map(r => r.customer).filter(Boolean)),
+          ).sort()}
+          onSubmit={onOrderSubmit}
+        />
+      )}
     </div>
   );
 }
@@ -480,12 +692,14 @@ export function OrdersPortalGrid() {
 function Row({
   row,
   striped,
+  canEdit,
   onPatch,
   onMonth,
   onDelete,
 }: {
   row: OrdersPortalRow;
   striped: boolean;
+  canEdit: boolean;
   onPatch: (patch: Partial<OrdersPortalRow>) => void;
   onMonth: (i: number, v: number | null) => void;
   onDelete: () => void;
@@ -510,15 +724,17 @@ function Row({
           repTone.accent,
         )}
       >
-        <button
-          type="button"
-          onClick={onDelete}
-          className="opacity-0 group-hover:opacity-100 text-muted-soft hover:text-danger transition-opacity p-1.5 rounded-md hover:bg-danger-soft"
-          title="Delete row"
-          aria-label={`Delete ${row.customer || "row"}`}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="opacity-0 group-hover:opacity-100 text-muted-soft hover:text-danger transition-opacity p-1.5 rounded-md hover:bg-danger-soft"
+            title="Delete row"
+            aria-label={`Delete ${row.customer || "row"}`}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
       </Td>
 
       <Td sticky="left-10" striped={striped} className="border-l border-border">
@@ -527,14 +743,12 @@ function Row({
           onChange={v => onPatch({ customer: v })}
           placeholder="Customer name"
           bold
+          disabled={!canEdit}
         />
       </Td>
 
       <Td striped={striped}>
-        <RepCell
-          value={row.rep}
-          onChange={v => onPatch({ rep: v })}
-        />
+        <RepCell value={row.rep} onChange={v => onPatch({ rep: v })} disabled={!canEdit} />
       </Td>
 
       <Td striped={striped}>
@@ -544,23 +758,29 @@ function Row({
           listId="dl-cs"
           onChange={v => onPatch({ cs: v })}
           placeholder="CS"
+          disabled={!canEdit}
         />
       </Td>
 
       <Td striped={striped} className="text-center">
-        <TierSelect value={row.tier} onChange={v => onPatch({ tier: v })} />
+        <TierSelect
+          value={row.tier}
+          onChange={v => onPatch({ tier: v })}
+          disabled={!canEdit}
+        />
       </Td>
 
       <Td striped={striped} className="text-right">
         <NumberCell
           value={row.projection}
           onChange={v => onPatch({ projection: v ?? 0 })}
+          disabled={!canEdit}
         />
       </Td>
 
       {row.months.map((v, i) => (
         <Td key={i} striped={striped} className="text-right">
-          <NumberCell value={v} onChange={nv => onMonth(i, nv)} />
+          <NumberCell value={v} onChange={nv => onMonth(i, nv)} disabled={!canEdit} />
         </Td>
       ))}
 
@@ -620,31 +840,186 @@ function KpiCard({
   );
 }
 
+/* ----------------------------- Thermometer ----------------------------- */
+
 /**
- * Compact tier swatch used inside the customer-count KPI to give an
- * at-a-glance breakdown by tier with the same colors as the in-grid pills.
+ * Horizontal "thermometer" gauge — a bulb on the left + a tube extending to
+ * the right that fills proportionally to progress. Uses an SVG so the bulb
+ * + fill stay visually anchored. The 100% target line is marked so you can
+ * see at a glance whether the month has cleared plan. Once progress exceeds
+ * 100% the fill keeps growing (visually clamped at 125%) and the color
+ * shifts to success.
  */
-function TierChip({ tier, count }: { tier: Tier; count: number }) {
-  const tone =
-    tier === "AA"
-      ? "bg-emerald-600 text-white"
-      : tier === "A"
-        ? "bg-blue-600 text-white"
-        : tier === "B"
-          ? "bg-amber-400 text-amber-950"
-          : "bg-rose-600 text-white";
+function Thermometer({
+  label,
+  actual,
+  target,
+  progress,
+}: {
+  label: string;
+  actual: number;
+  target: number;
+  progress: number;
+}) {
+  // Clamp the rendered fill at 125% so an over-shoot doesn't blow out the
+  // tube; the numeric percentage still shows the true value.
+  const clamped = Math.max(0, Math.min(1.25, progress));
+  const onTrack = progress >= 1;
+  const fillColor = onTrack ? "var(--color-success)" : "var(--color-primary)";
+  const fluidLight = onTrack
+    ? "color-mix(in oklab, var(--color-success) 60%, white)"
+    : "color-mix(in oklab, var(--color-primary) 60%, white)";
+
+  // Geometry — designed at 400×84 viewBox. The tube starts after the bulb,
+  // at x = 76, and ends at x = 386 (10px right margin).
+  const BULB_CX = 38;
+  const BULB_CY = 42;
+  const BULB_R = 26;
+  const TUBE_X = 64;
+  const TUBE_W = 320;
+  const TUBE_Y = 28;
+  const TUBE_H = 28;
+  const TUBE_R = 14;
+  // Fill grows from inside the bulb out through the tube. At 0%, only the
+  // bulb is fluid; at 100% the entire tube is fluid.
+  const fillWidth = TUBE_W * clamped;
+  const targetX = TUBE_X + TUBE_W; // tube end = the 100% mark when target>0
+
   return (
-    <span className="inline-flex items-center gap-1">
-      <span
-        className={cn(
-          "inline-flex items-center justify-center min-w-[24px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none",
-          tone,
-        )}
+    <div>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted">
+            {label}
+          </div>
+          <div className="mt-1 text-[22px] font-semibold tabular-nums leading-tight">
+            <span className={onTrack ? "text-success" : "text-primary"}>
+              {(progress * 100).toFixed(1)}%
+            </span>
+            <span className="text-muted-soft font-normal text-[13px]">
+              {" "}of target
+            </span>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-xs text-muted">
+            {fmtCurrency(actual)}
+          </div>
+          <div className="text-[11px] text-muted-soft">
+            of {fmtCurrency(target)}
+          </div>
+        </div>
+      </div>
+
+      <svg
+        viewBox="0 0 400 84"
+        className="mt-3 w-full h-16"
+        role="img"
+        aria-label={`${label} ${(progress * 100).toFixed(1)}% of target`}
       >
-        {tier}
-      </span>
-      <span className="tabular-nums text-foreground-soft">{count}</span>
-    </span>
+        <defs>
+          <linearGradient id="therm-fill" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor={fluidLight} />
+            <stop offset="100%" stopColor={fillColor} />
+          </linearGradient>
+          <clipPath id="therm-tube-clip">
+            <rect
+              x={TUBE_X}
+              y={TUBE_Y}
+              width={TUBE_W}
+              height={TUBE_H}
+              rx={TUBE_R}
+              ry={TUBE_R}
+            />
+          </clipPath>
+        </defs>
+
+        {/* Bulb outer ring (the "glass") */}
+        <circle
+          cx={BULB_CX}
+          cy={BULB_CY}
+          r={BULB_R}
+          fill="var(--color-card)"
+          stroke="var(--color-border)"
+          strokeWidth={2}
+        />
+        {/* Bulb fluid */}
+        <circle
+          cx={BULB_CX}
+          cy={BULB_CY}
+          r={BULB_R - 5}
+          fill={fillColor}
+        />
+
+        {/* Tube outline */}
+        <rect
+          x={TUBE_X}
+          y={TUBE_Y}
+          width={TUBE_W}
+          height={TUBE_H}
+          rx={TUBE_R}
+          ry={TUBE_R}
+          fill="var(--color-accent)"
+          stroke="var(--color-border)"
+          strokeWidth={2}
+        />
+
+        {/* Fluid in tube */}
+        <g clipPath="url(#therm-tube-clip)">
+          <rect
+            x={TUBE_X}
+            y={TUBE_Y}
+            width={Math.max(0, fillWidth)}
+            height={TUBE_H}
+            fill="url(#therm-fill)"
+          />
+        </g>
+
+        {/* 100% target marker (only meaningful when target > 0) */}
+        {target > 0 ? (
+          <g>
+            <line
+              x1={targetX}
+              x2={targetX}
+              y1={TUBE_Y - 4}
+              y2={TUBE_Y + TUBE_H + 4}
+              stroke="var(--color-foreground-soft)"
+              strokeWidth={1.5}
+              strokeDasharray="3 3"
+            />
+            <text
+              x={targetX}
+              y={TUBE_Y - 7}
+              textAnchor="end"
+              fontSize="9"
+              fontWeight="600"
+              fill="var(--color-foreground-soft)"
+            >
+              100%
+            </text>
+          </g>
+        ) : null}
+
+        {/* 50% tick */}
+        <line
+          x1={TUBE_X + TUBE_W * 0.5}
+          x2={TUBE_X + TUBE_W * 0.5}
+          y1={TUBE_Y + TUBE_H + 1}
+          y2={TUBE_Y + TUBE_H + 6}
+          stroke="var(--color-muted-soft)"
+          strokeWidth={1}
+        />
+        <text
+          x={TUBE_X + TUBE_W * 0.5}
+          y={TUBE_Y + TUBE_H + 14}
+          textAnchor="middle"
+          fontSize="9"
+          fill="var(--color-muted)"
+        >
+          50%
+        </text>
+      </svg>
+    </div>
   );
 }
 
@@ -655,11 +1030,13 @@ function TextCell({
   onChange,
   placeholder,
   bold,
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   bold?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <input
@@ -667,9 +1044,11 @@ function TextCell({
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
+      disabled={disabled}
       className={cn(
         "w-full bg-transparent border-0 outline-none focus:ring-2 focus:ring-primary/40 rounded-md px-2 py-1.5 -mx-2 -my-1.5",
         bold ? "font-semibold text-foreground" : "text-foreground",
+        disabled && "cursor-default",
       )}
     />
   );
@@ -678,14 +1057,29 @@ function TextCell({
 function NumberCell({
   value,
   onChange,
+  disabled,
 }: {
   value: number | null;
   onChange: (v: number | null) => void;
+  disabled?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
 
   const display = value == null || value === 0 ? "" : fmtCurrency(value);
+
+  if (disabled) {
+    return (
+      <span
+        className={cn(
+          "w-full text-right tabular-nums px-2 py-1.5 -mx-2 -my-1.5 rounded-md block",
+          display ? "text-foreground" : "text-muted-soft",
+        )}
+      >
+        {display || "—"}
+      </span>
+    );
+  }
 
   return editing ? (
     <input
@@ -732,9 +1126,8 @@ function NumberCell({
 
 /**
  * Tier pill — high-contrast, color-coded by tier so AA / A / B / C are
- * unmistakable at a glance. Built on a real <select> for keyboard support
- * but visually presented as a pill via a wrapper, which solves the cropping
- * issue caused by the native dropdown arrow eating padding.
+ * unmistakable at a glance. Visually a pill; functionally a real <select>
+ * for keyboard support, layered transparently over the pill.
  *
  *   AA = solid green   (priority / strategic)
  *   A  = solid blue    (strong account)
@@ -744,9 +1137,11 @@ function NumberCell({
 function TierSelect({
   value,
   onChange,
+  disabled,
 }: {
   value: Tier | "";
   onChange: (v: Tier | "") => void;
+  disabled?: boolean;
 }) {
   const tone =
     value === "AA"
@@ -763,14 +1158,16 @@ function TierSelect({
       className={cn(
         "relative inline-flex items-center gap-1 rounded-full border font-bold text-[12px] leading-none transition-colors min-w-[72px] h-7 px-3 cursor-pointer focus-within:ring-2 focus-within:ring-primary/40",
         tone,
+        disabled && "opacity-90 cursor-default",
       )}
     >
       <span className="flex-1 text-center select-none">{value || "—"}</span>
       <ChevronDown className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
       <select
         value={value}
+        disabled={disabled}
         onChange={e => onChange(e.target.value as Tier | "")}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default"
         aria-label="Tier"
       >
         <option value="">—</option>
@@ -792,9 +1189,11 @@ function TierSelect({
 function RepCell({
   value,
   onChange,
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
+  disabled?: boolean;
 }) {
   const tone = getRepColor(value);
   const known = REP_SUGGESTIONS.includes(value);
@@ -812,6 +1211,7 @@ function RepCell({
         type="text"
         list="dl-rep"
         value={value}
+        disabled={disabled}
         onChange={e => onChange(e.target.value)}
         placeholder="Rep"
         className={cn(
@@ -821,6 +1221,7 @@ function RepCell({
               ? "font-semibold"
               : "text-foreground"
             : "text-muted-soft",
+          disabled && "cursor-default",
         )}
       />
       <datalist id="dl-rep">
@@ -838,12 +1239,14 @@ function SuggestCell({
   listId,
   onChange,
   placeholder,
+  disabled,
 }: {
   value: string;
   options: readonly string[];
   listId: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <>
@@ -851,11 +1254,13 @@ function SuggestCell({
         type="text"
         list={listId}
         value={value}
+        disabled={disabled}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
           "w-full bg-transparent border-0 outline-none focus:ring-2 focus:ring-primary/40 rounded-md px-2 py-1.5 -mx-2 -my-1.5",
           value ? "text-foreground" : "text-muted-soft",
+          disabled && "cursor-default",
         )}
       />
       <datalist id={listId}>
@@ -922,12 +1327,6 @@ function fmtCurrency(n: number) {
     currency: "USD",
     maximumFractionDigits: 0,
   });
-}
-
-function fmtCompact(n: number) {
-  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
 function fmtCurrencyShort(n: number) {

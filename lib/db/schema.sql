@@ -120,3 +120,22 @@ CREATE TABLE IF NOT EXISTS comment_mentions (
   username    TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
   PRIMARY KEY (comment_id, username)
 );
+
+-- Orders Portal rows — see lib/db/schema.ts (the bundled string is the
+-- runtime source of truth; this file is mirrored for human reading).
+CREATE TABLE IF NOT EXISTS orders_portal_rows (
+  id           TEXT PRIMARY KEY,
+  customer     TEXT NOT NULL DEFAULT '',
+  rep          TEXT NOT NULL DEFAULT '',
+  cs           TEXT NOT NULL DEFAULT '',
+  tier         TEXT NOT NULL DEFAULT ''
+               CHECK (tier IN ('', 'AA', 'A', 'B', 'C')),
+  projection   REAL NOT NULL DEFAULT 0,
+  months_json  TEXT NOT NULL DEFAULT '[null,null,null,null,null,null,null,null,null,null,null,null]',
+  position     INTEGER NOT NULL DEFAULT 0,
+  updated_by   TEXT REFERENCES users(username) ON DELETE SET NULL,
+  updated_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_portal_rows_position
+  ON orders_portal_rows(position);

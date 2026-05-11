@@ -11,6 +11,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   REP_SUGGESTIONS,
@@ -352,17 +353,16 @@ export function NewOrderForm({
                   <CurrencyInput value={totalRevenue} onChange={setTotalRevenue} />
                 </Section>
                 <Section title="3. Payment Terms">
-                  <select
+                  <Select
                     value={paymentTerms}
                     onChange={e => setPaymentTerms(e.target.value)}
-                    className={inputCls}
                   >
                     {PAYMENT_TERMS.map(t => (
                       <option key={t} value={t}>
                         {t}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </Section>
               </div>
 
