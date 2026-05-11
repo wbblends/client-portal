@@ -36,6 +36,22 @@
   --font-serif: var(--font-display), ui-serif, Georgia, "Times New Roman", serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
+  /* Type scale — formalized after we noticed pages had drifted to a sea of
+     magic `text-[Npx]` arbitrary values. New code should reach for these
+     tokens (e.g. `text-(length:--text-sm)`) or the Tailwind aliases
+     `text-xs/sm/base/lg/xl/2xl`. Display sizes are fluid via clamp(); page
+     titles should use `--text-display-h1` so they scale on small screens
+     without bespoke clamp() per page. */
+  --text-xs: 12px;      /* tags, meta, kbd, group labels */
+  --text-sm: 14px;      /* table cells, secondary text */
+  --text-base: 16px;    /* primary body */
+  --text-lg: 18px;      /* emphasized body, card titles */
+  --text-xl: 22px;      /* section subhead */
+  --text-2xl: 26px;     /* h3 */
+  --text-display-h1: clamp(28px, 4.6vw, 38px);  /* primary page title */
+  --text-display-h2: clamp(22px, 2.8vw, 26px);  /* page sub-section */
+  --text-display-hero: clamp(44px, 6.4vw, 68px);  /* marketing / login hero */
+
   --shadow-card: 0 1px 2px 0 rgba(21, 16, 43, 0.04), 0 0 0 1px rgba(21, 16, 43, 0.04);
   --shadow-card-hover: 0 4px 14px -2px rgba(110, 91, 254, 0.10), 0 0 0 1px rgba(21, 16, 43, 0.06);
   --shadow-popover: 0 12px 32px -8px rgba(21, 16, 43, 0.18), 0 0 0 1px rgba(21, 16, 43, 0.06);
@@ -80,11 +96,12 @@
   --shadow-popover: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-/* Smooth color transitions when toggling. Limited to top-level color
-   properties so we don't regress focus/hover responsiveness. */
-html,
-body,
-*[data-theme-transition] {
+/* Smooth color transitions when toggling. Scoped to a transient class the
+   theme toggle adds for ~250ms so we don't keep paying for transitions on
+   every interaction (hover, focus, etc.) — only during the actual switch. */
+html.theme-switching,
+html.theme-switching body,
+html.theme-switching *[data-theme-transition] {
   transition: background-color 200ms ease, border-color 200ms ease,
     color 200ms ease;
 }
@@ -103,7 +120,11 @@ body,
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Stops horizontal page scroll when a child briefly overflows on mobile. */
+    /* Belt-and-braces guard against horizontal scroll on mobile. Every table
+       and grid in the portal has its own scoped `overflow-x-auto` wrapper,
+       so this only fires if a stray descendant blows past the viewport
+       width — and when it does, we'd rather clip than show a jolting
+       horizontal scrollbar across the whole page. */
     overflow-x: hidden;
   }
 
@@ -144,10 +165,16 @@ body,
   }
 
   /* Container that stays comfortable on ultrawide without leaving a
-     desert of empty space. Caps at 1600px so dense tables don't stretch
-     into uncomfortable line lengths, but lets cards breathe wider than
-     the old 1400px ceiling. */
+     desert of empty space. Default caps at 1400px so descriptive text
+     stays under ~80 chars per line; tables and dense grids that genuinely
+     want more horizontal room can opt up with `.page-container-wide`. */
   .page-container {
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+  .page-container-wide {
     max-width: 1600px;
     margin-left: auto;
     margin-right: auto;
@@ -224,6 +251,30 @@ body,
     background-repeat: no-repeat;
     animation: skeleton-shimmer 1.6s ease-in-out infinite;
     border-radius: 6px;
+  }
+
+  /* Respect user motion preference. Disables all custom keyframe animations
+     and slashes transition durations so animations don't trigger vestibular
+     symptoms. We keep transitions to ~1ms (not 0) so hover/focus state still
+     "flips" rather than disappearing entirely. Chart libraries are gated
+     separately at the component level. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+    .animate-drawer-fade,
+    .animate-drawer-slide,
+    .animate-palette-fade,
+    .animate-palette-pop,
+    .animate-scope-pulse,
+    .skeleton {
+      animation: none !important;
+    }
   }
 
   /* Decorative purple wash, used as a backdrop in marketing-feeling spots

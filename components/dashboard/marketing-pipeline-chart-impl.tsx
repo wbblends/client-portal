@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import type { PipelineHistoryBucket } from "@/lib/marketing/pipeline-history";
 import { formatCurrency } from "@/lib/utils";
+import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 
 const fmt = (v: number) => formatCurrency(v, { compact: true });
 
@@ -25,6 +26,7 @@ const fmt = (v: number) => formatCurrency(v, { compact: true });
 export function CumulativePipelineChart({ buckets }: { buckets: PipelineHistoryBucket[] }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const reducedMotion = usePrefersReducedMotion();
 
   return (
     <div className="h-[260px] w-full">
@@ -66,6 +68,7 @@ export function CumulativePipelineChart({ buckets }: { buckets: PipelineHistoryB
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 4 }}
+              isAnimationActive={!reducedMotion}
               animationDuration={650}
               animationEasing="ease-out"
             />
@@ -77,6 +80,7 @@ export function CumulativePipelineChart({ buckets }: { buckets: PipelineHistoryB
               strokeDasharray="4 4"
               dot={false}
               activeDot={{ r: 4 }}
+              isAnimationActive={!reducedMotion}
               animationDuration={650}
               animationEasing="ease-out"
               animationBegin={120}
@@ -104,6 +108,7 @@ export function CumulativePipelineChart({ buckets }: { buckets: PipelineHistoryB
 export function PipelineFlowChart({ buckets }: { buckets: PipelineHistoryBucket[] }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const reducedMotion = usePrefersReducedMotion();
 
   // Recharts stacks bars by sign — render closed amounts as negative numbers
   // so they render below the axis and added stays above.
@@ -157,6 +162,7 @@ export function PipelineFlowChart({ buckets }: { buckets: PipelineHistoryBucket[
               stackId="flow"
               radius={[4, 4, 0, 0]}
               maxBarSize={42}
+              isAnimationActive={!reducedMotion}
               animationDuration={550}
               animationEasing="ease-out"
             />
@@ -166,6 +172,7 @@ export function PipelineFlowChart({ buckets }: { buckets: PipelineHistoryBucket[
               stackId="flow"
               radius={[0, 0, 4, 4]}
               maxBarSize={42}
+              isAnimationActive={!reducedMotion}
               animationDuration={550}
               animationEasing="ease-out"
               animationBegin={80}
@@ -176,6 +183,7 @@ export function PipelineFlowChart({ buckets }: { buckets: PipelineHistoryBucket[
               stackId="flow"
               radius={[0, 0, 4, 4]}
               maxBarSize={42}
+              isAnimationActive={!reducedMotion}
               animationDuration={550}
               animationEasing="ease-out"
               animationBegin={160}

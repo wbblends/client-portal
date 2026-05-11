@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatCurrency, formatNumber, cn } from "@/lib/utils";
+import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 
 export type YoyPoint = {
   bucket: string;
@@ -36,6 +37,7 @@ export function SalesByDurationChart({
   const [metric, setMetric] = useState<"dollars" | "units">("dollars");
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const reducedMotion = usePrefersReducedMotion();
   const series = metric === "dollars" ? data : unitsData;
   const fmt = metric === "dollars"
     ? (v: number) => formatCurrency(v, { compact: true })
@@ -95,6 +97,7 @@ export function SalesByDurationChart({
                 fill="var(--color-border-strong)"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={42}
+                isAnimationActive={!reducedMotion}
                 animationDuration={550}
                 animationEasing="ease-out"
               />
@@ -103,6 +106,7 @@ export function SalesByDurationChart({
                 fill="var(--color-primary)"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={42}
+                isAnimationActive={!reducedMotion}
                 animationDuration={550}
                 animationEasing="ease-out"
                 animationBegin={100}

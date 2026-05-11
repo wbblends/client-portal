@@ -248,7 +248,11 @@ export function UserForm({
       </div>
 
       {error && (
-        <div className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger"
+        >
           {error}
         </div>
       )}

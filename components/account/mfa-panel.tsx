@@ -171,7 +171,11 @@ export function MfaPanel({ enabled }: { enabled: boolean }) {
                 />
               </div>
               {error && (
-                <div className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
+                <div
+                  role="alert"
+                  aria-live="polite"
+                  className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger"
+                >
                   {error}
                 </div>
               )}
@@ -218,7 +222,11 @@ export function MfaPanel({ enabled }: { enabled: boolean }) {
           />
         </div>
         {error && (
-          <div className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
+          <div
+            role="alert"
+            aria-live="polite"
+            className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger"
+          >
             {error}
           </div>
         )}
@@ -237,7 +245,11 @@ export function MfaPanel({ enabled }: { enabled: boolean }) {
         you sign in.
       </p>
       {error && (
-        <div className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="rounded-md border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger"
+        >
           {error}
         </div>
       )}
