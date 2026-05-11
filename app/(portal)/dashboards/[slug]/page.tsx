@@ -4,7 +4,11 @@ import { getDashboard, userCanSeeDashboard } from "@/lib/dashboards/registry";
 import { PlaceholderDashboard } from "@/components/dashboards/placeholder";
 import { MarketingOverviewDashboard } from "@/components/dashboards/marketing-overview";
 import { OrdersPortalDashboard } from "@/components/dashboards/orders-portal";
-import { PipelineKanbanDashboard } from "@/components/dashboards/pipeline-kanban";
+import {
+  SalesPipelineDashboard,
+  AccountExpansionDashboard,
+  PipelineAnalyticsDashboard,
+} from "@/components/dashboards/pipeline-kanban";
 
 /**
  * Single dynamic route for every cross-customer dashboard. Looks up the
@@ -36,8 +40,12 @@ export default async function DashboardSlugPage(props: PageProps<"/dashboards/[s
       );
     case "orders-portal":
       return <OrdersPortalDashboard dashboard={dashboard} />;
-    case "pipeline-kanban":
-      return <PipelineKanbanDashboard />;
+    case "sales-pipeline":
+      return <SalesPipelineDashboard />;
+    case "account-expansion":
+      return <AccountExpansionDashboard />;
+    case "pipeline-analytics":
+      return <PipelineAnalyticsDashboard />;
     default:
       return <PlaceholderDashboard dashboard={dashboard} />;
   }

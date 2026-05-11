@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+﻿import { Fragment } from "react";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
@@ -11,21 +11,48 @@ import {
   type DealFormat,
 } from "@/lib/marketing/hubspot";
 
-export async function PipelineKanbanDashboard() {
+export async function SalesPipelineDashboard() {
+  const data = await getPipelineKanban();
+  const pipeline = data.pipelines.find(p => p.key === "sales");
+  return (
+    <SinglePipelinePage
+      kicker="Sales"
+      title="Sales Pipeline"
+      description="Open deals in the Sales Pipeline, grouped by stage. Click any card to open the deal in HubSpot."
+      pipeline={pipeline}
+      source={data.source}
+    />
+  );
+}
+
+export async function AccountExpansionDashboard() {
+  const data = await getPipelineKanban();
+  const pipeline = data.pipelines.find(p => p.key === "expansion");
+  return (
+    <SinglePipelinePage
+      kicker="Sales"
+      title="Account Expansion"
+      description="Open deals in the Account Expansion pipeline, grouped by stage. Click any card to open the deal in HubSpot."
+      pipeline={pipeline}
+      source={data.source}
+    />
+  );
+}
+
+export async function PipelineAnalyticsDashboard() {
   const data = await getPipelineKanban();
   const summary = computeOverallSummary(data);
 
   return (
     <div className="page-container page-pad-x page-pad-y space-y-5 sm:space-y-7">
-      {/* Page header */}
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div>
           <p className="text-sm text-muted">Sales</p>
-          <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
-            Pipeline
+          <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
+            Pipeline Analytics
           </h1>
           <p className="mt-1 max-w-[640px] text-sm text-muted">
-            Open deals across both HubSpot pipelines, grouped by stage. Click any card to open the deal in HubSpot.
+            Top-line totals across both HubSpot pipelines and a per-rep breakdown of open deals.
           </p>
         </div>
         {data.source === "placeholder" && (
@@ -33,14 +60,45 @@ export async function PipelineKanbanDashboard() {
         )}
       </div>
 
-      {/* Top-line totals */}
       <SummaryStrip summary={summary} />
-
       <RepSummary data={data} />
+    </div>
+  );
+}
 
-      {data.pipelines.map(p => (
-        <PipelineSection key={p.key} pipeline={p} />
-      ))}
+function SinglePipelinePage({
+  kicker,
+  title,
+  description,
+  pipeline,
+  source,
+}: {
+  kicker: string;
+  title: string;
+  description: string;
+  pipeline: PipelineKanban | undefined;
+  source: "live" | "placeholder";
+}) {
+  return (
+    <div className="page-container page-pad-x page-pad-y space-y-5 sm:space-y-7">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div>
+          <p className="text-sm text-muted">{kicker}</p>
+          <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
+            {title}
+          </h1>
+          <p className="mt-1 max-w-[640px] text-sm text-muted">{description}</p>
+        </div>
+        {source === "placeholder" && (
+          <Badge tone="warning">Placeholder data — set HUBSPOT_PRIVATE_APP_TOKEN</Badge>
+        )}
+      </div>
+
+      {pipeline ? (
+        <PipelineSection pipeline={pipeline} hideTitle />
+      ) : (
+        <Card className="px-5 py-8 text-sm text-muted">No data for this pipeline.</Card>
+      )}
     </div>
   );
 }
@@ -328,7 +386,7 @@ function StageChipRow({ breakdown }: { breakdown: PipelineBreakdown }) {
   );
 }
 
-function PipelineSection({ pipeline }: { pipeline: PipelineKanban }) {
+function PipelineSection({ pipeline, hideTitle }: { pipeline: PipelineKanban; hideTitle?: boolean }) {
   const total = pipeline.stages.reduce((s, st) => s + st.totalAmount, 0);
   const dealCount = pipeline.stages.reduce((s, st) => s + st.dealCount, 0);
   const dotColor = pipeline.key === "sales" ? "bg-primary" : "bg-info";
@@ -336,10 +394,14 @@ function PipelineSection({ pipeline }: { pipeline: PipelineKanban }) {
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <h2 className="font-display text-[24px] leading-tight tracking-tight text-foreground inline-flex items-center gap-2.5">
-          <span className={`h-2 w-2 rounded-full ${dotColor}`} aria-hidden />
-          {pipeline.label}
-        </h2>
+        {hideTitle ? (
+          <span />
+        ) : (
+          <h2 className="font-display text-[24px] leading-tight tracking-tight text-foreground inline-flex items-center gap-2.5">
+            <span className={`h-2 w-2 rounded-full ${dotColor}`} aria-hidden />
+            {pipeline.label}
+          </h2>
+        )}
         <div className="flex items-center gap-5 text-xs text-muted">
           <span>
             <span className="text-foreground font-semibold tabular-nums">{dealCount}</span>{" "}
