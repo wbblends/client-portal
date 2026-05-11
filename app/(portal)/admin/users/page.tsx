@@ -1,21 +1,76 @@
 import Link from "next/link";
 import { Plus, Mail, KeyRound, ShieldCheck } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
-import { listUsers } from "@/lib/users/store";
+import { listUsers, type UserRole } from "@/lib/users/store";
 import { listDashboards, getDashboardById } from "@/lib/dashboards/registry";
 import { listCustomers, getCustomer } from "@/lib/customers/registry";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { buttonClasses } from "@/components/ui/button";
 import { UserRowActions } from "@/components/admin/user-row-actions";
 import { TeamAvatar } from "@/components/portal/team-avatar";
+import { FilterBar } from "@/components/filters/filter-bar";
+import { SortableHeader } from "@/components/filters/sortable-header";
+import { readEnum, readSort, readString } from "@/lib/filters/url-state";
+import { applyEnumEquals, applySort, applyTextSearch } from "@/lib/filters/apply";
 
 export const metadata = { title: "Users — WB Blends Admin" };
 
-export default async function AdminUsersPage() {
+const USER_ROLES: UserRole[] = ["super_admin", "admin", "internal", "customer"];
+const USER_STATUSES = ["active", "invite_pending", "deactivated"] as const;
+const USER_SORT_COLUMNS = ["name", "role", "status", "created"] as const;
+
+type UserStatus = (typeof USER_STATUSES)[number];
+
+function statusOf(u: { active: boolean; hasPassword: boolean }): UserStatus {
+  if (!u.active) return "deactivated";
+  return u.hasPassword ? "active" : "invite_pending";
+}
+
+const ROLE_LABEL: Record<UserRole, string> = {
+  super_admin: "Super admin",
+  admin: "Admin",
+  internal: "Internal",
+  customer: "Customer",
+};
+
+const STATUS_LABEL: Record<UserStatus, string> = {
+  active: "Active",
+  invite_pending: "Invite pending",
+  deactivated: "Deactivated",
+};
+
+export default async function AdminUsersPage(props: PageProps<"/admin/users">) {
   const me = await requireAdmin();
-  const users = await listUsers();
+  const sp = await props.searchParams;
+  const all = await listUsers();
   const dashboardsRegistry = listDashboards();
   const customersRegistry = listCustomers();
+
+  const query = readString(sp, "q");
+  const role = readEnum<UserRole>(sp, "role", USER_ROLES);
+  const status = readEnum<UserStatus>(sp, "status", USER_STATUSES);
+  const sort = readSort(sp, USER_SORT_COLUMNS, { column: "created", direction: "desc" });
+
+  let users = applyTextSearch(all, query, [u => u.name, u => u.email, u => u.username]);
+  users = applyEnumEquals(users, role, u => u.role);
+  if (status) users = users.filter(u => statusOf(u) === status);
+  users = applySort(
+    users,
+    u => {
+      switch (sort.column) {
+        case "name":
+          return u.name.toLowerCase();
+        case "role":
+          return u.role;
+        case "status":
+          return statusOf(u);
+        case "created":
+          return u.createdAt;
+      }
+    },
+    sort.direction,
+  );
 
   return (
     <div
@@ -33,10 +88,7 @@ export default async function AdminUsersPage() {
             link to choose their own password.
           </p>
         </div>
-        <Link
-          href="/admin/users/new"
-          className="inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-60 select-none whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm h-10 px-4 text-sm"
-        >
+        <Link href="/admin/users/new" className={buttonClasses({ size: "md" })}>
           <Plus className="h-4 w-4" />
           New user
         </Link>
@@ -44,29 +96,67 @@ export default async function AdminUsersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Current users ({users.length})</CardTitle>
+          <CardTitle>
+            Current users (
+            {users.length === all.length ? all.length : `${users.length} of ${all.length}`})
+          </CardTitle>
           <CardDescription>
             {dashboardsRegistry.length} cross-customer dashboards · {customersRegistry.length}{" "}
             customers in the registry. Permissions update immediately on save — no redeploy
             needed.
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-0">
+        <CardContent className="space-y-4 px-0">
+          <div className="px-4 sm:px-6">
+            <FilterBar
+              search={{ param: "q", placeholder: "Search name, email, or username…" }}
+              selects={[
+                {
+                  kind: "select",
+                  param: "role",
+                  label: "Role",
+                  options: [
+                    { value: "", label: "All roles" },
+                    ...USER_ROLES.map(r => ({ value: r, label: ROLE_LABEL[r] })),
+                  ],
+                },
+                {
+                  kind: "select",
+                  param: "status",
+                  label: "Status",
+                  options: [
+                    { value: "", label: "Any status" },
+                    ...USER_STATUSES.map(s => ({ value: s, label: STATUS_LABEL[s] })),
+                  ],
+                },
+              ]}
+            />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-y border-border bg-accent/30 text-xs uppercase tracking-wide text-muted">
                 <tr>
-                  <th className="text-left font-medium px-6 py-2 w-12"></th>
-                  <th className="text-left font-medium px-3 py-2">User</th>
-                  <th className="text-left font-medium px-3 py-2">Role</th>
-                  <th className="text-left font-medium px-3 py-2">Status</th>
-                  <th className="text-left font-medium px-3 py-2">Customers</th>
-                  <th className="text-left font-medium px-6 py-2">Dashboards</th>
-                  <th className="text-right font-medium px-3 py-2 w-12"></th>
+                  <th scope="col" className="text-left font-medium px-6 py-2 w-12">
+                    <span className="sr-only">Avatar</span>
+                  </th>
+                  <SortableHeader column="name" label="User" className="text-left px-3 py-2" />
+                  <SortableHeader column="role" label="Role" className="text-left px-3 py-2" />
+                  <SortableHeader column="status" label="Status" className="text-left px-3 py-2" />
+                  <th scope="col" className="text-left font-medium px-3 py-2">Customers</th>
+                  <th scope="col" className="text-left font-medium px-6 py-2">Dashboards</th>
+                  <th scope="col" className="text-right font-medium px-3 py-2 w-12">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {users.map(u => {
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-10 text-center text-sm text-muted">
+                      No users match the current filters.
+                    </td>
+                  </tr>
+                ) : users.map(u => {
                   return (
                     <tr key={u.username} className="align-top">
                       <td className="px-6 py-3">

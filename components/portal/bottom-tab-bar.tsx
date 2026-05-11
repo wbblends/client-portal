@@ -40,11 +40,20 @@ export function BottomTabBar({ ownCustomerId }: { ownCustomerId: string | null }
   if (!customerId || !pathname.startsWith("/c/")) return null;
 
   return (
-    <nav
-      aria-label="Customer sections"
-      className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-    >
+    <>
+      {/* In-flow spacer so scrollable content isn't hidden under the fixed
+          bar. Only rendered when the bar itself renders, which keeps non-
+          customer pages (dashboard, admin, account) from carrying ~64px of
+          dead space at the bottom on mobile. */}
+      <div
+        aria-hidden
+        className="lg:hidden h-[calc(env(safe-area-inset-bottom)+56px)]"
+      />
+      <nav
+        aria-label="Customer sections"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
       <ul className="flex items-stretch justify-around">
         {TABS.map(t => {
           const href = `/c/${customerId}/${t.rel}`;
@@ -55,7 +64,7 @@ export function BottomTabBar({ ownCustomerId }: { ownCustomerId: string | null }
               <Link
                 href={href}
                 className={cn(
-                  "group flex flex-col items-center justify-center gap-0.5 min-h-14 px-1 py-1.5 text-[10.5px] font-medium transition-colors",
+                  "group flex flex-col items-center justify-center gap-0.5 min-h-14 px-1 py-1.5 text-[11px] font-semibold transition-colors",
                   active
                     ? "text-primary"
                     : "text-muted-soft hover:text-foreground active:text-foreground",
@@ -74,7 +83,8 @@ export function BottomTabBar({ ownCustomerId }: { ownCustomerId: string | null }
           );
         })}
       </ul>
-    </nav>
+      </nav>
+    </>
   );
 }
 
