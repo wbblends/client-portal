@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
@@ -28,7 +28,7 @@ import { NewOrderForm } from "./new-order-form";
 
 /**
  * Editable, spreadsheet-style grid mirroring the "2026 POs" tab. Rows live in
- * the `orders_portal_rows` table — any admin's edit becomes visible to every
+ * the `orders_portal_rows` table â€” any admin's edit becomes visible to every
  * other user on their next poll (every 10s). Read-only viewers see the same
  * data but can't change it. YTD, Remaining-to-Target, MTD, Q1..Q4, current-
  * month thermometer, and column auto-sums are all derived live from the rows
@@ -53,7 +53,7 @@ export function OrdersPortalGrid({
    */
   const dirtyRef = useRef<Set<string>>(new Set());
 
-  // ── Polling: every 10s pick up edits from other users. We pause polling
+  // â”€â”€ Polling: every 10s pick up edits from other users. We pause polling
   // while there's a pending write so we don't race our own optimistic update.
   const pendingWritesRef = useRef(0);
   useEffect(() => {
@@ -69,7 +69,7 @@ export function OrdersPortalGrid({
           setRows(data.rows);
         }
       } catch {
-        // ignore — next tick will retry
+        // ignore â€” next tick will retry
       }
     };
     const id = setInterval(refresh, 10_000);
@@ -79,7 +79,7 @@ export function OrdersPortalGrid({
     };
   }, []);
 
-  // ── Mutations through the API. All write helpers patch local state
+  // â”€â”€ Mutations through the API. All write helpers patch local state
   // optimistically, then send the change to the server. canEdit guards the
   // UI affordances; the server also enforces admin-only writes.
   const patchRow = useCallback(
@@ -93,12 +93,12 @@ export function OrdersPortalGrid({
         });
         if (!res.ok) {
           const data = (await res.json().catch(() => ({}))) as { error?: string };
-          setSyncError(data.error ?? "Save failed — your edit hasn't been shared yet.");
+          setSyncError(data.error ?? "Save failed â€” your edit hasn't been shared yet.");
         } else {
           setSyncError(null);
         }
       } catch {
-        setSyncError("Network error — your edit hasn't been shared yet.");
+        setSyncError("Network error â€” your edit hasn't been shared yet.");
       } finally {
         pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
         // Clear dirty markers for this row so polling can refresh it again.
@@ -165,7 +165,7 @@ export function OrdersPortalGrid({
       setRows(prev => [...prev, row]);
       setSyncError(null);
     } catch {
-      setSyncError("Network error — couldn't add a row.");
+      setSyncError("Network error â€” couldn't add a row.");
     } finally {
       pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
     }
@@ -186,7 +186,7 @@ export function OrdersPortalGrid({
         setSyncError(null);
       }
     } catch {
-      setSyncError("Network error — couldn't delete that row.");
+      setSyncError("Network error â€” couldn't delete that row.");
     } finally {
       pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
     }
@@ -196,7 +196,7 @@ export function OrdersPortalGrid({
    * When the new-order form submits, hand the order to the server which
    * folds it into the appropriate row (creating a customer row if needed).
    * The response carries the canonical row so we can update local state in
-   * one shot — no double-write.
+   * one shot â€” no double-write.
    */
   const onOrderSubmit = async (draft: OrderDraft) => {
     pendingWritesRef.current += 1;
@@ -215,7 +215,7 @@ export function OrdersPortalGrid({
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        setSyncError(data.error ?? "Order didn't sync — try again.");
+        setSyncError(data.error ?? "Order didn't sync â€” try again.");
         return;
       }
       const { row, created } = (await res.json()) as {
@@ -228,7 +228,7 @@ export function OrdersPortalGrid({
       });
       setSyncError(null);
     } catch {
-      setSyncError("Network error — order didn't sync.");
+      setSyncError("Network error â€” order didn't sync.");
     } finally {
       pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
     }
@@ -255,13 +255,13 @@ export function OrdersPortalGrid({
       setRows(fresh);
       setSyncError(null);
     } catch {
-      setSyncError("Network error — couldn't reset the grid.");
+      setSyncError("Network error â€” couldn't reset the grid.");
     } finally {
       pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
     }
   };
 
-  // ── Aggregates
+  // â”€â”€ Aggregates
   const monthTotals = useMemo(() => {
     const out = Array(12).fill(0);
     for (const r of rows) {
@@ -282,7 +282,7 @@ export function OrdersPortalGrid({
 
   const targetGrand = useMemo(() => MONTHLY_TARGETS.reduce((s, v) => s + v, 0), []);
 
-  // Today's month — drives the "Orders this month" / "Orders target" pair and
+  // Today's month â€” drives the "Orders this month" / "Orders target" pair and
   // the thermometer at the top of the page. Initialized after mount so the
   // user's clock (not the server's) decides which month is "current"; avoids
   // a hydration mismatch at the month boundary across timezones.
@@ -306,7 +306,7 @@ export function OrdersPortalGrid({
     const order = [...REP_SUGGESTIONS];
     const seen = new Set<string>(order);
     for (const r of rows) {
-      const k = r.rep || "—";
+      const k = r.rep || "â€”";
       if (!seen.has(k)) {
         order.push(k);
         seen.add(k);
@@ -314,7 +314,7 @@ export function OrdersPortalGrid({
     }
     const buckets = new Map<string, OrdersPortalRow[]>();
     for (const r of rows) {
-      const k = r.rep || "—";
+      const k = r.rep || "â€”";
       if (!buckets.has(k)) buckets.set(k, []);
       buckets.get(k)!.push(r);
     }
@@ -363,41 +363,50 @@ export function OrdersPortalGrid({
 
   return (
     <div className="space-y-6">
-      {/* ── Current-month focus row ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <KpiCard
-          label={`Orders this month · ${currentMonthLabel}`}
-          value={fmtCurrency(monthActual)}
-          sub={
-            <span className="text-xs text-muted">
-              {monthActual > 0
-                ? `${pct(monthActual, monthTarget)} of monthly target`
-                : "No POs booked yet"}
-            </span>
-          }
-          tone="primary"
-        />
-        <KpiCard
-          label="Orders target"
-          value={fmtCurrency(monthTarget)}
-          sub={
-            <span className="text-xs text-muted">
-              Monthly plan for {currentMonthLabel}
-            </span>
-          }
-          tone="muted"
-        />
-        <div className="md:col-span-2 rounded-xl border border-border bg-card shadow-[var(--shadow-card)] p-5">
-          <Thermometer
-            label={`${currentMonthLabel} progress`}
-            actual={monthActual}
-            target={monthTarget}
-            progress={monthProgress}
-          />
-        </div>
-      </div>
+      {/* â”€â”€ Current-month focus card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Full-width card styled like the Quarter cards below: short label +
+          delta chip on top, big actual number, "of $target (pct%)" sub line,
+          and a progress bar at the bottom. */}
+      {(() => {
+        const delta = monthActual - monthTarget;
+        const onTrack = delta >= 0;
+        return (
+          <div className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-card)]">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted">
+                {currentMonthLabel}
+              </div>
+              <div
+                className={cn(
+                  "text-[12px] font-medium px-2.5 py-0.5 rounded-full",
+                  onTrack
+                    ? "bg-success-soft text-success"
+                    : "bg-warning-soft text-warning",
+                )}
+              >
+                {onTrack ? "+" : ""}
+                {fmtCurrencyShort(delta)}
+              </div>
+            </div>
+            <div className="mt-2 text-[32px] font-semibold tabular-nums leading-tight text-foreground">
+              {fmtCurrency(monthActual)}
+            </div>
+            <div className="mt-0.5 text-sm text-muted">
+              of {fmtCurrency(monthTarget)} ({pct(monthActual, monthTarget)})
+            </div>
+            <div className="mt-4 h-2 w-full rounded-full bg-accent overflow-hidden">
+              <div
+                className={cn("h-full rounded-full", onTrack ? "bg-success" : "bg-primary")}
+                style={{
+                  width: `${Math.min(100, monthProgress * 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
-      {/* ── Quarter cards ──────────────────────────────────────────────── */}
+      {/* â”€â”€ Quarter cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {quarters.map(q => {
           const delta = q.actual - q.target;
@@ -440,13 +449,13 @@ export function OrdersPortalGrid({
         })}
       </div>
 
-      {/* ── Monthly Booked vs Target (below the Quarters) ─────────────── */}
+      {/* â”€â”€ Monthly Booked vs Target (below the Quarters) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
         <header className="flex items-center justify-between px-5 pt-4 pb-2">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Monthly Booked vs Target</h2>
             <p className="mt-0.5 text-xs text-muted">
-              Rolled up across all customers · green = at or above plan ·
+              Rolled up across all customers Â· green = at or above plan Â·
               YTD <span className="text-foreground-soft font-medium">{fmtCurrency(ytdGrand)}</span>
               {" "}of <span className="text-foreground-soft font-medium">{fmtCurrency(targetGrand)}</span>
             </p>
@@ -492,7 +501,7 @@ export function OrdersPortalGrid({
                     hasData ? "text-foreground" : "text-muted-soft",
                   )}
                 >
-                  {hasData ? fmtCurrencyShort(actual) : "—"}
+                  {hasData ? fmtCurrencyShort(actual) : "â€”"}
                 </div>
                 <div className="mt-0.5 text-[10px] tabular-nums text-muted">
                   {hasData ? (
@@ -510,12 +519,12 @@ export function OrdersPortalGrid({
         </div>
       </section>
 
-      {/* ── Toolbar ───────────────────────────────────────────────────── */}
+      {/* â”€â”€ Toolbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
         <div className="flex flex-wrap items-center gap-3">
           <div className="text-xs text-muted">
             <span className="text-foreground-soft font-medium">{rows.length}</span>{" "}
-            customers ·{" "}
+            customers Â·{" "}
             {canEdit ? (
               <span>edits sync to every user</span>
             ) : (
@@ -575,7 +584,7 @@ export function OrdersPortalGrid({
         </div>
       </div>
 
-      {/* ── Spreadsheet ──────────────────────────────────────────────── */}
+      {/* â”€â”€ Spreadsheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
         <table className="w-full border-separate border-spacing-0 text-[13px] tabular-nums">
           <thead>
@@ -600,7 +609,7 @@ export function OrdersPortalGrid({
                 Remaining
               </Th>
             </tr>
-            {/* Autosum row — column totals across all visible customers,
+            {/* Autosum row â€” column totals across all visible customers,
                 pinned right below the header so the per-month grand totals
                 stay visible while scrolling the row body. */}
             <tr className="bg-card/95 text-[11px] font-semibold border-b border-border">
@@ -609,7 +618,7 @@ export function OrdersPortalGrid({
                 sticky="left-10"
                 className="min-w-[220px] border-l border-border text-[10px] uppercase tracking-wide text-muted"
               >
-                Σ totals
+                Î£ totals
               </Th>
               <Th className="min-w-[120px]" />
               <Th className="min-w-[120px]" />
@@ -641,7 +650,7 @@ export function OrdersPortalGrid({
                           : "text-muted-soft font-normal",
                       )}
                     >
-                      {hasData ? fmtCurrencyShort(actual) : "—"}
+                      {hasData ? fmtCurrencyShort(actual) : "â€”"}
                     </div>
                     <div className="mt-0.5 text-[10px] font-normal text-muted">
                       tgt {fmtCurrencyShort(target)}
@@ -785,7 +794,7 @@ function Row({
       ))}
 
       <Td striped={striped} className="text-right bg-primary-soft/40 font-semibold text-foreground">
-        {ytd === 0 ? <span className="text-muted-soft font-normal">—</span> : fmtCurrency(ytd)}
+        {ytd === 0 ? <span className="text-muted-soft font-normal">â€”</span> : fmtCurrency(ytd)}
       </Td>
       <Td
         striped={striped}
@@ -795,7 +804,7 @@ function Row({
         )}
       >
         {row.projection === 0 && ytd === 0 ? (
-          <span className="text-muted-soft font-normal">—</span>
+          <span className="text-muted-soft font-normal">â€”</span>
         ) : (
           fmtCurrency(remaining)
         )}
@@ -804,224 +813,6 @@ function Row({
   );
 }
 
-/* --------------------------------- KPI --------------------------------- */
-
-function KpiCard({
-  label,
-  value,
-  sub,
-  tone,
-}: {
-  label: string;
-  value: string;
-  sub: React.ReactNode;
-  tone: "primary" | "muted" | "success" | "warning" | "neutral";
-}) {
-  const valueClass =
-    tone === "primary"
-      ? "text-primary"
-      : tone === "success"
-        ? "text-success"
-        : tone === "warning"
-          ? "text-warning"
-          : tone === "muted"
-            ? "text-foreground-soft"
-            : "text-foreground";
-  return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-card)]">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted">
-        {label}
-      </div>
-      <div className={cn("mt-2 text-[24px] font-semibold tabular-nums leading-tight", valueClass)}>
-        {value}
-      </div>
-      <div className="mt-1 text-xs text-muted">{sub}</div>
-    </div>
-  );
-}
-
-/* ----------------------------- Thermometer ----------------------------- */
-
-/**
- * Horizontal "thermometer" gauge — a bulb on the left + a tube extending to
- * the right that fills proportionally to progress. Uses an SVG so the bulb
- * + fill stay visually anchored. The 100% target line is marked so you can
- * see at a glance whether the month has cleared plan. Once progress exceeds
- * 100% the fill keeps growing (visually clamped at 125%) and the color
- * shifts to success.
- */
-function Thermometer({
-  label,
-  actual,
-  target,
-  progress,
-}: {
-  label: string;
-  actual: number;
-  target: number;
-  progress: number;
-}) {
-  // Clamp the rendered fill at 125% so an over-shoot doesn't blow out the
-  // tube; the numeric percentage still shows the true value.
-  const clamped = Math.max(0, Math.min(1.25, progress));
-  const onTrack = progress >= 1;
-  const fillColor = onTrack ? "var(--color-success)" : "var(--color-primary)";
-  const fluidLight = onTrack
-    ? "color-mix(in oklab, var(--color-success) 60%, white)"
-    : "color-mix(in oklab, var(--color-primary) 60%, white)";
-
-  // Geometry — designed at 400×84 viewBox. The tube starts after the bulb,
-  // at x = 76, and ends at x = 386 (10px right margin).
-  const BULB_CX = 38;
-  const BULB_CY = 42;
-  const BULB_R = 26;
-  const TUBE_X = 64;
-  const TUBE_W = 320;
-  const TUBE_Y = 28;
-  const TUBE_H = 28;
-  const TUBE_R = 14;
-  // Fill grows from inside the bulb out through the tube. At 0%, only the
-  // bulb is fluid; at 100% the entire tube is fluid.
-  const fillWidth = TUBE_W * clamped;
-  const targetX = TUBE_X + TUBE_W; // tube end = the 100% mark when target>0
-
-  return (
-    <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted">
-            {label}
-          </div>
-          <div className="mt-1 text-[22px] font-semibold tabular-nums leading-tight">
-            <span className={onTrack ? "text-success" : "text-primary"}>
-              {(progress * 100).toFixed(1)}%
-            </span>
-            <span className="text-muted-soft font-normal text-[13px]">
-              {" "}of target
-            </span>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-xs text-muted">
-            {fmtCurrency(actual)}
-          </div>
-          <div className="text-[11px] text-muted-soft">
-            of {fmtCurrency(target)}
-          </div>
-        </div>
-      </div>
-
-      <svg
-        viewBox="0 0 400 84"
-        className="mt-3 w-full h-16"
-        role="img"
-        aria-label={`${label} ${(progress * 100).toFixed(1)}% of target`}
-      >
-        <defs>
-          <linearGradient id="therm-fill" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor={fluidLight} />
-            <stop offset="100%" stopColor={fillColor} />
-          </linearGradient>
-          <clipPath id="therm-tube-clip">
-            <rect
-              x={TUBE_X}
-              y={TUBE_Y}
-              width={TUBE_W}
-              height={TUBE_H}
-              rx={TUBE_R}
-              ry={TUBE_R}
-            />
-          </clipPath>
-        </defs>
-
-        {/* Bulb outer ring (the "glass") */}
-        <circle
-          cx={BULB_CX}
-          cy={BULB_CY}
-          r={BULB_R}
-          fill="var(--color-card)"
-          stroke="var(--color-border)"
-          strokeWidth={2}
-        />
-        {/* Bulb fluid */}
-        <circle
-          cx={BULB_CX}
-          cy={BULB_CY}
-          r={BULB_R - 5}
-          fill={fillColor}
-        />
-
-        {/* Tube outline */}
-        <rect
-          x={TUBE_X}
-          y={TUBE_Y}
-          width={TUBE_W}
-          height={TUBE_H}
-          rx={TUBE_R}
-          ry={TUBE_R}
-          fill="var(--color-accent)"
-          stroke="var(--color-border)"
-          strokeWidth={2}
-        />
-
-        {/* Fluid in tube */}
-        <g clipPath="url(#therm-tube-clip)">
-          <rect
-            x={TUBE_X}
-            y={TUBE_Y}
-            width={Math.max(0, fillWidth)}
-            height={TUBE_H}
-            fill="url(#therm-fill)"
-          />
-        </g>
-
-        {/* 100% target marker (only meaningful when target > 0) */}
-        {target > 0 ? (
-          <g>
-            <line
-              x1={targetX}
-              x2={targetX}
-              y1={TUBE_Y - 4}
-              y2={TUBE_Y + TUBE_H + 4}
-              stroke="var(--color-foreground-soft)"
-              strokeWidth={1.5}
-              strokeDasharray="3 3"
-            />
-            <text
-              x={targetX}
-              y={TUBE_Y - 7}
-              textAnchor="end"
-              fontSize="9"
-              fontWeight="600"
-              fill="var(--color-foreground-soft)"
-            >
-              100%
-            </text>
-          </g>
-        ) : null}
-
-        {/* 50% tick */}
-        <line
-          x1={TUBE_X + TUBE_W * 0.5}
-          x2={TUBE_X + TUBE_W * 0.5}
-          y1={TUBE_Y + TUBE_H + 1}
-          y2={TUBE_Y + TUBE_H + 6}
-          stroke="var(--color-muted-soft)"
-          strokeWidth={1}
-        />
-        <text
-          x={TUBE_X + TUBE_W * 0.5}
-          y={TUBE_Y + TUBE_H + 14}
-          textAnchor="middle"
-          fontSize="9"
-          fill="var(--color-muted)"
-        >
-          50%
-        </text>
-      </svg>
-    </div>
-  );
-}
 
 /* -------------------------------- Cells -------------------------------- */
 
@@ -1076,7 +867,7 @@ function NumberCell({
           display ? "text-foreground" : "text-muted-soft",
         )}
       >
-        {display || "—"}
+        {display || "â€”"}
       </span>
     );
   }
@@ -1119,13 +910,13 @@ function NumberCell({
         display ? "text-foreground" : "text-muted-soft",
       )}
     >
-      {display || "—"}
+      {display || "â€”"}
     </button>
   );
 }
 
 /**
- * Tier pill — high-contrast, color-coded by tier so AA / A / B / C are
+ * Tier pill â€” high-contrast, color-coded by tier so AA / A / B / C are
  * unmistakable at a glance. Visually a pill; functionally a real <select>
  * for keyboard support, layered transparently over the pill.
  *
@@ -1161,7 +952,7 @@ function TierSelect({
         disabled && "opacity-90 cursor-default",
       )}
     >
-      <span className="flex-1 text-center select-none">{value || "—"}</span>
+      <span className="flex-1 text-center select-none">{value || "â€”"}</span>
       <ChevronDown className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
       <select
         value={value}
@@ -1170,7 +961,7 @@ function TierSelect({
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default"
         aria-label="Tier"
       >
-        <option value="">—</option>
+        <option value="">â€”</option>
         {TIERS.map(t => (
           <option key={t} value={t}>
             {t}
@@ -1182,7 +973,7 @@ function TierSelect({
 }
 
 /**
- * Rep cell — combobox input that wears the rep's color as a soft chip
+ * Rep cell â€” combobox input that wears the rep's color as a soft chip
  * around the editable text. Supports adding new rep names while still
  * surfacing the canonical 5 as datalist suggestions.
  */
