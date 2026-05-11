@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
   mfa_enabled               INTEGER NOT NULL DEFAULT 0,
   mfa_secret                TEXT,
   mfa_recovery_codes_json   TEXT,
+  home_url                  TEXT,
   created_at                TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at                TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

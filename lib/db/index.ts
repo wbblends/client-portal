@@ -88,6 +88,13 @@ async function applyMigrations(client: Client) {
     if (!(err instanceof Error && /duplicate column/i.test(err.message))) throw err;
   }
 
+  // 2026-05 — per-user home URL (set-as-homepage star).
+  try {
+    await client.execute(`ALTER TABLE users ADD COLUMN home_url TEXT`);
+  } catch (err) {
+    if (!(err instanceof Error && /duplicate column/i.test(err.message))) throw err;
+  }
+
   // 2026-05 — add 'super_admin' to users.role CHECK constraint. SQLite can't
   // ALTER a CHECK in place, so rebuild the table when the existing CHECK
   // doesn't already mention 'super_admin'. The check on stored DDL is the

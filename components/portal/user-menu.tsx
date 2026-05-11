@@ -1,17 +1,20 @@
 "use client";
 
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogOut, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
+import { HomeUrlStar } from "./home-url-star";
 
 export function UserMenu({
   name,
   email,
   company,
   avatarUrl,
+  homeUrl,
   className,
   compact = false,
 }: {
@@ -19,6 +22,9 @@ export function UserMenu({
   email: string;
   company: string;
   avatarUrl?: string;
+  /** Saved "set as homepage" URL — drives filled/empty state of the star.
+   *  null when the user hasn't pinned a page yet. */
+  homeUrl: string | null;
   className?: string;
   /** Compact mode — avatar + sign-out only, used in the mobile top bar where
    *  horizontal space is precious and the full name+company already shows in
@@ -42,6 +48,9 @@ export function UserMenu({
   if (compact) {
     return (
       <div className={cn("flex items-center gap-0.5", className)}>
+        <Suspense fallback={null}>
+          <HomeUrlStar savedHomeUrl={homeUrl} size="sm" />
+        </Suspense>
         <ThemeToggle />
         <Avatar name={name} initials={initials} src={avatarUrl} size={28} />
         <button
@@ -65,6 +74,9 @@ export function UserMenu({
         <div className="truncate text-xs text-muted">{company}</div>
       </div>
       <div className="flex items-center gap-0.5">
+        <Suspense fallback={null}>
+          <HomeUrlStar savedHomeUrl={homeUrl} />
+        </Suspense>
         <ThemeToggle />
         <Link
           href="/account/security"

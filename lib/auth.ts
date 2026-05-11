@@ -66,6 +66,9 @@ export type SessionUser = {
   /** Optional path under `public/`. Falls back to initials avatar when absent. */
   avatarUrl?: string | null;
   mfaEnabled: boolean;
+  /** Per-user "set as homepage" URL (relative path with query). When set,
+   *  visiting `/` redirects here instead of the role-based default. */
+  homeUrl: string | null;
 };
 
 /** Result of a username/password check. The login API maps this into either
@@ -237,6 +240,7 @@ function toSessionUser(u: {
   dashboards: string[];
   avatarUrl?: string | null;
   mfaEnabled: boolean;
+  homeUrl: string | null;
 }): SessionUser {
   return {
     username: u.username,
@@ -249,6 +253,7 @@ function toSessionUser(u: {
     dashboards: u.dashboards,
     avatarUrl: u.avatarUrl,
     mfaEnabled: u.mfaEnabled,
+    homeUrl: u.homeUrl,
   };
 }
 
