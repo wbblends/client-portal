@@ -89,6 +89,46 @@ async function applyMigrations(client: Client) {
   } catch (err) {
     if (!(err instanceof Error && /duplicate column/i.test(err.message))) throw err;
   }
+
+  // 2026-05 — add 'super_admin' to users.role CHECK constraint. SQLite can't
+  // ALTER a CHECK in place, so rebuild the table when the existing CHECK
+  // doesn't already mention 'super_admin'. The check on stored DDL is the
+  // idempotency signal — fresh DBs already include it (from schema.sql) and
+  // skip the rebuild.
+  const usersDdl = await client.execute(
+    `SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'`,
+  );
+  const ddl = usersDdl.rows[0]?.sql as string | undefined;
+  if (ddl && !ddl.includes("super_admin")) {
+    await client.executeMultiple(`
+      PRAGMA foreign_keys = OFF;
+      BEGIN;
+      CREATE TABLE users_new (
+        username                  TEXT PRIMARY KEY,
+        email                     TEXT NOT NULL UNIQUE,
+        name                      TEXT NOT NULL,
+        company                   TEXT NOT NULL,
+        role                      TEXT NOT NULL CHECK (role IN ('super_admin', 'admin', 'internal', 'customer')),
+        password_hash             TEXT,
+        avatar_url                TEXT,
+        active                    INTEGER NOT NULL DEFAULT 1,
+        mfa_enabled               INTEGER NOT NULL DEFAULT 0,
+        mfa_secret                TEXT,
+        mfa_recovery_codes_json   TEXT,
+        created_at                TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at                TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO users_new
+        SELECT username, email, name, company, role, password_hash, avatar_url,
+               active, mfa_enabled, mfa_secret, mfa_recovery_codes_json,
+               created_at, updated_at
+          FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+      COMMIT;
+      PRAGMA foreign_keys = ON;
+    `);
+  }
 }
 
 /** Import seed users from `lib/users/users.json` the first time we see an
@@ -107,7 +147,7 @@ async function maybeImportSeedUsers(client: Client) {
     email: string;
     company: string;
     customerId?: string;
-    role: "admin" | "internal" | "customer";
+    role: "super_admin" | "admin" | "internal" | "customer";
     dashboards: string[];
     avatarUrl?: string;
   };

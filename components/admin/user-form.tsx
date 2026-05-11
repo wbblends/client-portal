@@ -159,7 +159,7 @@ export function UserForm({
 
       <Field
         label="Role"
-        hint="Customer: locked to assigned customers. Internal: WB Blends staff who switch customers. Admin: switches customers and manages users."
+        hint="Customer: locked to assigned customers. Internal: WB Blends staff who switch customers. Admin: switches customers and manages users. Super Admin: everything Admin does, plus auto-access to every dashboard in the registry (ignores the picks below)."
       >
         <div className="flex gap-2 flex-wrap">
           <RoleChip value="customer" current={role} onClick={() => setRole("customer")}>
@@ -171,6 +171,13 @@ export function UserForm({
           <RoleChip value="admin" current={role} onClick={() => setRole("admin")}>
             Admin
           </RoleChip>
+          <RoleChip
+            value="super_admin"
+            current={role}
+            onClick={() => setRole("super_admin")}
+          >
+            Super Admin
+          </RoleChip>
         </div>
       </Field>
 
@@ -179,7 +186,7 @@ export function UserForm({
         <p className="text-xs text-muted mb-3">
           {role === "customer"
             ? "Check every customer this user can see, then pick their permission for the Documents area. Viewers can browse files; editors can also add folders and documents. (Invoices, Quality, and Contact are read-only for everyone.)"
-            : "Internal/admin users see all customers automatically — these picks are ignored. They are always treated as editors in every customer's Documents area."}
+            : "Internal, admin, and super admin users see all customers automatically — these picks are ignored. They are always treated as editors in every customer's Documents area."}
         </p>
         <div className="rounded-lg border border-border bg-card divide-y divide-border">
           {customers.map(c => {
@@ -214,8 +221,9 @@ export function UserForm({
       <div>
         <div className="text-sm font-medium text-foreground mb-1">Dashboards</div>
         <p className="text-xs text-muted mb-3">
-          Pick every cross-customer dashboard this user can see. New dashboards added to the
-          registry will appear here automatically.
+          {role === "super_admin"
+            ? "Super admins see every dashboard automatically — these picks are ignored. Future dashboards added to the registry will appear for them without any change here."
+            : "Pick every cross-customer dashboard this user can see. New dashboards added to the registry will appear here automatically."}
         </p>
         <div className="space-y-4 rounded-lg border border-border p-4 bg-card">
           {groupedDashboards.map(([category, items]) => (

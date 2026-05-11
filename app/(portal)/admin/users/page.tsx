@@ -82,14 +82,16 @@ export default async function AdminUsersPage() {
                       <td className="px-3 py-3">
                         <Badge
                           tone={
-                            u.role === "admin"
-                              ? "info"
-                              : u.role === "internal"
-                                ? "warning"
-                                : "neutral"
+                            u.role === "super_admin"
+                              ? "success"
+                              : u.role === "admin"
+                                ? "info"
+                                : u.role === "internal"
+                                  ? "warning"
+                                  : "neutral"
                           }
                         >
-                          {u.role}
+                          {u.role === "super_admin" ? "super admin" : u.role}
                         </Badge>
                       </td>
                       <td className="px-3 py-3">

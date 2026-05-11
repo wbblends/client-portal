@@ -4,6 +4,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import {
   authenticateUser,
   getUser,
+  isAdminRole,
   type CustomerPermission,
   type UserRole,
 } from "@/lib/users/store";
@@ -123,7 +124,16 @@ export async function requireSession(): Promise<SessionUser> {
 
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await requireSession();
-  if (user.role !== "admin") redirect("/");
+  if (!isAdminRole(user.role)) redirect("/");
+  return user;
+}
+
+/** Gate for actions only super admins should perform. Today's UI doesn't use
+ *  this — both admin tiers manage users — but having the helper available
+ *  makes it easy to add super-admin-only buttons later. */
+export async function requireSuperAdmin(): Promise<SessionUser> {
+  const user = await requireSession();
+  if (user.role !== "super_admin") redirect("/");
   return user;
 }
 

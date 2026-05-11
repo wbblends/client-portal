@@ -13,7 +13,8 @@ import {
 import { listDashboards } from "@/lib/dashboards/registry";
 import { listCustomers } from "@/lib/customers/registry";
 
-const ALLOWED_ROLES: UserRole[] = ["admin", "internal", "customer"];
+const ALLOWED_ROLES: UserRole[] = ["super_admin", "admin", "internal", "customer"];
+const ADMIN_LIKE_ROLES: UserRole[] = ["super_admin", "admin"];
 const ALLOWED_PERMISSIONS: CustomerPermission[] = ["viewer", "editor"];
 
 export async function PATCH(
@@ -57,9 +58,12 @@ export async function PATCH(
     if (!ALLOWED_ROLES.includes(body.role as UserRole)) {
       return NextResponse.json({ error: "Invalid role." }, { status: 400 });
     }
-    // An admin can't demote themselves out of admin — that's a foot-gun. To
-    // remove the last admin, do it through a DB tool, not the UI.
-    if (target.username === me.username && body.role !== "admin") {
+    // An admin can't demote themselves out of admin-like roles — that's a
+    // foot-gun. To remove the last admin, do it through a DB tool, not the UI.
+    if (
+      target.username === me.username &&
+      !ADMIN_LIKE_ROLES.includes(body.role as UserRole)
+    ) {
       return NextResponse.json(
         { error: "You can't remove your own admin role." },
         { status: 400 },

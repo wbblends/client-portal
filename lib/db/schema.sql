@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   email                     TEXT NOT NULL UNIQUE,
   name                      TEXT NOT NULL,
   company                   TEXT NOT NULL,
-  role                      TEXT NOT NULL CHECK (role IN ('admin', 'internal', 'customer')),
+  role                      TEXT NOT NULL CHECK (role IN ('super_admin', 'admin', 'internal', 'customer')),
   -- NULL until the user completes their first-login set-password flow.
   password_hash             TEXT,
   avatar_url                TEXT,

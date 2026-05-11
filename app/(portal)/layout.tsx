@@ -1,6 +1,7 @@
 import { requireSession } from "@/lib/auth";
 import { getDashboardsForUser } from "@/lib/dashboards/registry";
 import { listCustomers } from "@/lib/customers/registry";
+import { isAdminRole } from "@/lib/users/store";
 import { Logo } from "@/components/ui/logo";
 import { SidebarNav } from "@/components/portal/sidebar-nav";
 import { UserMenu } from "@/components/portal/user-menu";
@@ -11,10 +12,10 @@ import { CommentLayer } from "@/components/portal/comment-layer";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const user = await requireSession();
-  const dashboards = getDashboardsForUser(user.dashboards);
+  const dashboards = getDashboardsForUser(user.dashboards, user.role);
   const customers = [...listCustomers()];
-  const isAdmin = user.role === "admin";
-  const canSwitchCustomers = user.role === "admin" || user.role === "internal";
+  const isAdmin = isAdminRole(user.role);
+  const canSwitchCustomers = isAdminRole(user.role) || user.role === "internal";
   const ownCustomerId = user.customerIds[0] ?? null;
 
   // Strip down dashboards/customers to plain JSON for the client-side

@@ -1,5 +1,5 @@
 {
-  "_comment": "Seeded users for the WB Blends portal. Edit this file and redeploy to add users. Use the form at /admin/users to generate a new entry. Roles: admin (manages users + switches customers), internal (board/exec/CS — switches customers), customer (locked to their own customerId). Passwords are plain text (placeholder auth — swap for hashed passwords + a real DB before production).",
+  "_comment": "Seeded users for the WB Blends portal. Edit this file and redeploy to add users. Use the form at /admin/users to generate a new entry. Roles: super_admin (admin powers + auto-access to every dashboard in the registry), admin (manages users + switches customers, sees only granted dashboards), internal (board/exec/CS — switches customers), customer (locked to their own customerId). NOTE: this file is only imported on the very first DB boot when the users table is empty — for existing DBs (incl. production), update roles via /admin/users/<username> or direct SQL. Passwords are plain text here (placeholder seed only — they're hashed with bcrypt on import).",
   "users": [
     {
       "username": "dsimmons",
@@ -7,16 +7,8 @@
       "name": "Devin Simmons",
       "email": "dsimmons@wbblends.com",
       "company": "Western Botanicals",
-      "role": "admin",
-      "dashboards": [
-        "exec-sales",
-        "exec-operations",
-        "orders-portal",
-        "pipeline-kanban",
-        "board-summary",
-        "account-health",
-        "marketing-overview"
-      ],
+      "role": "super_admin",
+      "dashboards": [],
       "avatarUrl": "/avatars/dsimmons.jpg"
     },
     {

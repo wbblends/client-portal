@@ -15,7 +15,7 @@ import { inviteEmail } from "@/lib/email/templates";
 import { listDashboards } from "@/lib/dashboards/registry";
 import { listCustomers } from "@/lib/customers/registry";
 
-const ALLOWED_ROLES: UserRole[] = ["admin", "internal", "customer"];
+const ALLOWED_ROLES: UserRole[] = ["super_admin", "admin", "internal", "customer"];
 const ALLOWED_PERMISSIONS: CustomerPermission[] = ["viewer", "editor"];
 
 /** Normalizes a request body's customer assignments. Accepts the new

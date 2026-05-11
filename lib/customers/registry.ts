@@ -53,12 +53,15 @@ export function getCustomer(id: string): Customer | null {
 /**
  * Returns the customer the user is allowed to see at this id.
  *  - "customer" role users may only access their own customerId.
- *  - "admin" and "internal" role users may access any customer in the registry.
+ *  - "admin", "super_admin", and "internal" may access any customer in the registry.
  *
  * Returns null when access is denied or the id isn't in the registry.
  */
 export function customerForUser(
-  user: { role: "admin" | "internal" | "customer"; customerIds: string[] },
+  user: {
+    role: "super_admin" | "admin" | "internal" | "customer";
+    customerIds: string[];
+  },
   id: string,
 ): Customer | null {
   const c = getCustomer(id);
@@ -71,20 +74,20 @@ export function customerForUser(
 
 /**
  * Returns the user's effective permission for a customer they already have
- * access to. Admin and internal roles are always editors; customer-role users
- * fall back to whatever was stored in user_customers.permission, defaulting
- * to 'viewer' if missing.
+ * access to. Admin (super or regular) and internal roles are always editors;
+ * customer-role users fall back to whatever was stored in
+ * user_customers.permission, defaulting to 'viewer' if missing.
  *
  * Callers should resolve access via `customerForUser` first — this function
  * only answers "what tier" once "can they see it at all" is established.
  */
 export function customerPermissionFor(
   user: {
-    role: "admin" | "internal" | "customer";
+    role: "super_admin" | "admin" | "internal" | "customer";
     customerPermissions: Record<string, "viewer" | "editor">;
   },
   customerId: string,
 ): "viewer" | "editor" {
-  if (user.role === "admin" || user.role === "internal") return "editor";
+  if (user.role !== "customer") return "editor";
   return user.customerPermissions[customerId] ?? "viewer";
 }

@@ -119,7 +119,17 @@ export function getDashboardById(id: string): Dashboard | null {
   return DASHBOARDS.find(d => d.id === id) ?? null;
 }
 
-export function getDashboardsForUser(allowedIds: readonly string[]): Dashboard[] {
+/**
+ * Filters the registry to dashboards the user can see. Super admins bypass
+ * the per-user whitelist and see every dashboard automatically — new
+ * dashboards added to the registry appear for them with no DB change. Every
+ * other role is gated by their explicit `allowedIds` list.
+ */
+export function getDashboardsForUser(
+  allowedIds: readonly string[],
+  role?: "super_admin" | "admin" | "internal" | "customer",
+): Dashboard[] {
+  if (role === "super_admin") return [...DASHBOARDS];
   const allow = new Set(allowedIds);
   return DASHBOARDS.filter(d => allow.has(d.id));
 }
@@ -127,7 +137,10 @@ export function getDashboardsForUser(allowedIds: readonly string[]): Dashboard[]
 export function userCanSeeDashboard(
   allowedIds: readonly string[],
   slug: string,
+  role?: "super_admin" | "admin" | "internal" | "customer",
 ): boolean {
   const d = getDashboard(slug);
-  return !!d && allowedIds.includes(d.id);
+  if (!d) return false;
+  if (role === "super_admin") return true;
+  return allowedIds.includes(d.id);
 }

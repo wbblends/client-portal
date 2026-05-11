@@ -7,15 +7,25 @@
  * exactly this file.
  *
  * Roles:
- *   - admin    — manages users, can switch to any customer's data
- *   - internal — WB Blends staff (board, exec, CS, sales) — switches
- *                customers, no user management
- *   - customer — locked to the customer IDs in their `customerIds` list
+ *   - super_admin — like admin, but also bypasses the dashboard whitelist —
+ *                   sees every dashboard in the registry automatically. Use
+ *                   for the owner / handful of people who need everything.
+ *   - admin       — manages users, can switch to any customer's data, sees
+ *                   only the dashboards explicitly granted on their row.
+ *   - internal    — WB Blends staff (board, exec, CS, sales) — switches
+ *                   customers, no user management
+ *   - customer    — locked to the customer IDs in their `customerIds` list
  */
 import bcrypt from "bcryptjs";
 import { ensureDb } from "@/lib/db";
 
-export type UserRole = "admin" | "internal" | "customer";
+export type UserRole = "super_admin" | "admin" | "internal" | "customer";
+
+/** True when the role has admin-or-above privileges (manage users, switch
+ *  customers, treated as editor everywhere). */
+export function isAdminRole(role: UserRole): boolean {
+  return role === "admin" || role === "super_admin";
+}
 
 /** Per-customer access tier. Editors can add/remove folders and documents
  *  inside that customer's Documents area; viewers can only browse. Admin and

@@ -23,7 +23,7 @@ export default async function DashboardSlugPage(props: PageProps<"/dashboards/[s
   const dashboard = getDashboard(slug);
   if (!dashboard) notFound();
 
-  if (!userCanSeeDashboard(user.dashboards, slug)) {
+  if (!userCanSeeDashboard(user.dashboards, slug, user.role)) {
     redirect("/");
   }
 
