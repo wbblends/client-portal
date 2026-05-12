@@ -119,6 +119,9 @@ export type DealCard = {
   productCategory: string | null;
   owner: DealOwner | null;
   hubspotUrl: string;
+  /** ISO timestamp from HubSpot's hs_lastmodifieddate. Used by the analytics
+   *  dashboard to flag stale deals (no activity in 30+ days). */
+  lastModified: string | null;
 };
 
 export type StageColumn = {
@@ -459,6 +462,7 @@ async function fetchOpenDeals(pipelineId: string): Promise<RawDeal[]> {
         "tier",
         "month_expected",
         "product_category",
+        "hs_lastmodifieddate",
       ],
       limit: 100,
       ...(after ? { after } : {}),
@@ -574,6 +578,7 @@ function buildPipelineFromRaw(
       productCategory: d.properties.product_category ?? null,
       owner: ownerId ? ownersById.get(ownerId) ?? null : null,
       hubspotUrl: dealHubspotUrl(d.id),
+      lastModified: d.properties.hs_lastmodifieddate ?? null,
     };
     if (!dealsByStage.has(stageId)) dealsByStage.set(stageId, []);
     dealsByStage.get(stageId)!.push(card);
@@ -582,21 +587,19 @@ function buildPipelineFromRaw(
   return {
     key,
     label: PIPELINES[key].label,
-    stages: stages
-      .filter(s => s.metadata?.isClosed !== "true")
-      .map(s => {
-        const stageDeals = dealsByStage.get(s.id) ?? [];
-        stageDeals.sort((a, b) => b.amount - a.amount);
-        return {
-          id: s.id,
-          label: s.label,
-          probability: Number(s.metadata?.probability ?? 0) || 0,
-          isClosed: false,
-          totalAmount: stageDeals.reduce((sum, d) => sum + d.amount, 0),
-          dealCount: stageDeals.length,
-          deals: stageDeals,
-        };
-      }),
+    stages: stages.map(s => {
+      const stageDeals = dealsByStage.get(s.id) ?? [];
+      stageDeals.sort((a, b) => b.amount - a.amount);
+      return {
+        id: s.id,
+        label: s.label,
+        probability: Number(s.metadata?.probability ?? 0) || 0,
+        isClosed: s.metadata?.isClosed === "true",
+        totalAmount: stageDeals.reduce((sum, d) => sum + d.amount, 0),
+        dealCount: stageDeals.length,
+        deals: stageDeals,
+      };
+    }),
   };
 }
 
