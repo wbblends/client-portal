@@ -39,7 +39,6 @@ export function MobileNav({
     email: string;
     company: string;
     avatarUrl?: string;
-    homeUrl: string | null;
   };
 }) {
   const [open, setOpen] = useState(false);
@@ -110,7 +109,6 @@ export function MobileNav({
             email={user.email}
             company={user.company}
             avatarUrl={user.avatarUrl}
-            homeUrl={user.homeUrl}
             className="border-0 p-0 bg-transparent gap-2"
             compact
           />
@@ -162,7 +160,6 @@ export function MobileNav({
                 email={user.email}
                 company={user.company}
                 avatarUrl={user.avatarUrl}
-                homeUrl={user.homeUrl}
               />
             </div>
           </aside>

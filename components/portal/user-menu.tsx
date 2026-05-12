@@ -1,20 +1,17 @@
 "use client";
 
-import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogOut, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
-import { HomeUrlStar } from "./home-url-star";
 
 export function UserMenu({
   name,
   email,
   company,
   avatarUrl,
-  homeUrl,
   className,
   compact = false,
 }: {
@@ -22,9 +19,6 @@ export function UserMenu({
   email: string;
   company: string;
   avatarUrl?: string;
-  /** Saved "set as homepage" URL — drives filled/empty state of the star.
-   *  null when the user hasn't pinned a page yet. */
-  homeUrl: string | null;
   className?: string;
   /** Compact mode — avatar + sign-out only, used in the mobile top bar where
    *  horizontal space is precious and the full name+company already shows in
@@ -48,9 +42,6 @@ export function UserMenu({
   if (compact) {
     return (
       <div className={cn("flex items-center gap-0.5", className)}>
-        <Suspense fallback={null}>
-          <HomeUrlStar savedHomeUrl={homeUrl} size="sm" />
-        </Suspense>
         <ThemeToggle />
         <Avatar name={name} initials={initials} src={avatarUrl} size={28} />
         <button
@@ -67,16 +58,17 @@ export function UserMenu({
   }
 
   return (
-    <div className={cn("flex items-center gap-3 rounded-xl border border-border bg-card p-3", className)}>
-      <Avatar name={name} initials={initials} src={avatarUrl} />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-foreground">{name}</div>
-        <div className="truncate text-xs text-muted">{company}</div>
+    <div className={cn("flex flex-col gap-2 rounded-xl border border-border bg-card p-3", className)}>
+      <div className="flex items-center gap-3">
+        <Avatar name={name} initials={initials} src={avatarUrl} size={40} />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium text-foreground break-words leading-tight">{name}</div>
+          {company ? (
+            <div className="mt-0.5 text-xs text-muted break-words leading-tight">{company}</div>
+          ) : null}
+        </div>
       </div>
-      <div className="flex items-center gap-0.5">
-        <Suspense fallback={null}>
-          <HomeUrlStar savedHomeUrl={homeUrl} />
-        </Suspense>
+      <div className="flex items-center justify-end gap-0.5 border-t border-border pt-2">
         <ThemeToggle />
         <Link
           href="/account/security"
@@ -128,7 +120,7 @@ function Avatar({
     <div
       aria-hidden
       style={dim}
-      className="grid shrink-0 place-items-center rounded-full bg-primary/10 text-primary text-[12px] font-semibold"
+      className="grid shrink-0 place-items-center rounded-full bg-primary/10 text-primary text-sm font-semibold"
     >
       {initials}
     </div>
