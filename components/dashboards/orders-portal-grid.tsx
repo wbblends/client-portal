@@ -1206,7 +1206,7 @@ function Th({
     <th
       className={cn(
         "px-3 py-3 text-left font-semibold border-b border-border whitespace-nowrap",
-        sticky && `sticky ${sticky} z-20 bg-accent/60`,
+        sticky && `sticky ${sticky} z-20 bg-accent`,
         className,
       )}
     >
