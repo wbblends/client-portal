@@ -579,19 +579,21 @@ function buildPipelineFromRaw(
   return {
     key,
     label: PIPELINES[key].label,
-    stages: stages.map(s => {
-      const stageDeals = dealsByStage.get(s.id) ?? [];
-      stageDeals.sort((a, b) => b.amount - a.amount);
-      return {
-        id: s.id,
-        label: s.label,
-        probability: Number(s.metadata?.probability ?? 0) || 0,
-        isClosed: s.metadata?.isClosed === "true",
-        totalAmount: stageDeals.reduce((sum, d) => sum + d.amount, 0),
-        dealCount: stageDeals.length,
-        deals: stageDeals,
-      };
-    }),
+    stages: stages
+      .filter(s => s.metadata?.isClosed !== "true")
+      .map(s => {
+        const stageDeals = dealsByStage.get(s.id) ?? [];
+        stageDeals.sort((a, b) => b.amount - a.amount);
+        return {
+          id: s.id,
+          label: s.label,
+          probability: Number(s.metadata?.probability ?? 0) || 0,
+          isClosed: false,
+          totalAmount: stageDeals.reduce((sum, d) => sum + d.amount, 0),
+          dealCount: stageDeals.length,
+          deals: stageDeals,
+        };
+      }),
   };
 }
 

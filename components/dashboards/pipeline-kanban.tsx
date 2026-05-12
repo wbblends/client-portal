@@ -76,6 +76,7 @@ function SinglePipelinePage({
   pipeline: PipelineKanban | undefined;
   source: "live" | "placeholder";
 }) {
+  const totals = pipeline ? computePipelineTotals(pipeline) : null;
   return (
     <div className="page-container page-pad-x page-pad-y flex flex-col h-dvh gap-5 sm:gap-7">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
@@ -91,12 +92,54 @@ function SinglePipelinePage({
         )}
       </div>
 
+      {totals && <PipelineKpiStrip totals={totals} />}
+
       {pipeline ? (
         <PipelineBoard pipeline={pipeline} fillHeight />
       ) : (
         <Card className="px-5 py-8 text-sm text-muted">No data for this pipeline.</Card>
       )}
     </div>
+  );
+}
+
+type PipelineTotals = { unweighted: number; weighted: number; dealCount: number };
+
+function computePipelineTotals(pipeline: PipelineKanban): PipelineTotals {
+  let unweighted = 0;
+  let weighted = 0;
+  let dealCount = 0;
+  for (const stage of pipeline.stages) {
+    for (const deal of stage.deals) {
+      unweighted += deal.amount;
+      weighted += deal.weighted;
+      dealCount += 1;
+    }
+  }
+  return { unweighted, weighted, dealCount };
+}
+
+function PipelineKpiStrip({ totals }: { totals: PipelineTotals }) {
+  return (
+    <Card className="overflow-hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+        <SummaryCell
+          label="Pipeline value"
+          primary={fmtMoneyCompact(totals.unweighted)}
+          hint="Sum of open deal amounts"
+        />
+        <SummaryCell
+          label="Weighted value"
+          primary={fmtMoneyCompact(totals.weighted)}
+          hint="Probability-adjusted, from HubSpot"
+        />
+        <SummaryCell
+          label="Open deals"
+          primary={totals.dealCount.toLocaleString()}
+          hint="Count of open deals in this pipeline"
+        />
+      </div>
+    </Card>
   );
 }
 
