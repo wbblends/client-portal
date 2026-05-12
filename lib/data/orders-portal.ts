@@ -18,6 +18,13 @@ export type OrdersPortalRow = {
   projection: number;
   /** 12 entries: Jan..Dec. null = no value entered yet (renders blank). */
   months: (number | null)[];
+  /**
+   * Rolling forecast values, 12 entries Jan..Dec, parallel to `months`. The
+   * grid surfaces three forecast columns at a time (current month + the next
+   * two), so the visible window slides forward each month. Older slots stay
+   * populated in the DB but stop rendering once they fall out of the window.
+   */
+  forecasts: (number | null)[];
 };
 
 /**
@@ -46,11 +53,18 @@ function months(values: Record<number, number>): (number | null)[] {
   return out;
 }
 
+/** Empty 12-slot forecast array used when seeding new rows. */
+export function emptyForecasts(): (number | null)[] {
+  return Array(12).fill(null);
+}
+
 /**
  * Snapshot from the 2026 POs tab as of the latest export. Numbers represent
- * actual booked PO amounts ($) per month, per customer.
+ * actual booked PO amounts ($) per month, per customer. Forecasts seed empty
+ * — admins fill them in via the grid's rolling 90-day forecast columns.
  */
-export const ORDERS_PORTAL_SEED: OrdersPortalRow[] = [
+type SeedRow = Omit<OrdersPortalRow, "forecasts">;
+const SEED_ROWS_RAW: SeedRow[] = [
   { id: "r-innosupps", customer: "Innosupps", rep: "Jacob", cs: "Courtney", tier: "AA", projection: 8_000_000,
     months: months({ 0: 97_650 }) },
   { id: "r-kilo", customer: "Kilo Health", rep: "Jacob", cs: "Courtney", tier: "AA", projection: 8_000_000,
@@ -154,6 +168,11 @@ export const ORDERS_PORTAL_SEED: OrdersPortalRow[] = [
   { id: "r-snap", customer: "SNAP", rep: "Nicole", cs: "Ashley", tier: "A", projection: 1_500_000,
     months: months({ 1: 406_750, 4: 293_250 }) },
 ];
+
+export const ORDERS_PORTAL_SEED: OrdersPortalRow[] = SEED_ROWS_RAW.map(r => ({
+  ...r,
+  forecasts: emptyForecasts(),
+}));
 
 /** Stable list of tier values for select inputs. */
 export const TIERS: Tier[] = ["AA", "A", "B", "C"];

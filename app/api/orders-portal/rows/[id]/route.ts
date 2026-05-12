@@ -47,6 +47,13 @@ export async function PATCH(
         : Number(v),
     );
   }
+  if (Array.isArray(body.forecasts) && body.forecasts.length === 12) {
+    patch.forecasts = body.forecasts.map(v =>
+      v === null || v === undefined || !Number.isFinite(Number(v))
+        ? null
+        : Number(v),
+    );
+  }
   const updated = await patchOrdersRow(id, patch, me.username);
   if (!updated) {
     return NextResponse.json({ error: "Row not found." }, { status: 404 });

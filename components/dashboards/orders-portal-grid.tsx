@@ -26,6 +26,10 @@ import {
 } from "@/lib/data/orders-portal";
 import { NewOrderForm } from "./new-order-form";
 
+type MonthCol =
+  | { kind: "actual"; monthIdx: number }
+  | { kind: "forecast"; monthIdx: number };
+
 /**
  * Editable, spreadsheet-style grid mirroring the "2026 POs" tab. Rows live in
  * the `orders_portal_rows` table â€” any admin's edit becomes visible to every
@@ -133,6 +137,24 @@ export function OrdersPortalGrid({
         });
         const updated = next.find(r => r.id === id);
         if (updated) void patchRow(id, { months: updated.months });
+        return next;
+      });
+    },
+    [patchRow],
+  );
+
+  const updateForecast = useCallback(
+    (id: string, monthIdx: number, value: number | null) => {
+      dirtyRef.current.add(`${id}.forecasts`);
+      setRows(prev => {
+        const next = prev.map(r => {
+          if (r.id !== id) return r;
+          const forecasts = (r.forecasts ?? Array(12).fill(null)).slice();
+          forecasts[monthIdx] = value;
+          return { ...r, forecasts };
+        });
+        const updated = next.find(r => r.id === id);
+        if (updated) void patchRow(id, { forecasts: updated.forecasts });
         return next;
       });
     },
@@ -270,6 +292,15 @@ export function OrdersPortalGrid({
     return out;
   }, [rows]);
 
+  const forecastTotals = useMemo(() => {
+    const out = Array(12).fill(0);
+    for (const r of rows) {
+      const f = r.forecasts ?? [];
+      for (let i = 0; i < 12; i++) out[i] += f[i] ?? 0;
+    }
+    return out;
+  }, [rows]);
+
   const projectionTotal = useMemo(
     () => rows.reduce((s, r) => s + (r.projection || 0), 0),
     [rows],
@@ -297,6 +328,33 @@ export function OrdersPortalGrid({
   const monthActual = monthTotals[currentMonthIdx];
   const monthTarget = MONTHLY_TARGETS[currentMonthIdx];
   const monthProgress = monthTarget > 0 ? monthActual / monthTarget : 0;
+
+  /**
+   * Rolling 90-day forecast window: current month plus the next two, clipped
+   * to December. The current month keeps its actual column; the +1 and +2
+   * future months have their actual columns hidden and their forecast columns
+   * inserted in their place (alongside the current-month forecast).
+   */
+  const forecastWindow = useMemo<number[]>(() => {
+    const out: number[] = [];
+    for (let k = 0; k < 3; k++) {
+      const idx = currentMonthIdx + k;
+      if (idx < 12) out.push(idx);
+    }
+    return out;
+  }, [currentMonthIdx]);
+
+  const monthColumns = useMemo<MonthCol[]>(() => {
+    const hiddenActuals = new Set(forecastWindow.slice(1));
+    const cols: MonthCol[] = [];
+    for (let i = 0; i < 12; i++) {
+      if (!hiddenActuals.has(i)) cols.push({ kind: "actual", monthIdx: i });
+      if (i === currentMonthIdx) {
+        for (const fIdx of forecastWindow) cols.push({ kind: "forecast", monthIdx: fIdx });
+      }
+    }
+    return cols;
+  }, [currentMonthIdx, forecastWindow]);
 
   /** Visible rows. When grouped by rep, rows are bucketed by rep and rep
    *  groups are ordered by REP_SUGGESTIONS (then any leftovers alphabetically).
@@ -332,14 +390,16 @@ export function OrdersPortalGrid({
   );
 
   const downloadCsv = () => {
+    const forecastHeaders = forecastWindow.map(i => `${MONTH_LABELS[i]} Forecast`);
     const header = [
       "Customer", "Rep", "CS", "Tier", "Projection",
-      ...MONTH_LABELS, "YTD", "Remaining to Target",
+      ...MONTH_LABELS, ...forecastHeaders, "YTD", "Remaining to Target",
     ];
     const lines = [header.join(",")];
     for (const r of rows) {
       const ytd = r.months.reduce<number>((s, v) => s + (v ?? 0), 0);
       const remaining = (r.projection || 0) - ytd;
+      const f = r.forecasts ?? [];
       const cells = [
         csv(r.customer),
         csv(r.rep),
@@ -347,6 +407,7 @@ export function OrdersPortalGrid({
         csv(r.tier),
         r.projection,
         ...r.months.map(v => (v == null ? "" : v)),
+        ...forecastWindow.map(i => (f[i] == null ? "" : f[i])),
         ytd,
         remaining,
       ];
@@ -597,11 +658,23 @@ export function OrdersPortalGrid({
               <Th className="min-w-[120px]">CS</Th>
               <Th className="w-[110px] text-center">Tier</Th>
               <Th className="text-right min-w-[140px]">Projection</Th>
-              {MONTH_SHORT.map(m => (
-                <Th key={m} className="text-right min-w-[128px]">
-                  {m}
-                </Th>
-              ))}
+              {monthColumns.map((col, idx) =>
+                col.kind === "actual" ? (
+                  <Th
+                    key={`a-${col.monthIdx}-${idx}`}
+                    className="text-right min-w-[128px]"
+                  >
+                    {MONTH_SHORT[col.monthIdx]}
+                  </Th>
+                ) : (
+                  <Th
+                    key={`f-${col.monthIdx}-${idx}`}
+                    className="text-right min-w-[128px] bg-warning-soft/70 text-warning"
+                  >
+                    {MONTH_SHORT[col.monthIdx]} fcst
+                  </Th>
+                ),
+              )}
               <Th className="text-right min-w-[140px] bg-primary-soft/60 text-primary">
                 YTD
               </Th>
@@ -626,31 +699,57 @@ export function OrdersPortalGrid({
               <Th className="text-right min-w-[140px] text-foreground">
                 {fmtCurrency(projectionTotal)}
               </Th>
-              {MONTH_SHORT.map((m, i) => {
-                const actual = monthTotals[i];
+              {monthColumns.map((col, idx) => {
+                if (col.kind === "actual") {
+                  const i = col.monthIdx;
+                  const actual = monthTotals[i];
+                  const target = MONTHLY_TARGETS[i];
+                  const onTrack = actual >= target;
+                  const hasData = actual > 0;
+                  const isCurrent = i === currentMonthIdx;
+                  return (
+                    <Th
+                      key={`a-${i}-${idx}`}
+                      className={cn(
+                        "text-right min-w-[128px]",
+                        isCurrent && "bg-primary-soft/40",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "tabular-nums",
+                          hasData
+                            ? onTrack
+                              ? "text-success"
+                              : "text-foreground"
+                            : "text-muted-soft font-normal",
+                        )}
+                      >
+                        {hasData ? fmtCurrencyShort(actual) : "â€”"}
+                      </div>
+                      <div className="mt-0.5 text-[10px] font-normal text-muted">
+                        tgt {fmtCurrencyShort(target)}
+                      </div>
+                    </Th>
+                  );
+                }
+                // Forecast column sum
+                const i = col.monthIdx;
+                const fc = forecastTotals[i];
                 const target = MONTHLY_TARGETS[i];
-                const onTrack = actual >= target;
-                const hasData = actual > 0;
-                const isCurrent = i === currentMonthIdx;
+                const hasData = fc > 0;
                 return (
                   <Th
-                    key={m}
-                    className={cn(
-                      "text-right min-w-[128px]",
-                      isCurrent && "bg-primary-soft/40",
-                    )}
+                    key={`f-${i}-${idx}`}
+                    className="text-right min-w-[128px] bg-warning-soft/60"
                   >
                     <div
                       className={cn(
                         "tabular-nums",
-                        hasData
-                          ? onTrack
-                            ? "text-success"
-                            : "text-foreground"
-                          : "text-muted-soft font-normal",
+                        hasData ? "text-warning" : "text-muted-soft font-normal",
                       )}
                     >
-                      {hasData ? fmtCurrencyShort(actual) : "â€”"}
+                      {hasData ? fmtCurrencyShort(fc) : "â€”"}
                     </div>
                     <div className="mt-0.5 text-[10px] font-normal text-muted">
                       tgt {fmtCurrencyShort(target)}
@@ -673,8 +772,10 @@ export function OrdersPortalGrid({
                 row={r}
                 striped={idx % 2 === 1}
                 canEdit={canEdit}
+                monthColumns={monthColumns}
                 onPatch={patch => updateRow(r.id, patch)}
                 onMonth={(i, v) => updateMonth(r.id, i, v)}
+                onForecast={(i, v) => updateForecast(r.id, i, v)}
                 onDelete={() => deleteRow(r.id)}
               />
             ))}
@@ -702,21 +803,26 @@ function Row({
   row,
   striped,
   canEdit,
+  monthColumns,
   onPatch,
   onMonth,
+  onForecast,
   onDelete,
 }: {
   row: OrdersPortalRow;
   striped: boolean;
   canEdit: boolean;
+  monthColumns: MonthCol[];
   onPatch: (patch: Partial<OrdersPortalRow>) => void;
   onMonth: (i: number, v: number | null) => void;
+  onForecast: (i: number, v: number | null) => void;
   onDelete: () => void;
 }) {
   const ytd = row.months.reduce<number>((s, v) => s + (v ?? 0), 0);
   const remaining = (row.projection || 0) - ytd;
   const overTarget = remaining < 0;
   const repTone = getRepColor(row.rep);
+  const forecasts = row.forecasts ?? Array(12).fill(null);
 
   return (
     <tr
@@ -787,11 +893,33 @@ function Row({
         />
       </Td>
 
-      {row.months.map((v, i) => (
-        <Td key={i} striped={striped} className="text-right">
-          <NumberCell value={v} onChange={nv => onMonth(i, nv)} disabled={!canEdit} />
-        </Td>
-      ))}
+      {monthColumns.map((col, idx) =>
+        col.kind === "actual" ? (
+          <Td
+            key={`a-${col.monthIdx}-${idx}`}
+            striped={striped}
+            className="text-right"
+          >
+            <NumberCell
+              value={row.months[col.monthIdx]}
+              onChange={nv => onMonth(col.monthIdx, nv)}
+              disabled={!canEdit}
+            />
+          </Td>
+        ) : (
+          <Td
+            key={`f-${col.monthIdx}-${idx}`}
+            striped={striped}
+            className="text-right bg-warning-soft/30"
+          >
+            <NumberCell
+              value={forecasts[col.monthIdx]}
+              onChange={nv => onForecast(col.monthIdx, nv)}
+              disabled={!canEdit}
+            />
+          </Td>
+        ),
+      )}
 
       <Td striped={striped} className="text-right bg-primary-soft/40 font-semibold text-foreground">
         {ytd === 0 ? <span className="text-muted-soft font-normal">â€”</span> : fmtCurrency(ytd)}

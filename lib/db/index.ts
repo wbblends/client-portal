@@ -95,6 +95,17 @@ async function applyMigrations(client: Client) {
     if (!(err instanceof Error && /duplicate column/i.test(err.message))) throw err;
   }
 
+  // 2026-05 — rolling forecast values on orders_portal_rows. Fresh DBs already
+  // get the column from schema.sql's CREATE TABLE; this catches existing DBs.
+  try {
+    await client.execute(
+      `ALTER TABLE orders_portal_rows
+         ADD COLUMN forecasts_json TEXT NOT NULL DEFAULT '[null,null,null,null,null,null,null,null,null,null,null,null]'`,
+    );
+  } catch (err) {
+    if (!(err instanceof Error && /duplicate column/i.test(err.message))) throw err;
+  }
+
   // 2026-05 — add 'super_admin' to users.role CHECK constraint. SQLite can't
   // ALTER a CHECK in place, so rebuild the table when the existing CHECK
   // doesn't already mention 'super_admin'. The check on stored DDL is the

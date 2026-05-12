@@ -19,7 +19,8 @@ export type DbOrdersRow = OrdersPortalRow;
 
 const EMPTY_MONTHS = "[null,null,null,null,null,null,null,null,null,null,null,null]";
 
-function parseMonths(json: string): (number | null)[] {
+function parseMonths(json: string | null | undefined): (number | null)[] {
+  if (!json) return Array(12).fill(null);
   try {
     const parsed = JSON.parse(json);
     if (Array.isArray(parsed) && parsed.length === 12) {
@@ -43,6 +44,7 @@ function rowFromDb(r: {
   tier: string;
   projection: number;
   months_json: string;
+  forecasts_json?: string | null;
 }): DbOrdersRow {
   return {
     id: r.id,
@@ -52,6 +54,7 @@ function rowFromDb(r: {
     tier: (r.tier as Tier | "") ?? "",
     projection: Number(r.projection) || 0,
     months: parseMonths(r.months_json),
+    forecasts: parseMonths(r.forecasts_json ?? null),
   };
 }
 
@@ -63,8 +66,8 @@ async function maybeSeed(): Promise<void> {
     const r = ORDERS_PORTAL_SEED[i];
     await client.execute({
       sql: `INSERT INTO orders_portal_rows
-              (id, customer, rep, cs, tier, projection, months_json, position)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              (id, customer, rep, cs, tier, projection, months_json, forecasts_json, position)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         r.id,
         r.customer,
@@ -73,6 +76,7 @@ async function maybeSeed(): Promise<void> {
         r.tier,
         r.projection,
         JSON.stringify(r.months),
+        JSON.stringify(r.forecasts),
         i,
       ],
     });
@@ -83,7 +87,7 @@ export async function listOrdersRows(): Promise<DbOrdersRow[]> {
   await maybeSeed();
   const client = await ensureDb();
   const { rows } = await client.execute(
-    `SELECT id, customer, rep, cs, tier, projection, months_json, position
+    `SELECT id, customer, rep, cs, tier, projection, months_json, forecasts_json, position
        FROM orders_portal_rows
        ORDER BY position ASC, id ASC`,
   );
@@ -95,6 +99,7 @@ export async function listOrdersRows(): Promise<DbOrdersRow[]> {
     tier: string;
     projection: number;
     months_json: string;
+    forecasts_json: string | null;
     position: number;
   }>).map(rowFromDb);
 }
@@ -107,6 +112,7 @@ export type CreateOrdersRowInput = {
   tier?: Tier | "";
   projection?: number;
   months?: (number | null)[];
+  forecasts?: (number | null)[];
   position?: number;
 };
 
@@ -122,6 +128,9 @@ export async function createOrdersRow(
   const months = Array.isArray(input.months) && input.months.length === 12
     ? input.months
     : Array(12).fill(null);
+  const forecasts = Array.isArray(input.forecasts) && input.forecasts.length === 12
+    ? input.forecasts
+    : Array(12).fill(null);
   // New rows go to the end by default.
   const { rows: maxRows } = await client.execute(
     "SELECT COALESCE(MAX(position), -1) AS p FROM orders_portal_rows",
@@ -131,8 +140,8 @@ export async function createOrdersRow(
 
   await client.execute({
     sql: `INSERT INTO orders_portal_rows
-            (id, customer, rep, cs, tier, projection, months_json, position, updated_by)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, customer, rep, cs, tier, projection, months_json, forecasts_json, position, updated_by)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       input.customer ?? "",
@@ -141,6 +150,7 @@ export async function createOrdersRow(
       input.tier ?? "",
       Number(input.projection) || 0,
       JSON.stringify(months),
+      JSON.stringify(forecasts),
       position,
       updatedBy,
     ],
@@ -153,6 +163,7 @@ export async function createOrdersRow(
     tier: (input.tier as Tier | "") ?? "",
     projection: Number(input.projection) || 0,
     months,
+    forecasts,
   };
 }
 
@@ -163,6 +174,7 @@ export type PatchOrdersRowInput = {
   tier?: Tier | "";
   projection?: number;
   months?: (number | null)[];
+  forecasts?: (number | null)[];
 };
 
 export async function patchOrdersRow(
@@ -203,6 +215,14 @@ export async function patchOrdersRow(
     sets.push("months_json = ?");
     args.push(JSON.stringify(months));
   }
+  if (patch.forecasts !== undefined) {
+    const forecasts =
+      Array.isArray(patch.forecasts) && patch.forecasts.length === 12
+        ? patch.forecasts
+        : Array(12).fill(null);
+    sets.push("forecasts_json = ?");
+    args.push(JSON.stringify(forecasts));
+  }
   if (sets.length === 0) {
     // Nothing to change — just touch updated_at/updated_by.
     sets.push("updated_at = CURRENT_TIMESTAMP");
@@ -219,7 +239,7 @@ export async function patchOrdersRow(
   });
 
   const { rows } = await client.execute({
-    sql: `SELECT id, customer, rep, cs, tier, projection, months_json, position
+    sql: `SELECT id, customer, rep, cs, tier, projection, months_json, forecasts_json, position
             FROM orders_portal_rows WHERE id = ?`,
     args: [id],
   });
@@ -233,6 +253,7 @@ export async function patchOrdersRow(
       tier: string;
       projection: number;
       months_json: string;
+      forecasts_json: string | null;
     },
   );
 }
@@ -273,7 +294,7 @@ export async function applyOrderToRows(args: {
   const customerKey = args.customer.trim().toLowerCase();
 
   const { rows: existingRows } = await client.execute(
-    `SELECT id, customer, rep, cs, tier, projection, months_json, position
+    `SELECT id, customer, rep, cs, tier, projection, months_json, forecasts_json, position
        FROM orders_portal_rows
        ORDER BY position ASC, id ASC`,
   );
@@ -285,6 +306,7 @@ export async function applyOrderToRows(args: {
     tier: string;
     projection: number;
     months_json: string;
+    forecasts_json: string | null;
     position: number;
   }>;
   const match = list.find(

@@ -81,6 +81,14 @@ export async function POST(request: NextRequest) {
             : Number(v),
         )
       : Array(12).fill(null);
+  const forecasts =
+    Array.isArray(raw.forecasts) && raw.forecasts.length === 12
+      ? raw.forecasts.map(v =>
+          v === null || v === undefined || !Number.isFinite(Number(v))
+            ? null
+            : Number(v),
+        )
+      : Array(12).fill(null);
 
   const row = await createOrdersRow(
     {
@@ -91,6 +99,7 @@ export async function POST(request: NextRequest) {
       tier,
       projection: Number(raw.projection) || 0,
       months,
+      forecasts,
     },
     me.username,
   );

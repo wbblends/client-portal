@@ -111,6 +111,9 @@ CREATE TABLE IF NOT EXISTS orders_portal_rows (
   projection   REAL NOT NULL DEFAULT 0,
   -- 12-element JSON array of (number | null), Jan..Dec.
   months_json  TEXT NOT NULL DEFAULT '[null,null,null,null,null,null,null,null,null,null,null,null]',
+  -- Parallel 12-element JSON array of (number | null) holding the rolling
+  -- forecast values the grid surfaces in its yellow forecast columns.
+  forecasts_json TEXT NOT NULL DEFAULT '[null,null,null,null,null,null,null,null,null,null,null,null]',
   position     INTEGER NOT NULL DEFAULT 0,
   updated_by   TEXT REFERENCES users(username) ON DELETE SET NULL,
   updated_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
