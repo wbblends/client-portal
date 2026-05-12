@@ -106,6 +106,39 @@ async function applyMigrations(client: Client) {
     if (!(err instanceof Error && /duplicate column/i.test(err.message))) throw err;
   }
 
+  // 2026-05 — tickets table (coworker-synced PM tickets, admin-only page).
+  // The schema landed with PK on id alone; tickets in flight on >1 workflow
+  // need PK (tab, id). If we see the old shape, drop and recreate — the
+  // table is only a few hours old so there's no production data to migrate.
+  const ticketsDdl = await client.execute(
+    `SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tickets'`,
+  );
+  const tDdl = ticketsDdl.rows[0]?.sql as string | undefined;
+  if (tDdl && !tDdl.includes("PRIMARY KEY (tab, id)")) {
+    await client.execute("DROP TABLE tickets");
+  }
+  await client.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS tickets (
+      tab             TEXT NOT NULL,
+      id              TEXT NOT NULL,
+      version         TEXT NOT NULL DEFAULT '',
+      name            TEXT NOT NULL DEFAULT '',
+      product_type    TEXT NOT NULL DEFAULT '',
+      customer        TEXT NOT NULL DEFAULT '',
+      salesperson     TEXT NOT NULL DEFAULT '',
+      status          TEXT NOT NULL DEFAULT '',
+      open_date       TEXT,
+      due_date        TEXT,
+      color           TEXT CHECK (color IN ('red', 'white', 'gray') OR color IS NULL),
+      rank            INTEGER,
+      last_synced_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      deleted_at      TEXT,
+      PRIMARY KEY (tab, id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_tickets_tab ON tickets(tab);
+    CREATE INDEX IF NOT EXISTS idx_tickets_rank ON tickets(tab, rank);
+  `);
+
   // 2026-05 — add 'super_admin' to users.role CHECK constraint. SQLite can't
   // ALTER a CHECK in place, so rebuild the table when the existing CHECK
   // doesn't already mention 'super_admin'. The check on stored DDL is the

@@ -121,4 +121,32 @@ CREATE TABLE IF NOT EXISTS orders_portal_rows (
 
 CREATE INDEX IF NOT EXISTS idx_orders_portal_rows_position
   ON orders_portal_rows(position);
+
+-- Tickets imported daily by the 7 AM coworker job. The coworker generates an
+-- xlsx in cloud storage AND POSTs the parsed rows to /api/tickets/sync; this
+-- table is the portal-side mirror. rank + color are user-owned annotations
+-- that survive each sync (the upsert never overwrites them).
+CREATE TABLE IF NOT EXISTS tickets (
+  -- Composite key. The same logical ticket can be in flight on more than one
+  -- workflow at a time (e.g. a ticket sitting in both Document Request and
+  -- Label Review), so (tab, id) — not id alone — is what makes a row unique.
+  tab             TEXT NOT NULL,
+  id              TEXT NOT NULL,
+  version         TEXT NOT NULL DEFAULT '',
+  name            TEXT NOT NULL DEFAULT '',
+  product_type    TEXT NOT NULL DEFAULT '',
+  customer        TEXT NOT NULL DEFAULT '',
+  salesperson     TEXT NOT NULL DEFAULT '',
+  status          TEXT NOT NULL DEFAULT '',
+  open_date       TEXT,
+  due_date        TEXT,
+  color           TEXT CHECK (color IN ('red', 'white', 'gray') OR color IS NULL),
+  rank            INTEGER,
+  last_synced_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at      TEXT,
+  PRIMARY KEY (tab, id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tickets_tab ON tickets(tab);
+CREATE INDEX IF NOT EXISTS idx_tickets_rank ON tickets(tab, rank);
 `;

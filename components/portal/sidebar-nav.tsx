@@ -17,6 +17,7 @@ import {
   Truck,
   Kanban,
   DollarSign,
+  Ticket as TicketIcon,
   ChevronDown,
   type LucideIcon,
 } from "lucide-react";
@@ -156,11 +157,17 @@ export function SidebarNav({
         </CollapsibleGroup>
       )}
 
-      {/* Admin link pinned to the bottom of the rail, just above the
+      {/* Admin links pinned to the bottom of the rail, just above the
            user-menu footer. `mt-auto` consumes whatever vertical space is
            left after the other groups. */}
       {isAdmin && (
-        <div className="mt-auto pt-2">
+        <div className="mt-auto pt-2 flex flex-col gap-0.5">
+          <NavLink
+            href="/admin/tickets"
+            label="Tickets"
+            icon={TicketIcon}
+            pathname={pathname}
+          />
           <NavLink
             href="/admin/users"
             label="Users"
