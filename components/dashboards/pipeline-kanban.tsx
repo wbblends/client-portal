@@ -5,9 +5,8 @@ import {
   getPipelineKanban,
   type KanbanData,
   type PipelineKanban,
-  type StageColumn,
 } from "@/lib/marketing/hubspot";
-import { DealCardView } from "./deal-card";
+import { PipelineBoard } from "./pipeline-board";
 
 export async function SalesPipelineDashboard() {
   const data = await getPipelineKanban();
@@ -93,7 +92,7 @@ function SinglePipelinePage({
       </div>
 
       {pipeline ? (
-        <PipelineSection pipeline={pipeline} hideTitle fillHeight />
+        <PipelineBoard pipeline={pipeline} fillHeight />
       ) : (
         <Card className="px-5 py-8 text-sm text-muted">No data for this pipeline.</Card>
       )}
@@ -380,126 +379,6 @@ function StageChipRow({ breakdown }: { breakdown: PipelineBreakdown }) {
           </span>
         </Fragment>
       ))}
-    </div>
-  );
-}
-
-function PipelineSection({
-  pipeline,
-  hideTitle,
-  fillHeight,
-}: {
-  pipeline: PipelineKanban;
-  hideTitle?: boolean;
-  fillHeight?: boolean;
-}) {
-  const total = pipeline.stages.reduce((s, st) => s + st.totalAmount, 0);
-  const dealCount = pipeline.stages.reduce((s, st) => s + st.dealCount, 0);
-  const dotColor = pipeline.key === "sales" ? "bg-primary" : "bg-info";
-
-  return (
-    <section
-      className={
-        fillHeight
-          ? "flex flex-col flex-1 min-h-0 gap-3"
-          : "space-y-3"
-      }
-    >
-      <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        {hideTitle ? (
-          <span />
-        ) : (
-          <h2 className="font-display text-[24px] leading-tight tracking-tight text-foreground inline-flex items-center gap-2.5">
-            <span className={`h-2 w-2 rounded-full ${dotColor}`} aria-hidden />
-            {pipeline.label}
-          </h2>
-        )}
-        <div className="flex items-center gap-5 text-xs text-muted">
-          <span>
-            <span className="text-foreground font-semibold tabular-nums">{dealCount}</span>{" "}
-            <span className="text-muted">open deals</span>
-          </span>
-          <span className="hidden sm:inline h-3 w-px bg-border" />
-          <span>
-            <span className="text-foreground font-semibold tabular-nums">{fmtMoneyCompact(total)}</span>{" "}
-            <span className="text-muted">unweighted</span>
-          </span>
-        </div>
-      </div>
-
-      <div
-        className={`-mx-[clamp(1rem,3vw,2.5rem)] page-pad-x overflow-x-auto pb-3 ${
-          fillHeight ? "flex-1 min-h-0" : ""
-        }`}
-      >
-        <div className={`flex gap-4 min-w-max ${fillHeight ? "h-full" : ""}`}>
-          {pipeline.stages.map(stage => (
-            <StageColumnView
-              key={stage.id}
-              stage={stage}
-              pipelineKey={pipeline.key}
-              fillHeight={fillHeight}
-            />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function StageColumnView({
-  stage,
-  pipelineKey,
-  fillHeight,
-}: {
-  stage: StageColumn;
-  pipelineKey: string;
-  fillHeight?: boolean;
-}) {
-  const probabilityPct = Math.round(stage.probability * 100);
-  const barColor = pipelineKey === "sales" ? "bg-primary" : "bg-info";
-  return (
-    <div
-      className={`w-[300px] shrink-0 rounded-xl bg-surface/60 border border-border flex flex-col ${
-        fillHeight ? "h-full min-h-[480px]" : "max-h-[720px]"
-      }`}
-    >
-      <div className="px-3.5 pt-3.5 pb-3 border-b border-border/70">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-[13px] font-semibold text-foreground truncate" title={stage.label}>
-            {stage.label}
-          </div>
-          <span className="shrink-0 text-[11px] font-medium text-muted bg-card border border-border rounded-md px-1.5 py-0.5 tabular-nums">
-            {stage.dealCount}
-          </span>
-        </div>
-
-        {/* Probability bar — visualizes how far down the funnel each column is. */}
-        <div className="mt-2.5">
-          <div className="h-1 w-full rounded-full bg-border/70 overflow-hidden">
-            <div
-              className={`h-full rounded-full ${barColor}`}
-              style={{ width: `${probabilityPct}%` }}
-            />
-          </div>
-          <div className="mt-1.5 flex items-center justify-between text-[11px]">
-            <span className="text-muted tabular-nums">{probabilityPct}% probability</span>
-            <span className="text-foreground-soft font-medium tabular-nums">
-              {fmtMoneyCompact(stage.totalAmount)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-2 space-y-2 overflow-y-auto flex-1">
-        {stage.deals.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border/80 px-3 py-6 text-center text-[11px] text-muted">
-            No deals
-          </div>
-        ) : (
-          stage.deals.map(deal => <DealCardView key={deal.id} deal={deal} />)
-        )}
-      </div>
     </div>
   );
 }
