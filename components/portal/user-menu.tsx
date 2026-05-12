@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, Shield } from "lucide-react";
+import { LogOut, Shield, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -68,7 +68,15 @@ export function UserMenu({
           ) : null}
         </div>
       </div>
-      <div className="flex items-center justify-end gap-0.5 border-t border-border pt-2">
+      <div className="flex items-center justify-start gap-0.5 border-t border-border pt-2">
+        <Link
+          href="/account/profile"
+          className="rounded-md p-1.5 text-muted hover:bg-accent hover:text-foreground transition-colors"
+          title="Account settings"
+          aria-label="Account settings"
+        >
+          <UserCog className="h-4 w-4" />
+        </Link>
         <ThemeToggle />
         <Link
           href="/account/security"
