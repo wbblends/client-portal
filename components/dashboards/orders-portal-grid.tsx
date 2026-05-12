@@ -428,44 +428,92 @@ export function OrdersPortalGrid({
       {/* Full-width card styled like the Quarter cards below: short label +
           delta chip on top, big actual number, "of $target (pct%)" sub line,
           and a progress bar at the bottom. */}
-      {(() => {
-        const delta = monthActual - monthTarget;
-        const onTrack = delta >= 0;
-        return (
-          <div className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-card)]">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted">
-                {currentMonthLabel}
+      {/* Current-month booked + 90-day forecast row. Four cards: the current
+          month's actual progress vs target, followed by forecast totals for
+          this month plus the next two. Forecast cards share the yellow
+          palette used by the forecast columns in the spreadsheet below. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {(() => {
+          const delta = monthActual - monthTarget;
+          const onTrack = delta >= 0;
+          return (
+            <div className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-card)]">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  {currentMonthLabel}
+                </div>
+                <div
+                  className={cn(
+                    "text-[12px] font-medium px-2.5 py-0.5 rounded-full",
+                    onTrack
+                      ? "bg-success-soft text-success"
+                      : "bg-warning-soft text-warning",
+                  )}
+                >
+                  {onTrack ? "+" : ""}
+                  {fmtCurrencyShort(delta)}
+                </div>
               </div>
-              <div
-                className={cn(
-                  "text-[12px] font-medium px-2.5 py-0.5 rounded-full",
-                  onTrack
-                    ? "bg-success-soft text-success"
-                    : "bg-warning-soft text-warning",
-                )}
-              >
-                {onTrack ? "+" : ""}
-                {fmtCurrencyShort(delta)}
+              <div className="mt-2 text-[28px] font-semibold tabular-nums leading-tight text-foreground">
+                {fmtCurrency(monthActual)}
+              </div>
+              <div className="mt-0.5 text-sm text-muted">
+                of {fmtCurrency(monthTarget)} ({pct(monthActual, monthTarget)})
+              </div>
+              <div className="mt-4 h-2 w-full rounded-full bg-accent overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full", onTrack ? "bg-success" : "bg-primary")}
+                  style={{
+                    width: `${Math.min(100, monthProgress * 100)}%`,
+                  }}
+                />
               </div>
             </div>
-            <div className="mt-2 text-[32px] font-semibold tabular-nums leading-tight text-foreground">
-              {fmtCurrency(monthActual)}
+          );
+        })()}
+        {forecastWindow.map(i => {
+          const fc = forecastTotals[i];
+          const target = MONTHLY_TARGETS[i];
+          const delta = fc - target;
+          const onTrack = delta >= 0;
+          const progress = target > 0 ? fc / target : 0;
+          return (
+            <div
+              key={`forecast-card-${i}`}
+              className="rounded-xl border border-warning-soft bg-warning-soft/40 p-5 shadow-[var(--shadow-card)]"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold uppercase tracking-wide text-warning">
+                  {MONTH_LABELS[i]} Forecast
+                </div>
+                <div
+                  className={cn(
+                    "text-[12px] font-medium px-2.5 py-0.5 rounded-full",
+                    onTrack
+                      ? "bg-success-soft text-success"
+                      : "bg-warning-soft text-warning",
+                  )}
+                >
+                  {onTrack ? "+" : ""}
+                  {fmtCurrencyShort(delta)}
+                </div>
+              </div>
+              <div className="mt-2 text-[28px] font-semibold tabular-nums leading-tight text-foreground">
+                {fmtCurrency(fc)}
+              </div>
+              <div className="mt-0.5 text-sm text-muted">
+                of {fmtCurrency(target)} ({pct(fc, target)})
+              </div>
+              <div className="mt-4 h-2 w-full rounded-full bg-accent overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full", onTrack ? "bg-success" : "bg-warning")}
+                  style={{ width: `${Math.min(100, progress * 100)}%` }}
+                />
+              </div>
             </div>
-            <div className="mt-0.5 text-sm text-muted">
-              of {fmtCurrency(monthTarget)} ({pct(monthActual, monthTarget)})
-            </div>
-            <div className="mt-4 h-2 w-full rounded-full bg-accent overflow-hidden">
-              <div
-                className={cn("h-full rounded-full", onTrack ? "bg-success" : "bg-primary")}
-                style={{
-                  width: `${Math.min(100, monthProgress * 100)}%`,
-                }}
-              />
-            </div>
-          </div>
-        );
-      })()}
+          );
+        })}
+      </div>
 
       {/* â”€â”€ Quarter cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
