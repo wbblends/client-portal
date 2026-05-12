@@ -39,9 +39,15 @@ function CompanyLogo({ domain, name }: { domain: string; name: string | null }) 
 
 /** Client-side deal card. Renders the same visual as the original server-only
  *  card but, on click, opens a modal that fetches and shows the 5 most recent
- *  HubSpot notes for the deal. */
+ *  HubSpot notes for the deal, and lets the user edit tier/format/amount with
+ *  changes written back to HubSpot. */
 export function DealCardView({ deal }: { deal: DealCard }) {
   const [open, setOpen] = useState(false);
+  // Card-level state for the editable fields so the kanban tile reflects edits
+  // made in the modal without waiting for the next page revalidation.
+  const [tier, setTier] = useState<DealTier | null>(deal.tier);
+  const [format, setFormat] = useState<DealFormat | null>(deal.format);
+  const [amount, setAmount] = useState<number>(deal.amount);
 
   return (
     <>
@@ -74,27 +80,27 @@ export function DealCardView({ deal }: { deal: DealCard }) {
 
         <div className="mt-2.5 flex items-center justify-between gap-2">
           <span className="font-semibold text-foreground tabular-nums text-[14px]">
-            {fmtMoneyCompact(deal.amount)}
+            {fmtMoneyCompact(amount)}
           </span>
           <span className="text-[11px] text-muted tabular-nums">
             {formatCloseDate(deal.closeDate, deal.monthExpected)}
           </span>
         </div>
 
-        {(deal.tier || deal.format || deal.productCategory) && (
+        {(tier || format || deal.productCategory) && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {deal.tier && (
-              <Badge tone={TIER_TONE[deal.tier]} className="px-1.5 py-0 text-[10px]">
-                Tier {deal.tier}
+            {tier && (
+              <Badge tone={TIER_TONE[tier]} className="px-1.5 py-0 text-[10px]">
+                Tier {tier}
               </Badge>
             )}
-            {deal.format && (
+            {format && (
               <span className="inline-flex items-center gap-1 text-[10px] text-foreground-soft bg-surface border border-border rounded-md px-1.5 py-0.5">
-                <span className={`h-1.5 w-1.5 rounded-full ${FORMAT_DOT[deal.format]}`} />
-                {deal.format}
+                <span className={`h-1.5 w-1.5 rounded-full ${FORMAT_DOT[format]}`} />
+                {format}
               </span>
             )}
-            {!deal.format && deal.productCategory && (
+            {!format && deal.productCategory && (
               <span className="inline-flex items-center text-[10px] text-foreground-soft bg-surface border border-border rounded-md px-1.5 py-0.5">
                 {deal.productCategory}
               </span>
@@ -103,18 +109,111 @@ export function DealCardView({ deal }: { deal: DealCard }) {
         )}
       </button>
 
-      {open && <DealNotesModal deal={deal} onClose={() => setOpen(false)} />}
+      {open && (
+        <DealNotesModal
+          deal={deal}
+          tier={tier}
+          format={format}
+          amount={amount}
+          onChange={(next) => {
+            if (next.tier !== undefined) setTier(next.tier);
+            if (next.format !== undefined) setFormat(next.format);
+            if (next.amount !== undefined) setAmount(next.amount);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </>
   );
 }
 
-function DealNotesModal({ deal, onClose }: { deal: DealCard; onClose: () => void }) {
+type ModalChange = {
+  tier?: DealTier | null;
+  format?: DealFormat | null;
+  amount?: number;
+};
+
+function DealNotesModal({
+  deal,
+  tier,
+  format,
+  amount,
+  onChange,
+  onClose,
+}: {
+  deal: DealCard;
+  tier: DealTier | null;
+  format: DealFormat | null;
+  amount: number;
+  onChange: (next: ModalChange) => void;
+  onClose: () => void;
+}) {
   const [notes, setNotes] = useState<DealNote[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Editor state
+  const [amountDraft, setAmountDraft] = useState<string>(String(Math.round(amount)));
+  const [savingField, setSavingField] = useState<null | "tier" | "format" | "amount">(null);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  async function patchDeal(patch: ModalChange, label: "tier" | "format" | "amount") {
+    setSavingField(label);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/marketing/deals/${deal.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || `Failed to update ${label} (${res.status})`);
+      }
+      const data = (await res.json()) as {
+        tier: DealTier | null;
+        format: DealFormat | null;
+        amount: number;
+      };
+      onChange({ tier: data.tier, format: data.format, amount: data.amount });
+      if (label === "amount") setAmountDraft(String(Math.round(data.amount)));
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : `Failed to update ${label}`);
+    } finally {
+      setSavingField(null);
+    }
+  }
+
+  function onTierChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const v = e.target.value;
+    const next: DealTier | null =
+      v === "AA" || v === "A" || v === "B" || v === "C" ? v : null;
+    onChange({ tier: next });
+    void patchDeal({ tier: next }, "tier");
+  }
+
+  function onFormatChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const v = e.target.value;
+    const next: DealFormat | null =
+      v === "Liquid" || v === "Capsule" || v === "Powder" ? v : null;
+    onChange({ format: next });
+    void patchDeal({ format: next }, "format");
+  }
+
+  function commitAmount() {
+    const cleaned = amountDraft.replace(/[^0-9.]/g, "");
+    const n = Number(cleaned);
+    if (!Number.isFinite(n) || n < 0) {
+      setEditError("Amount must be a positive number");
+      setAmountDraft(String(Math.round(amount)));
+      return;
+    }
+    if (Math.round(n) === Math.round(amount)) return;
+    void patchDeal({ amount: n }, "amount");
+  }
 
   useEffect(() => {
     const ac = new AbortController();
@@ -205,6 +304,67 @@ function DealNotesModal({ deal, onClose }: { deal: DealCard; onClose: () => void
           >
             <X className="h-4 w-4" />
           </button>
+        </div>
+
+        <div className="px-5 py-3 border-b border-border bg-surface/40">
+          <div className="grid grid-cols-3 gap-3">
+            <label className="flex flex-col gap-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+              Tier
+              <select
+                value={tier ?? ""}
+                onChange={onTierChange}
+                disabled={savingField !== null}
+                className="rounded-md border border-border bg-card px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 disabled:opacity-60"
+              >
+                <option value="">—</option>
+                <option value="AA">AA</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+              Format
+              <select
+                value={format ?? ""}
+                onChange={onFormatChange}
+                disabled={savingField !== null}
+                className="rounded-md border border-border bg-card px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 disabled:opacity-60"
+              >
+                <option value="">—</option>
+                <option value="Liquid">Liquid</option>
+                <option value="Capsule">Capsule</option>
+                <option value="Powder">Powder</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+              Deal value
+              <div className="relative">
+                <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted text-sm">
+                  $
+                </span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={amountDraft}
+                  onChange={e => setAmountDraft(e.target.value)}
+                  onBlur={commitAmount}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  disabled={savingField !== null}
+                  className="w-full rounded-md border border-border bg-card pl-5 pr-2 py-1.5 text-sm tabular-nums text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 disabled:opacity-60"
+                />
+              </div>
+            </label>
+          </div>
+          <div className="mt-1.5 min-h-[16px] text-[11px]">
+            {savingField && <span className="text-muted">Saving {savingField}…</span>}
+            {!savingField && editError && <span className="text-danger">{editError}</span>}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
@@ -306,7 +466,11 @@ function OwnerAvatar({ name, initials }: { name: string; initials: string }) {
 }
 
 function fmtMoneyCompact(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M`;
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    // Whole millions render as $2mm; otherwise one decimal: $2.5mm.
+    return `$${Number.isInteger(m) ? m : m.toFixed(1)}mm`;
+  }
   if (n >= 10_000) return `$${Math.round(n / 1_000)}k`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
   return `$${n.toFixed(0)}`;

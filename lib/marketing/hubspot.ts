@@ -975,6 +975,85 @@ export async function createDealNote(
   return { source: "live", note, ownerMatched: ownerId !== null };
 }
 
+export type DealUpdateInput = {
+  tier?: DealTier | null;
+  format?: DealFormat | null;
+  amount?: number;
+};
+
+export type UpdatedDealFields = {
+  source: "live" | "placeholder";
+  tier: DealTier | null;
+  format: DealFormat | null;
+  amount: number;
+  weighted: number;
+};
+
+/** PATCH the editable fields on a HubSpot deal (tier, format, amount). Returns
+ *  the post-update values so the client can sync card state. Unknown/null
+ *  values for tier/format clear the property. */
+export async function updateDeal(
+  dealId: string,
+  input: DealUpdateInput,
+): Promise<UpdatedDealFields> {
+  const t = token();
+  if (!t) {
+    return {
+      source: "placeholder",
+      tier: input.tier ?? null,
+      format: input.format ?? null,
+      amount: input.amount ?? 0,
+      weighted: 0,
+    };
+  }
+  if (!/^\d+$/.test(dealId)) throw new Error("Invalid deal id");
+
+  const properties: Record<string, string> = {};
+  if (input.tier !== undefined) properties.tier = input.tier ?? "";
+  if (input.format !== undefined) properties.format = input.format ?? "";
+  if (input.amount !== undefined) {
+    if (!Number.isFinite(input.amount) || input.amount < 0) {
+      throw new Error("Invalid amount");
+    }
+    properties.amount = String(input.amount);
+  }
+
+  if (Object.keys(properties).length === 0) {
+    throw new Error("No fields to update");
+  }
+
+  const res = await timedFetch(`${HUBSPOT_API}/crm/v3/objects/deals/${dealId}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ properties }),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`HubSpot deal update failed: ${res.status} ${await res.text()}`);
+  }
+
+  // Re-read to get the recomputed hs_projected_amount (HubSpot recalculates
+  // weighted value on amount change). One small extra request keeps the card
+  // honest after the save.
+  const getRes = await timedFetch(
+    `${HUBSPOT_API}/crm/v3/objects/deals/${dealId}?properties=tier,format,amount,hs_projected_amount`,
+    { headers: { Authorization: `Bearer ${t}` }, cache: "no-store" },
+  );
+  if (!getRes.ok) {
+    throw new Error(`HubSpot deal re-read failed: ${getRes.status} ${await getRes.text()}`);
+  }
+  const data = (await getRes.json()) as { properties: Record<string, string | null> };
+
+  return {
+    source: "live",
+    tier: asTier(data.properties.tier),
+    format: asFormat(data.properties.format),
+    amount: Number(data.properties.amount ?? 0) || 0,
+    weighted: Number(data.properties.hs_projected_amount ?? 0) || 0,
+  };
+}
+
 export async function getDealNotes(dealId: string, limit = 5): Promise<DealNotesResult> {
   if (!token()) return PLACEHOLDER_NOTES;
   if (!/^\d+$/.test(dealId)) return { source: "live", notes: [] };
