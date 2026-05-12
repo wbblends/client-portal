@@ -5,6 +5,7 @@ import {
   deleteUser,
   getUser,
   getUserByEmail,
+  setPassword,
   updateUser,
   type CustomerAssignment,
   type CustomerPermission,
@@ -38,6 +39,7 @@ export async function PATCH(
     dashboards?: string[];
     avatarUrl?: string | null;
     active?: boolean;
+    password?: string;
   };
 
   const patch: Parameters<typeof updateUser>[1] = {};
@@ -99,7 +101,15 @@ export async function PATCH(
     const valid = new Set(listDashboards().map(d => d.id));
     patch.dashboards = body.dashboards.filter(id => valid.has(id));
   }
-  if (body.avatarUrl !== undefined) patch.avatarUrl = body.avatarUrl;
+  if (body.avatarUrl !== undefined) {
+    if (body.avatarUrl !== null && !isAcceptableAvatarUrl(body.avatarUrl)) {
+      return NextResponse.json(
+        { error: "Avatar must be a path or a small image data URL." },
+        { status: 400 },
+      );
+    }
+    patch.avatarUrl = body.avatarUrl;
+  }
   if (body.active !== undefined) {
     if (target.username === me.username && !body.active) {
       return NextResponse.json(
@@ -110,8 +120,31 @@ export async function PATCH(
     patch.active = body.active;
   }
 
+  if (body.password !== undefined) {
+    if (typeof body.password !== "string" || body.password.length < 10) {
+      return NextResponse.json(
+        { error: "Password must be at least 10 characters." },
+        { status: 400 },
+      );
+    }
+    await setPassword(target.username, body.password);
+  }
+
   const updated = await updateUser(target.username, patch);
   return NextResponse.json({ ok: true, user: serialize(updated) });
+}
+
+/** Accepts either a relative path (e.g. "/avatars/x.jpg"), an absolute http(s)
+ *  URL, or a small image data URL. Caps data URLs at ~200 KB raw to keep the
+ *  users row reasonable. */
+function isAcceptableAvatarUrl(url: string): boolean {
+  if (typeof url !== "string" || url.length === 0) return false;
+  if (url.startsWith("/")) return true;
+  if (url.startsWith("http://") || url.startsWith("https://")) return true;
+  if (/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(url)) {
+    return url.length <= 280_000; // ~200KB binary
+  }
+  return false;
 }
 
 export async function DELETE(

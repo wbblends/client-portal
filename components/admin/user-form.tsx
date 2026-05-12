@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, Pencil } from "lucide-react";
+import { Eye, Pencil, Upload, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { TeamAvatar } from "@/components/portal/team-avatar";
 import type { CustomerPermission, UserRole } from "@/lib/users/store";
 
 type DashboardOption = { id: string; name: string; category: string };
@@ -22,6 +23,7 @@ export type UserFormInitial = {
   /** Per-customer permission. Missing entries default to 'viewer'. */
   customerPermissions: Record<string, CustomerPermission>;
   dashboards: string[];
+  avatarUrl: string | null;
 };
 
 /**
@@ -55,6 +57,9 @@ export function UserForm({
   const [customerPermissions, setCustomerPermissions] = useState<
     Record<string, CustomerPermission>
   >(initial?.customerPermissions ?? {});
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initial?.avatarUrl ?? null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +79,32 @@ export function UserForm({
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setter(next);
+  }
+
+  async function onAvatarPick(e: ChangeEvent<HTMLInputElement>) {
+    setAvatarError(null);
+    const file = e.target.files?.[0];
+    // Clear the input so picking the same file again still fires onChange.
+    e.target.value = "";
+    if (!file) return;
+    if (!/^image\/(png|jpe?g|webp|gif)$/i.test(file.type)) {
+      setAvatarError("Pick a PNG, JPG, WebP, or GIF.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setAvatarError("That image is over 8 MB — pick something smaller.");
+      return;
+    }
+    try {
+      const dataUrl = await resizeImageToDataUrl(file, 256, 0.85);
+      if (dataUrl.length > 280_000) {
+        setAvatarError("Couldn't compress that image small enough. Try a different one.");
+        return;
+      }
+      setAvatarUrl(dataUrl);
+    } catch {
+      setAvatarError("Couldn't read that image.");
+    }
   }
 
   function setPermission(customerId: string, permission: CustomerPermission) {
@@ -101,6 +132,7 @@ export function UserForm({
         permission: customerPermissions[id] ?? "viewer",
       })),
       dashboards: [...pickedDashboards],
+      avatarUrl,
     };
     try {
       const url = editing
@@ -127,6 +159,52 @@ export function UserForm({
 
   return (
     <form className="space-y-7" onSubmit={onSubmit}>
+      <div className="flex items-center gap-4">
+        <TeamAvatar src={avatarUrl} name={name || username || "?"} size={64} />
+        <div className="flex flex-col gap-1.5">
+          <div className="text-sm font-medium text-foreground">Profile picture</div>
+          <div className="flex items-center gap-2">
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="sr-only"
+              onChange={onAvatarPick}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => avatarInputRef.current?.click()}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              {avatarUrl ? "Replace" : "Upload"}
+            </Button>
+            {avatarUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setAvatarUrl(null);
+                  setAvatarError(null);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Remove
+              </Button>
+            )}
+          </div>
+          {avatarError ? (
+            <p className="text-[11px] text-danger">{avatarError}</p>
+          ) : (
+            <p className="text-[11px] text-muted">
+              Square works best. We resize to 256×256 before saving.
+            </p>
+          )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Username" required>
           <Input
@@ -276,8 +354,129 @@ export function UserForm({
           The user will get an email with a link to set their password.
         </p>
       )}
+
+      {editing && <SetPasswordSection username={editing.username} />}
     </form>
   );
+}
+
+/** Lets an admin set a user's password directly, bypassing the invite/reset
+ *  email flow. Posts its own PATCH so the surrounding "Save changes" button
+ *  doesn't have to know about it. */
+function SetPasswordSection({ username }: { username: string }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  const tooShort = password.length > 0 && password.length < 10;
+  const mismatch = confirm.length > 0 && confirm !== password;
+  const canSave = password.length >= 10 && password === confirm && !busy;
+
+  async function save() {
+    if (
+      !window.confirm(
+        `Set a new password for ${username}? They'll be able to sign in with this immediately.`,
+      )
+    )
+      return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg({ kind: "err", text: data.error ?? "Could not set password." });
+      } else {
+        setMsg({ kind: "ok", text: "Password updated." });
+        setPassword("");
+        setConfirm("");
+      }
+    } catch {
+      setMsg({ kind: "err", text: "Could not reach the server." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+      <div>
+        <div className="text-sm font-medium text-foreground">Set password</div>
+        <p className="text-[11px] text-muted">
+          Sets the user's password directly — no email. Use only when needed; the invite /
+          reset email flow is the usual path.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Field label="New password">
+          <Input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="At least 10 characters"
+            autoComplete="new-password"
+          />
+        </Field>
+        <Field label="Confirm">
+          <Input
+            type="password"
+            value={confirm}
+            onChange={e => setConfirm(e.target.value)}
+            autoComplete="new-password"
+          />
+        </Field>
+      </div>
+      {tooShort && (
+        <p className="text-[11px] text-danger">Password must be at least 10 characters.</p>
+      )}
+      {mismatch && <p className="text-[11px] text-danger">Passwords don't match.</p>}
+      {msg && (
+        <p
+          role="alert"
+          aria-live="polite"
+          className={"text-xs " + (msg.kind === "ok" ? "text-success" : "text-danger")}
+        >
+          {msg.text}
+        </p>
+      )}
+      <div className="flex justify-end">
+        <Button type="button" size="sm" disabled={!canSave} onClick={save}>
+          {busy ? "Saving…" : "Set password"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Resize an image file in the browser to a square `size`×`size` JPEG data
+ *  URL using a center-crop. Keeps the avatar small and the DB row tiny. */
+async function resizeImageToDataUrl(file: File, size: number, quality: number): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new window.Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("decode failed"));
+      el.src = url;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no 2d context");
+    const min = Math.min(img.naturalWidth, img.naturalHeight);
+    const sx = (img.naturalWidth - min) / 2;
+    const sy = (img.naturalHeight - min) / 2;
+    ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+    return canvas.toDataURL("image/jpeg", quality);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function Field({

@@ -46,12 +46,17 @@ export function TeamAvatar({
     );
   }
 
+  // next/image can't optimize data: URLs — pass `unoptimized` to render them
+  // through directly (used for admin-uploaded avatars stored inline).
+  const unoptimized = src.startsWith("data:");
+
   return (
     <Image
       src={src}
       alt={name}
       width={size}
       height={size}
+      unoptimized={unoptimized}
       onError={() => setErrored(true)}
       className={cn("shrink-0 rounded-full object-cover ring-1 ring-border", className)}
     />

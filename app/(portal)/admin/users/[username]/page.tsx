@@ -38,7 +38,7 @@ export default async function EditUserPage(props: PageProps<"/admin/users/[usern
 
       <div>
         <p className="text-sm text-muted">Admin</p>
-        <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
+        <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
           {user.name}
         </h1>
         <p className="mt-1 text-sm text-muted">
@@ -68,6 +68,7 @@ export default async function EditUserPage(props: PageProps<"/admin/users/[usern
               customerIds: user.customerIds,
               customerPermissions: user.customerPermissions,
               dashboards: user.dashboards,
+              avatarUrl: user.avatarUrl ?? null,
             }}
           />
         </CardContent>
