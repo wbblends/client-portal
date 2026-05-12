@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
+  getClosedDeals,
   getPipelineKanban,
   type PipelineKanban,
 } from "@/lib/marketing/hubspot";
@@ -36,7 +37,11 @@ export async function AccountExpansionDashboard() {
 }
 
 export async function PipelineAnalyticsDashboard() {
-  const data = await getPipelineKanban();
+  // Open kanban + 12 months of closed deals fetched in parallel. Each lives
+  // behind its own try/catch in lib/marketing/hubspot.ts, so a failure in
+  // one (e.g. closed-deals search hitting a rate limit) doesn't take down
+  // the other half of the dashboard.
+  const [data, closed] = await Promise.all([getPipelineKanban(), getClosedDeals()]);
 
   return (
     <div className="page-container page-pad-x page-pad-y space-y-5 sm:space-y-7">
@@ -47,7 +52,7 @@ export async function PipelineAnalyticsDashboard() {
             Pipeline Analytics
           </h1>
           <p className="mt-1 max-w-[640px] text-sm text-muted">
-            Open-deal value across both HubSpot pipelines, sliceable by rep, tier, and format.
+            Open-deal value plus 12 months of closed-deal context across both HubSpot pipelines.
           </p>
         </div>
         {data.source === "placeholder" && (
@@ -55,7 +60,7 @@ export async function PipelineAnalyticsDashboard() {
         )}
       </div>
 
-      <PipelineAnalyticsView data={data} />
+      <PipelineAnalyticsView data={data} closed={closed} />
     </div>
   );
 }

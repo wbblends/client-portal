@@ -122,6 +122,13 @@ export type DealCard = {
   /** ISO timestamp from HubSpot's hs_lastmodifieddate. Used by the analytics
    *  dashboard to flag stale deals (no activity in 30+ days). */
   lastModified: string | null;
+  /** ISO timestamp from HubSpot's createdate — when the deal record was
+   *  first created. Used for "net new pipeline added in window" metrics. */
+  createDate: string | null;
+  /** HubSpot's first-touch source attribution (hs_analytics_source) —
+   *  e.g. ORGANIC_SEARCH, PAID_SEARCH, REFERRALS, DIRECT_TRAFFIC. Null when
+   *  HubSpot couldn't attribute. Used for the by-source breakdown. */
+  source: string | null;
 };
 
 export type StageColumn = {
@@ -463,6 +470,8 @@ async function fetchOpenDeals(pipelineId: string): Promise<RawDeal[]> {
         "month_expected",
         "product_category",
         "hs_lastmodifieddate",
+        "createdate",
+        "hs_analytics_source",
       ],
       limit: 100,
       ...(after ? { after } : {}),
@@ -579,6 +588,8 @@ function buildPipelineFromRaw(
       owner: ownerId ? ownersById.get(ownerId) ?? null : null,
       hubspotUrl: dealHubspotUrl(d.id),
       lastModified: d.properties.hs_lastmodifieddate ?? null,
+      createDate: d.properties.createdate ?? null,
+      source: d.properties.hs_analytics_source ?? null,
     };
     if (!dealsByStage.has(stageId)) dealsByStage.set(stageId, []);
     dealsByStage.get(stageId)!.push(card);
@@ -672,6 +683,135 @@ export async function getPipelineKanban(): Promise<KanbanData> {
   } catch (err) {
     console.error("[marketing/hubspot] getPipelineKanban failed:", err);
     return PLACEHOLDER_KANBAN;
+  }
+}
+
+// ─── Closed deals (analytics) ───────────────────────────────────────────────
+//
+// Powers win-rate, sales-cycle length, and pipeline-flow analytics on the
+// Pipeline Analytics dashboard. Pulls closed deals (won OR lost) from the
+// last 12 months. 12 months is a balance: enough history for stable win-rate
+// signal, well under HubSpot's 10k results-per-search cap given our deal
+// volume. Adjust `CLOSED_WINDOW_DAYS` if that ever changes.
+
+const CLOSED_WINDOW_DAYS = 365;
+
+export type ClosedDeal = {
+  id: string;
+  amount: number;
+  createDate: string | null;
+  closeDate: string | null;
+  owner: DealOwner | null;
+  tier: DealTier | null;
+  format: DealFormat | null;
+  source: string | null;
+  pipelineKey: PipelineKey;
+  isWon: boolean;
+};
+
+export type ClosedDealsData = {
+  source: "live" | "placeholder";
+  deals: ClosedDeal[];
+};
+
+const PLACEHOLDER_CLOSED_DEALS: ClosedDealsData = {
+  source: "placeholder",
+  deals: [],
+};
+
+async function fetchClosedDealsRaw(pipelineId: string): Promise<RawDeal[]> {
+  const t = token();
+  if (!t) throw new Error("Missing HUBSPOT_PRIVATE_APP_TOKEN");
+
+  const sinceMs = Date.now() - CLOSED_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const all: RawDeal[] = [];
+  let after: string | undefined;
+
+  do {
+    const body = {
+      filterGroups: [
+        {
+          filters: [
+            { propertyName: "pipeline", operator: "EQ", value: pipelineId },
+            { propertyName: "hs_is_closed", operator: "EQ", value: "true" },
+            { propertyName: "closedate", operator: "GTE", value: String(sinceMs) },
+          ],
+        },
+      ],
+      properties: [
+        "amount",
+        "createdate",
+        "closedate",
+        "hubspot_owner_id",
+        "tier",
+        "format",
+        "hs_analytics_source",
+        "hs_is_closed_won",
+      ],
+      limit: 100,
+      ...(after ? { after } : {}),
+    };
+
+    const res = await searchFetch(`${HUBSPOT_API}/crm/v3/objects/deals/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${t}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      throw new Error(`HubSpot closed deals search failed: ${res.status} ${await res.text()}`);
+    }
+
+    const data = (await res.json()) as {
+      results: RawDeal[];
+      paging?: { next?: { after: string } };
+    };
+
+    all.push(...data.results);
+    after = data.paging?.next?.after;
+  } while (after);
+
+  return all;
+}
+
+export async function getClosedDeals(): Promise<ClosedDealsData> {
+  if (!token()) return PLACEHOLDER_CLOSED_DEALS;
+
+  try {
+    const [salesRaw, expansionRaw, owners] = await Promise.all([
+      fetchClosedDealsRaw(PIPELINES.sales.id),
+      fetchClosedDealsRaw(PIPELINES.expansion.id),
+      fetchAllOwners(),
+    ]);
+
+    const toClosed = (raw: RawDeal[], pipelineKey: PipelineKey): ClosedDeal[] =>
+      raw.map(d => {
+        const ownerId = d.properties.hubspot_owner_id;
+        return {
+          id: d.id,
+          amount: Number(d.properties.amount ?? 0) || 0,
+          createDate: d.properties.createdate ?? null,
+          closeDate: d.properties.closedate ?? null,
+          owner: ownerId ? owners.get(ownerId) ?? null : null,
+          tier: asTier(d.properties.tier),
+          format: asFormat(d.properties.format),
+          source: d.properties.hs_analytics_source ?? null,
+          pipelineKey,
+          isWon: d.properties.hs_is_closed_won === "true",
+        };
+      });
+
+    return {
+      source: "live",
+      deals: [...toClosed(salesRaw, "sales"), ...toClosed(expansionRaw, "expansion")],
+    };
+  } catch (err) {
+    console.error("[marketing/hubspot] getClosedDeals failed:", err);
+    return PLACEHOLDER_CLOSED_DEALS;
   }
 }
 

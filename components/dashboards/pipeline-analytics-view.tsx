@@ -2,7 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
-import type { DealCard, KanbanData, PipelineKey } from "@/lib/marketing/hubspot";
+import type {
+  ClosedDeal,
+  ClosedDealsData,
+  DealCard,
+  KanbanData,
+  PipelineKey,
+} from "@/lib/marketing/hubspot";
 
 type Scope = "combined" | "sales" | "expansion";
 type Weight = "unweighted" | "weighted";
@@ -22,6 +28,7 @@ const SCOPE_LABEL: Record<Scope, string> = {
 const TIER_ORDER = ["AA", "A", "B", "C", "Unset"] as const;
 const FORMAT_ORDER = ["Liquid", "Capsule", "Powder", "Unset"] as const;
 const STALE_AFTER_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Curated palette for donut slices — chosen to remain legible on both the
 // light surface (#f6f4ff) and the dark card surface, with adjacent colors
@@ -39,7 +46,7 @@ const SLICE_COLORS = [
   "#7c3aed", // violet
   "#0d9488", // teal
   "#b91c1c", // danger red
-  "#475569", // slate (fallback for "Unset")
+  "#475569", // slate (fallback for "Unset"/"Unknown")
 ];
 
 function flatten(data: KanbanData): FlatDeal[] {
@@ -60,17 +67,43 @@ function flatten(data: KanbanData): FlatDeal[] {
   return out;
 }
 
-function inScope(d: FlatDeal, scope: Scope): boolean {
+function inScopeOpen(d: FlatDeal, scope: Scope): boolean {
   if (scope === "combined") return true;
   return d.pipelineKey === scope;
 }
 
-export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
+function inScopeClosed(d: ClosedDeal, scope: Scope): boolean {
+  if (scope === "combined") return true;
+  return d.pipelineKey === scope;
+}
+
+/** Humanize HubSpot's hs_analytics_source SCREAMING_SNAKE_CASE into something
+ *  the user can read. Null/empty values bucket under "Unknown". */
+function humanizeSource(s: string | null): string {
+  if (!s) return "Unknown";
+  return s
+    .toLowerCase()
+    .split("_")
+    .map(w => (w === "" ? "" : w[0].toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
+export function PipelineAnalyticsView({
+  data,
+  closed,
+}: {
+  data: KanbanData;
+  closed: ClosedDealsData;
+}) {
   const [scope, setScope] = useState<Scope>("combined");
   const [chartWeight, setChartWeight] = useState<Weight>("unweighted");
 
-  const allDeals = useMemo(() => flatten(data), [data]);
-  const deals = useMemo(() => allDeals.filter(d => inScope(d, scope)), [allDeals, scope]);
+  const allOpen = useMemo(() => flatten(data), [data]);
+  const deals = useMemo(() => allOpen.filter(d => inScopeOpen(d, scope)), [allOpen, scope]);
+  const closedScoped = useMemo(
+    () => closed.deals.filter(d => inScopeClosed(d, scope)),
+    [closed.deals, scope],
+  );
 
   const totals = useMemo(() => {
     let unweighted = 0;
@@ -81,6 +114,26 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
     }
     return { unweighted, weighted, count: deals.length };
   }, [deals]);
+
+  // Win-rate lookups joined to each table's group key. Keys are computed once
+  // here and reused per table so each table only walks the closed-deal list
+  // once instead of N times.
+  const winRateByRep = useMemo(
+    () => buildWinRateLookup(closedScoped, d => d.owner?.name ?? "Unassigned"),
+    [closedScoped],
+  );
+  const winRateByTier = useMemo(
+    () => buildWinRateLookup(closedScoped, d => d.tier ?? "Unset"),
+    [closedScoped],
+  );
+  const winRateByFormat = useMemo(
+    () => buildWinRateLookup(closedScoped, d => d.format ?? "Unset"),
+    [closedScoped],
+  );
+  const winRateBySource = useMemo(
+    () => buildWinRateLookup(closedScoped, d => humanizeSource(d.source)),
+    [closedScoped],
+  );
 
   return (
     <div className="space-y-5 sm:space-y-7">
@@ -93,14 +146,15 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
 
       <SummaryStrip totals={totals} />
 
-      <div className="grid grid-cols-1 gap-5 sm:gap-7 xl:grid-cols-3">
+      <PipelineFlowCard deals={deals} closed={closedScoped} />
+
+      <div className="grid grid-cols-1 gap-5 sm:gap-7 xl:grid-cols-2">
         <DonutCard
           title="Makeup by rep"
           deals={deals}
           weight={chartWeight}
           onWeightChange={setChartWeight}
           groupBy={d => d.owner?.name ?? "Unassigned"}
-          // No fixed order — sort by value descending in the buildBuckets call.
           orderHint={null}
         />
         <DonutCard
@@ -119,14 +173,25 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
           groupBy={d => d.format ?? "Unset"}
           orderHint={FORMAT_ORDER}
         />
+        <DonutCard
+          title="Makeup by source"
+          deals={deals}
+          weight={chartWeight}
+          onWeightChange={setChartWeight}
+          groupBy={d => humanizeSource(d.source)}
+          orderHint={null}
+        />
       </div>
+
+      <SalesCycleCard closed={closedScoped} />
 
       <BreakdownTable
         title="By rep"
-        description="Open deals, pipeline value, and weighted value per HubSpot owner."
+        description="Open deals, pipeline value, weighted value, and 12-month win rate per HubSpot owner."
         deals={deals}
         groupBy={d => d.owner?.name ?? "Unassigned"}
         orderHint={null}
+        winRate={winRateByRep}
       />
       <BreakdownTable
         title="By tier"
@@ -134,6 +199,7 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
         deals={deals}
         groupBy={d => d.tier ?? "Unset"}
         orderHint={TIER_ORDER}
+        winRate={winRateByTier}
       />
       <BreakdownTable
         title="By format"
@@ -141,6 +207,15 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
         deals={deals}
         groupBy={d => d.format ?? "Unset"}
         orderHint={FORMAT_ORDER}
+        winRate={winRateByFormat}
+      />
+      <BreakdownTable
+        title="By source"
+        description="Open deal volume and value by first-touch HubSpot analytics source."
+        deals={deals}
+        groupBy={d => humanizeSource(d.source)}
+        orderHint={null}
+        winRate={winRateBySource}
       />
 
       <AgingCard deals={deals} />
@@ -215,6 +290,38 @@ function SummaryCell({ label, primary }: { label: string; primary: string }) {
   );
 }
 
+// ─── Win-rate lookup ────────────────────────────────────────────────────────
+
+type WinRateRow = { won: number; lost: number };
+type WinRateLookup = Map<string, WinRateRow>;
+
+function buildWinRateLookup(
+  closed: ClosedDeal[],
+  groupBy: (d: ClosedDeal) => string,
+): WinRateLookup {
+  const m: WinRateLookup = new Map();
+  for (const d of closed) {
+    const k = groupBy(d);
+    const row = m.get(k) ?? { won: 0, lost: 0 };
+    if (d.isWon) row.won += 1;
+    else row.lost += 1;
+    m.set(k, row);
+  }
+  return m;
+}
+
+function fmtWinRate(row: WinRateRow | undefined): string {
+  if (!row) return "—";
+  const total = row.won + row.lost;
+  if (total === 0) return "—";
+  return `${Math.round((row.won / total) * 100)}%`;
+}
+
+function winRateDetail(row: WinRateRow | undefined): string {
+  if (!row) return "No closed deals in last 12 months";
+  return `${row.won} won / ${row.won + row.lost} closed in last 12 months`;
+}
+
 // ─── Breakdown tables ────────────────────────────────────────────────────────
 
 type Bucket = {
@@ -263,12 +370,14 @@ function BreakdownTable({
   deals,
   groupBy,
   orderHint,
+  winRate,
 }: {
   title: string;
   description: string;
   deals: FlatDeal[];
   groupBy: (d: FlatDeal) => string;
   orderHint: readonly string[] | null;
+  winRate?: WinRateLookup;
 }) {
   const rows = useMemo(() => buildBuckets(deals, groupBy, orderHint), [deals, groupBy, orderHint]);
   const totals = useMemo(
@@ -309,28 +418,38 @@ function BreakdownTable({
               <th className="px-3 py-2.5 text-right font-semibold">Open</th>
               <th className="px-3 py-2.5 text-right font-semibold">Unweighted</th>
               <th className="px-3 py-2.5 text-right font-semibold">Weighted</th>
-              <th className="px-5 py-2.5 text-right font-semibold">Avg deal</th>
+              <th className="px-3 py-2.5 text-right font-semibold">Avg deal</th>
+              <th className="px-5 py-2.5 text-right font-semibold">Win rate</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, idx) => (
-              <tr
-                key={r.key}
-                className={`border-b border-border last:border-b-0 ${idx % 2 === 1 ? "bg-surface/30" : ""}`}
-              >
-                <td className="px-5 py-3 text-foreground font-medium">{r.key}</td>
-                <td className="px-3 py-3 text-right tabular-nums text-foreground">{r.count}</td>
-                <td className="px-3 py-3 text-right tabular-nums text-foreground">
-                  {fmtMoney(r.unweighted)}
-                </td>
-                <td className="px-3 py-3 text-right tabular-nums text-muted">
-                  {fmtMoney(r.weighted)}
-                </td>
-                <td className="px-5 py-3 text-right tabular-nums text-foreground">
-                  {r.count > 0 ? fmtMoney(r.unweighted / r.count) : "—"}
-                </td>
-              </tr>
-            ))}
+            {rows.map((r, idx) => {
+              const wr = winRate?.get(r.key);
+              return (
+                <tr
+                  key={r.key}
+                  className={`border-b border-border last:border-b-0 ${idx % 2 === 1 ? "bg-surface/30" : ""}`}
+                >
+                  <td className="px-5 py-3 text-foreground font-medium">{r.key}</td>
+                  <td className="px-3 py-3 text-right tabular-nums text-foreground">{r.count}</td>
+                  <td className="px-3 py-3 text-right tabular-nums text-foreground">
+                    {fmtMoney(r.unweighted)}
+                  </td>
+                  <td className="px-3 py-3 text-right tabular-nums text-muted">
+                    {fmtMoney(r.weighted)}
+                  </td>
+                  <td className="px-3 py-3 text-right tabular-nums text-foreground">
+                    {r.count > 0 ? fmtMoney(r.unweighted / r.count) : "—"}
+                  </td>
+                  <td
+                    className="px-5 py-3 text-right tabular-nums text-foreground-soft"
+                    title={winRateDetail(wr)}
+                  >
+                    {fmtWinRate(wr)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot>
             <tr className="border-t border-border-strong/70 bg-surface/60">
@@ -344,9 +463,10 @@ function BreakdownTable({
               <td className="px-3 py-3 text-right tabular-nums text-sm font-semibold text-foreground">
                 {fmtMoney(totals.weighted)}
               </td>
-              <td className="px-5 py-3 text-right tabular-nums text-sm font-semibold text-foreground">
+              <td className="px-3 py-3 text-right tabular-nums text-sm font-semibold text-foreground">
                 {totals.count > 0 ? fmtMoney(totals.unweighted / totals.count) : "—"}
               </td>
+              <td className="px-5 py-3" />
             </tr>
           </tfoot>
         </table>
@@ -386,7 +506,7 @@ function DonutCard({
       value: valueOf(r),
       pct: valueOf(r) / total,
       color:
-        r.key === "Unset" || r.key === "Unassigned"
+        r.key === "Unset" || r.key === "Unassigned" || r.key === "Unknown"
           ? SLICE_COLORS[SLICE_COLORS.length - 1]
           : SLICE_COLORS[i % (SLICE_COLORS.length - 1)],
     }));
@@ -514,13 +634,279 @@ function WeightToggle({ value, onChange }: { value: Weight; onChange: (w: Weight
   );
 }
 
+// ─── Pipeline Flow ──────────────────────────────────────────────────────────
+//
+// "What's the shape of the pipeline funnel over each recent window?"
+//
+// For three rolling windows (30/90/365 days) we surface four numbers:
+//   - New: total $ of deals created in window (open + closed, by createdate)
+//   - Won: total $ of deals closed-won in window (by closedate)
+//   - Lost: total $ of deals closed-lost in window
+//   - Net: New - Won - Lost = net pipeline change
+//
+// Positive Net = adding pipeline faster than we're emptying it. Useful gut
+// check before a quota cycle.
+
+const FLOW_WINDOWS = [
+  { key: "30d", label: "Last 30d", days: 30 },
+  { key: "90d", label: "Last 90d", days: 90 },
+  { key: "365d", label: "Last 365d", days: 365 },
+] as const;
+
+function PipelineFlowCard({
+  deals,
+  closed,
+}: {
+  deals: FlatDeal[];
+  closed: ClosedDeal[];
+}) {
+  const now = Date.now();
+
+  const stats = useMemo(() => {
+    return FLOW_WINDOWS.map(w => {
+      const cutoff = now - w.days * DAY_MS;
+      let newAmount = 0;
+      // Net new pipeline added: every deal (open or closed) created within
+      // the window contributes its amount, regardless of close status. This
+      // mirrors how HubSpot reports "new deals created".
+      for (const d of deals) {
+        const ms = d.createDate ? Date.parse(d.createDate) : NaN;
+        if (Number.isFinite(ms) && ms >= cutoff) newAmount += d.amount;
+      }
+      let wonAmount = 0;
+      let lostAmount = 0;
+      for (const d of closed) {
+        const cms = d.closeDate ? Date.parse(d.closeDate) : NaN;
+        if (!Number.isFinite(cms) || cms < cutoff) continue;
+        if (d.isWon) wonAmount += d.amount;
+        else lostAmount += d.amount;
+        // Newly-created-and-closed in the same window: also counts toward New.
+        const created = d.createDate ? Date.parse(d.createDate) : NaN;
+        if (Number.isFinite(created) && created >= cutoff) newAmount += d.amount;
+      }
+      return {
+        key: w.key,
+        label: w.label,
+        days: w.days,
+        newAmount,
+        wonAmount,
+        lostAmount,
+        net: newAmount - wonAmount - lostAmount,
+      };
+    });
+  }, [deals, closed, now]);
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="px-5 pt-5 pb-3">
+        <h3 className="text-base font-semibold tracking-tight text-foreground">Pipeline flow</h3>
+        <p className="text-sm text-muted mt-0.5">
+          New pipeline added vs. value closed (won + lost) in each rolling window. Net is the change to open pipeline value.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+        {stats.map(s => (
+          <div key={s.key} className="px-5 py-4 space-y-2">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
+              {s.label}
+            </div>
+            <FlowRow label="New" amount={s.newAmount} tone="neutral" />
+            <FlowRow label="Won" amount={s.wonAmount} tone="success" />
+            <FlowRow label="Lost" amount={s.lostAmount} tone="danger" />
+            <div className="pt-1.5 mt-1 border-t border-border flex items-baseline justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                Net
+              </span>
+              <span
+                className={
+                  "text-[15px] font-semibold tabular-nums " +
+                  (s.net > 0
+                    ? "text-success"
+                    : s.net < 0
+                      ? "text-danger"
+                      : "text-foreground")
+                }
+              >
+                {s.net > 0 ? "+" : s.net < 0 ? "−" : ""}
+                {fmtMoney(Math.abs(s.net))}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function FlowRow({
+  label,
+  amount,
+  tone,
+}: {
+  label: string;
+  amount: number;
+  tone: "neutral" | "success" | "danger";
+}) {
+  const toneClass =
+    tone === "success" ? "text-success" : tone === "danger" ? "text-danger" : "text-foreground";
+  return (
+    <div className="flex items-baseline justify-between">
+      <span className="text-xs text-muted">{label}</span>
+      <span className={`text-sm font-medium tabular-nums ${toneClass}`}>
+        {fmtMoney(amount)}
+      </span>
+    </div>
+  );
+}
+
+// ─── Sales cycle ────────────────────────────────────────────────────────────
+//
+// "How long does it take from a deal getting created to closing-won?"
+//
+// Computed only over closed-won deals in the closed-deals window (last 12 mo).
+// Closed-lost is intentionally excluded — a lost deal's "cycle length" mostly
+// reflects how long it took to disqualify, which is a different signal.
+
+function avgCycleDays(deals: ClosedDeal[]): number | null {
+  let total = 0;
+  let n = 0;
+  for (const d of deals) {
+    if (!d.isWon) continue;
+    const created = d.createDate ? Date.parse(d.createDate) : NaN;
+    const closed = d.closeDate ? Date.parse(d.closeDate) : NaN;
+    if (!Number.isFinite(created) || !Number.isFinite(closed)) continue;
+    const days = (closed - created) / DAY_MS;
+    if (days < 0) continue;
+    total += days;
+    n += 1;
+  }
+  if (n === 0) return null;
+  return total / n;
+}
+
+function SalesCycleCard({ closed }: { closed: ClosedDeal[] }) {
+  const overall = useMemo(() => avgCycleDays(closed), [closed]);
+  const wonCount = useMemo(() => closed.filter(d => d.isWon).length, [closed]);
+
+  const byRep = useMemo(
+    () => groupedCycle(closed, d => d.owner?.name ?? "Unassigned"),
+    [closed],
+  );
+  const byTier = useMemo(
+    () => groupedCycle(closed, d => d.tier ?? "Unset", TIER_ORDER),
+    [closed],
+  );
+  const byFormat = useMemo(
+    () => groupedCycle(closed, d => d.format ?? "Unset", FORMAT_ORDER),
+    [closed],
+  );
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="px-5 pt-5 pb-3 flex items-baseline justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="text-base font-semibold tracking-tight text-foreground">Sales cycle</h3>
+          <p className="text-sm text-muted mt-0.5">
+            Avg days from deal creation to close-won. Last 12 months of closed-won data.
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+            Overall
+          </div>
+          <div className="text-xl font-semibold tabular-nums text-foreground">
+            {overall === null ? "—" : `${Math.round(overall)}d`}
+          </div>
+          <div className="text-xs text-muted">
+            {wonCount} won {wonCount === 1 ? "deal" : "deals"}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+        <CycleColumn title="By rep" rows={byRep} />
+        <CycleColumn title="By tier" rows={byTier} />
+        <CycleColumn title="By format" rows={byFormat} />
+      </div>
+    </Card>
+  );
+}
+
+type CycleRow = { key: string; avgDays: number | null; wonCount: number };
+
+function groupedCycle(
+  closed: ClosedDeal[],
+  groupBy: (d: ClosedDeal) => string,
+  orderHint?: readonly string[],
+): CycleRow[] {
+  const byKey = new Map<string, ClosedDeal[]>();
+  for (const d of closed) {
+    const k = groupBy(d);
+    if (!byKey.has(k)) byKey.set(k, []);
+    byKey.get(k)!.push(d);
+  }
+  const rows: CycleRow[] = [];
+  for (const [k, group] of byKey) {
+    rows.push({
+      key: k,
+      avgDays: avgCycleDays(group),
+      wonCount: group.filter(d => d.isWon).length,
+    });
+  }
+  if (orderHint) {
+    const hint = new Map(orderHint.map((k, i) => [k, i]));
+    rows.sort((a, b) => {
+      const ai = hint.get(a.key);
+      const bi = hint.get(b.key);
+      if (ai !== undefined && bi !== undefined) return ai - bi;
+      if (ai !== undefined) return -1;
+      if (bi !== undefined) return 1;
+      return a.key.localeCompare(b.key);
+    });
+  } else {
+    rows.sort((a, b) => b.wonCount - a.wonCount);
+  }
+  return rows;
+}
+
+function CycleColumn({ title, rows }: { title: string; rows: CycleRow[] }) {
+  return (
+    <div className="px-5 py-4">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted mb-2">
+        {title}
+      </div>
+      {rows.length === 0 ? (
+        <div className="text-sm text-muted">No data.</div>
+      ) : (
+        <ul className="space-y-1.5">
+          {rows.map(r => (
+            <li key={r.key} className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="truncate text-foreground-soft" title={r.key}>
+                {r.key}
+              </span>
+              <span className="tabular-nums text-foreground font-medium">
+                {r.avgDays === null ? "—" : `${Math.round(r.avgDays)}d`}
+                {r.wonCount > 0 && (
+                  <span className="text-xs font-normal text-muted ml-1.5">
+                    ({r.wonCount})
+                  </span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // ─── Aging ───────────────────────────────────────────────────────────────────
 
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return null;
-  return Math.floor((Date.now() - ms) / (1000 * 60 * 60 * 24));
+  return Math.floor((Date.now() - ms) / DAY_MS);
 }
 
 function AgingCard({ deals }: { deals: FlatDeal[] }) {
