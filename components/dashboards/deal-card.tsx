@@ -23,6 +23,20 @@ const FORMAT_DOT: Record<DealFormat, string> = {
   Powder: "bg-warning",
 };
 
+function CompanyLogo({ domain, name }: { domain: string; name: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <img
+      src={`https://www.google.com/s2/favicons?sz=128&domain=${encodeURIComponent(domain)}`}
+      alt={name ? `${name} logo` : ""}
+      onError={() => setFailed(true)}
+      loading="lazy"
+      className="shrink-0 h-6 w-6 rounded bg-surface border border-border object-contain"
+    />
+  );
+}
+
 /** Client-side deal card. Renders the same visual as the original server-only
  *  card but, on click, opens a modal that fetches and shows the 5 most recent
  *  HubSpot notes for the deal. */
@@ -37,18 +51,23 @@ export function DealCardView({ deal }: { deal: DealCard }) {
         className="text-left w-full block rounded-lg bg-card border border-border px-3 py-2.5 shadow-[var(--shadow-card)] hover:border-primary/40 hover:shadow-[var(--shadow-card-hover)] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
         <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div
-              className="text-[13px] font-medium text-foreground leading-snug line-clamp-2"
-              title={deal.name}
-            >
-              {deal.name}
-            </div>
-            {deal.companyName && deal.companyName !== deal.name && (
-              <div className="mt-0.5 text-[11px] text-muted truncate" title={deal.companyName}>
-                {deal.companyName}
-              </div>
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            {deal.companyDomain && (
+              <CompanyLogo domain={deal.companyDomain} name={deal.companyName} />
             )}
+            <div className="flex-1 min-w-0">
+              <div
+                className="text-[13px] font-medium text-foreground leading-snug line-clamp-2"
+                title={deal.name}
+              >
+                {deal.name}
+              </div>
+              {deal.companyName && deal.companyName !== deal.name && (
+                <div className="mt-0.5 text-[11px] text-muted truncate" title={deal.companyName}>
+                  {deal.companyName}
+                </div>
+              )}
+            </div>
           </div>
           {deal.owner && <OwnerAvatar name={deal.owner.name} initials={deal.owner.initials} />}
         </div>

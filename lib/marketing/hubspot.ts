@@ -109,6 +109,7 @@ export type DealCard = {
   id: string;
   name: string;
   companyName: string | null;
+  companyDomain: string | null;
   amount: number;
   weighted: number;
   closeDate: string | null;
@@ -552,16 +553,18 @@ function buildPipelineFromRaw(
   stages: RawStage[],
   deals: RawDeal[],
   ownersById: Map<string, DealOwner>,
-  dealCompany: Map<string, string>,
+  dealCompany: Map<string, { name: string; domain: string | null }>,
 ): PipelineKanban {
   const dealsByStage = new Map<string, DealCard[]>();
   for (const d of deals) {
     const stageId = d.properties.dealstage ?? "";
     const ownerId = d.properties.hubspot_owner_id;
+    const company = dealCompany.get(d.id);
     const card: DealCard = {
       id: d.id,
       name: d.properties.dealname ?? "(unnamed deal)",
-      companyName: dealCompany.get(d.id) ?? null,
+      companyName: company?.name ?? null,
+      companyDomain: company?.domain ?? null,
       amount: Number(d.properties.amount ?? 0) || 0,
       weighted: Number(d.properties.hs_projected_amount ?? 0) || 0,
       closeDate: d.properties.closedate,
@@ -603,7 +606,9 @@ function buildPipelineFromRaw(
  * Both endpoints sit outside the search-API rate limit, so we don't need to
  * route them through searchFetch.
  */
-async function resolveDealCompanyNames(dealIds: string[]): Promise<Map<string, string>> {
+async function resolveDealCompanyInfo(
+  dealIds: string[],
+): Promise<Map<string, { name: string; domain: string | null }>> {
   const t = token();
   if (!t || dealIds.length === 0) return new Map();
 
@@ -629,12 +634,12 @@ async function resolveDealCompanyNames(dealIds: string[]): Promise<Map<string, s
   }
 
   const companyIds = Array.from(new Set(dealToCompany.values()));
-  const companyNames = await batchReadCompanyNames(companyIds);
+  const companyInfo = await batchReadCompanyInfo(companyIds);
 
-  const out = new Map<string, string>();
+  const out = new Map<string, { name: string; domain: string | null }>();
   for (const [dealId, companyId] of dealToCompany) {
-    const name = companyNames.get(companyId);
-    if (name) out.set(dealId, name);
+    const info = companyInfo.get(companyId);
+    if (info) out.set(dealId, info);
   }
   return out;
 }
@@ -652,7 +657,7 @@ export async function getPipelineKanban(): Promise<KanbanData> {
     ]);
 
     const allDealIds = [...salesDeals, ...expansionDeals].map(d => d.id);
-    const dealCompany = await resolveDealCompanyNames(allDealIds);
+    const dealCompany = await resolveDealCompanyInfo(allDealIds);
 
     return {
       source: "live",
@@ -731,17 +736,19 @@ async function batchReadContactToCompanyAssociations(contactIds: number[]): Prom
   return out;
 }
 
-async function batchReadCompanyNames(companyIds: number[]): Promise<Map<number, string>> {
+async function batchReadCompanyInfo(
+  companyIds: number[],
+): Promise<Map<number, { name: string; domain: string | null }>> {
   const t = token();
   if (!t) throw new Error("Missing HUBSPOT_PRIVATE_APP_TOKEN");
-  const out = new Map<number, string>();
+  const out = new Map<number, { name: string; domain: string | null }>();
   for (let i = 0; i < companyIds.length; i += 100) {
     const chunk = companyIds.slice(i, i + 100);
     const res = await timedFetch(`${HUBSPOT_API}/crm/v3/objects/companies/batch/read`, {
       method: "POST",
       headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        properties: ["name"],
+        properties: ["name", "domain"],
         inputs: chunk.map(id => ({ id: String(id) })),
       }),
       cache: "no-store",
@@ -750,11 +757,13 @@ async function batchReadCompanyNames(companyIds: number[]): Promise<Map<number, 
       throw new Error(`HubSpot batch company read failed: ${res.status} ${await res.text()}`);
     }
     const data = (await res.json()) as {
-      results: { id: string; properties: { name: string | null } }[];
+      results: { id: string; properties: { name: string | null; domain: string | null } }[];
     };
     for (const r of data.results) {
       const id = Number(r.id);
-      if (r.properties.name) out.set(id, r.properties.name);
+      if (r.properties.name) {
+        out.set(id, { name: r.properties.name, domain: r.properties.domain || null });
+      }
     }
   }
   return out;
@@ -1047,8 +1056,8 @@ export async function getMarketingAttribution(): Promise<MarketingAttribution> {
         touchedCompanyNames: [],
       };
     }
-    const namesMap = await batchReadCompanyNames(companyIds);
-    const touchedCompanyNames = Array.from(namesMap.values()).sort((a, b) =>
+    const infoMap = await batchReadCompanyInfo(companyIds);
+    const touchedCompanyNames = Array.from(infoMap.values(), v => v.name).sort((a, b) =>
       a.localeCompare(b),
     );
     const deals = await searchOpenDealsForCompanies(companyIds);
