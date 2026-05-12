@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Select } from "@/components/ui/select";
 import type {
   DealCard,
+  DealFormat,
   DealTier,
   PipelineKanban,
   StageColumn,
@@ -12,12 +13,13 @@ import { DealCardView } from "./deal-card";
 
 const UNASSIGNED_OWNER_ID = "__unassigned__";
 const TIER_ORDER: DealTier[] = ["AA", "A", "B", "C"];
+const FORMAT_ORDER: DealFormat[] = ["Liquid", "Capsule", "Powder"];
 
 /**
- * Client-side wrapper around a single pipeline's kanban view. Adds two
- * filters — Rep (deal owner) and Tier — that narrow the deals shown in each
- * stage without losing the stage scaffolding. Stage totals and counts are
- * recomputed from the visible subset so the header reflects what's on screen.
+ * Client-side wrapper around a single pipeline's kanban view. Adds rep, tier,
+ * and format filters that narrow the deals shown in each stage without
+ * losing the stage scaffolding. Stage totals and counts recompute from the
+ * visible subset so the header reflects what's on screen.
  */
 export function PipelineBoard({
   pipeline,
@@ -28,13 +30,15 @@ export function PipelineBoard({
 }) {
   const [repId, setRepId] = useState<string>("__all__");
   const [tier, setTier] = useState<string>("__all__");
+  const [format, setFormat] = useState<string>("__all__");
 
   const repOptions = useMemo(() => collectRepOptions(pipeline), [pipeline]);
   const tierOptions = useMemo(() => collectTierOptions(pipeline), [pipeline]);
+  const formatOptions = useMemo(() => collectFormatOptions(pipeline), [pipeline]);
 
   const filtered = useMemo(
-    () => filterPipeline(pipeline, repId, tier),
-    [pipeline, repId, tier],
+    () => filterPipeline(pipeline, repId, tier, format),
+    [pipeline, repId, tier, format],
   );
 
   const total = filtered.stages.reduce((s, st) => s + st.totalAmount, 0);
@@ -79,12 +83,28 @@ export function PipelineBoard({
               ))}
             </Select>
           </FilterField>
-          {(repId !== "__all__" || tier !== "__all__") && (
+          <FilterField label="Filter by format">
+            <Select
+              value={format}
+              onChange={e => setFormat(e.target.value)}
+              className="min-w-[150px]"
+              aria-label="Filter by format"
+            >
+              <option value="__all__">All formats</option>
+              {formatOptions.map(f => (
+                <option key={f} value={f}>
+                  {f === "__none__" ? "No format" : f}
+                </option>
+              ))}
+            </Select>
+          </FilterField>
+          {(repId !== "__all__" || tier !== "__all__" || format !== "__all__") && (
             <button
               type="button"
               onClick={() => {
                 setRepId("__all__");
                 setTier("__all__");
+                setFormat("__all__");
               }}
               className="h-10 px-2.5 text-xs font-medium text-muted hover:text-foreground transition-colors"
             >
@@ -174,14 +194,30 @@ function collectTierOptions(pipeline: PipelineKanban): string[] {
   return ordered;
 }
 
+function collectFormatOptions(pipeline: PipelineKanban): string[] {
+  const present = new Set<string>();
+  let hasNone = false;
+  for (const stage of pipeline.stages) {
+    for (const deal of stage.deals) {
+      if (deal.format) present.add(deal.format);
+      else hasNone = true;
+    }
+  }
+  const ordered = FORMAT_ORDER.filter(f => present.has(f)) as string[];
+  if (hasNone) ordered.push("__none__");
+  return ordered;
+}
+
 function filterPipeline(
   pipeline: PipelineKanban,
   repId: string,
   tier: string,
+  format: string,
 ): PipelineKanban {
   const repAll = repId === "__all__";
   const tierAll = tier === "__all__";
-  if (repAll && tierAll) return pipeline;
+  const formatAll = format === "__all__";
+  if (repAll && tierAll && formatAll) return pipeline;
 
   const matches = (deal: DealCard): boolean => {
     if (!repAll) {
@@ -191,6 +227,10 @@ function filterPipeline(
     if (!tierAll) {
       const dealTier: string = deal.tier ?? "__none__";
       if (dealTier !== tier) return false;
+    }
+    if (!formatAll) {
+      const dealFormat: string = deal.format ?? "__none__";
+      if (dealFormat !== format) return false;
     }
     return true;
   };
