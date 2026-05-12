@@ -41,7 +41,19 @@ function CompanyLogo({ domain, name }: { domain: string; name: string | null }) 
  *  card but, on click, opens a modal that fetches and shows the 5 most recent
  *  HubSpot notes for the deal, and lets the user edit tier/format/amount with
  *  changes written back to HubSpot. */
-export function DealCardView({ deal }: { deal: DealCard }) {
+export function DealCardView({
+  deal,
+  draggable,
+  isDragging,
+  onDragStart,
+  onDragEnd,
+}: {
+  deal: DealCard;
+  draggable?: boolean;
+  isDragging?: boolean;
+  onDragStart?: (e: React.DragEvent<HTMLButtonElement>) => void;
+  onDragEnd?: (e: React.DragEvent<HTMLButtonElement>) => void;
+}) {
   const [open, setOpen] = useState(false);
   // Card-level state for the editable fields so the kanban tile reflects edits
   // made in the modal without waiting for the next page revalidation.
@@ -54,7 +66,12 @@ export function DealCardView({ deal }: { deal: DealCard }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-left w-full block rounded-lg bg-card border border-border px-3 py-2.5 shadow-[var(--shadow-card)] hover:border-primary/40 hover:shadow-[var(--shadow-card-hover)] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        draggable={draggable}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        className={`text-left w-full block rounded-lg bg-card border border-border px-3 py-2.5 shadow-[var(--shadow-card)] hover:border-primary/40 hover:shadow-[var(--shadow-card-hover)] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+          draggable ? "cursor-grab active:cursor-grabbing" : ""
+        } ${isDragging ? "opacity-40" : ""}`}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2 flex-1 min-w-0">

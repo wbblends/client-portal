@@ -56,12 +56,14 @@ export async function PATCH(
     tier?: unknown;
     format?: unknown;
     amount?: unknown;
+    stageId?: unknown;
   };
 
   const patch: {
     tier?: DealTier | null;
     format?: DealFormat | null;
     amount?: number;
+    stageId?: string;
   } = {};
 
   if ("tier" in body) {
@@ -84,6 +86,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
     patch.amount = a;
+  }
+  if ("stageId" in body) {
+    if (typeof body.stageId !== "string" || !/^[\w-]+$/.test(body.stageId)) {
+      return NextResponse.json({ error: "Invalid stage id" }, { status: 400 });
+    }
+    patch.stageId = body.stageId;
   }
 
   if (Object.keys(patch).length === 0) {

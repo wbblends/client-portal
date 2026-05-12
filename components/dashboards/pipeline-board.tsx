@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import type {
   DealCard,
@@ -10,6 +11,8 @@ import type {
   StageColumn,
 } from "@/lib/marketing/hubspot";
 import { DealCardView } from "./deal-card";
+
+const DRAG_MIME = "application/x-wb-deal";
 
 const UNASSIGNED_OWNER_ID = "__unassigned__";
 const TIER_ORDER: DealTier[] = ["AA", "A", "B", "C"];
@@ -31,19 +34,118 @@ export function PipelineBoard({
   const [repId, setRepId] = useState<string>("__all__");
   const [tier, setTier] = useState<string>("__all__");
   const [format, setFormat] = useState<string>("__all__");
+  // Local pipeline so drag-and-drop updates render optimistically without
+  // waiting for a server round trip / page revalidation.
+  const [localPipeline, setLocalPipeline] = useState<PipelineKanban>(pipeline);
+  const [draggingDealId, setDraggingDealId] = useState<string | null>(null);
+  const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
 
-  const repOptions = useMemo(() => collectRepOptions(pipeline), [pipeline]);
-  const tierOptions = useMemo(() => collectTierOptions(pipeline), [pipeline]);
-  const formatOptions = useMemo(() => collectFormatOptions(pipeline), [pipeline]);
+  // If the server prop changes (e.g. on a fresh render after revalidation),
+  // reset the local state to match.
+  useEffect(() => {
+    setLocalPipeline(pipeline);
+  }, [pipeline]);
+
+  const repOptions = useMemo(() => collectRepOptions(localPipeline), [localPipeline]);
+  const tierOptions = useMemo(() => collectTierOptions(localPipeline), [localPipeline]);
+  const formatOptions = useMemo(() => collectFormatOptions(localPipeline), [localPipeline]);
 
   const filtered = useMemo(
-    () => filterPipeline(pipeline, repId, tier, format),
-    [pipeline, repId, tier, format],
+    () => filterPipeline(localPipeline, repId, tier, format),
+    [localPipeline, repId, tier, format],
   );
 
-  const total = filtered.stages.reduce((s, st) => s + st.totalAmount, 0);
-  const dealCount = filtered.stages.reduce((s, st) => s + st.dealCount, 0);
+  const totals = useMemo(() => computeTotals(filtered), [filtered]);
+  const filtersActive = repId !== "__all__" || tier !== "__all__" || format !== "__all__";
   const dotColor = pipeline.key === "sales" ? "bg-primary" : "bg-info";
+
+  const moveDeal = useCallback(
+    async (dealId: string, fromStageId: string, toStageId: string) => {
+      if (fromStageId === toStageId) return;
+      const snapshot = localPipeline;
+      // Optimistically move the card. Weighted value will be recomputed below
+      // using the destination stage's probability so the column totals reflect
+      // the projected change immediately.
+      const toStage = snapshot.stages.find(s => s.id === toStageId);
+      const newProbability = toStage?.probability ?? 0;
+
+      let movedDeal: DealCard | null = null;
+      const stages = snapshot.stages.map(stage => {
+        if (stage.id === fromStageId) {
+          const remaining = stage.deals.filter(d => {
+            if (d.id !== dealId) return true;
+            movedDeal = d;
+            return false;
+          });
+          return {
+            ...stage,
+            deals: remaining,
+            dealCount: remaining.length,
+            totalAmount: remaining.reduce((s, d) => s + d.amount, 0),
+          };
+        }
+        return stage;
+      });
+      if (!movedDeal) return;
+      // TS narrows movedDeal back to never inside the map closure; cast once.
+      const moved = movedDeal as DealCard;
+      const updatedMoved: DealCard = {
+        ...moved,
+        weighted: moved.amount * newProbability,
+      };
+      const nextStages = stages.map(stage => {
+        if (stage.id === toStageId) {
+          const deals = [updatedMoved, ...stage.deals];
+          deals.sort((a, b) => b.amount - a.amount);
+          return {
+            ...stage,
+            deals,
+            dealCount: deals.length,
+            totalAmount: deals.reduce((s, d) => s + d.amount, 0),
+          };
+        }
+        return stage;
+      });
+      setLocalPipeline({ ...snapshot, stages: nextStages });
+      setMoveError(null);
+
+      try {
+        const res = await fetch(`/api/marketing/deals/${dealId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stageId: toStageId }),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(data.error || `Failed to move deal (${res.status})`);
+        }
+        const data = (await res.json()) as {
+          weighted: number;
+          stageId: string | null;
+        };
+        // Sync the moved card's weighted value to whatever HubSpot computed.
+        if (Number.isFinite(data.weighted)) {
+          setLocalPipeline(prev => ({
+            ...prev,
+            stages: prev.stages.map(stage => {
+              if (stage.id !== (data.stageId ?? toStageId)) return stage;
+              return {
+                ...stage,
+                deals: stage.deals.map(d =>
+                  d.id === dealId ? { ...d, weighted: data.weighted } : d,
+                ),
+              };
+            }),
+          }));
+        }
+      } catch (err) {
+        setLocalPipeline(snapshot);
+        setMoveError(err instanceof Error ? err.message : "Failed to move deal");
+      }
+    },
+    [localPipeline],
+  );
 
   return (
     <section
@@ -98,7 +200,7 @@ export function PipelineBoard({
               ))}
             </Select>
           </FilterField>
-          {(repId !== "__all__" || tier !== "__all__" || format !== "__all__") && (
+          {filtersActive && (
             <button
               type="button"
               onClick={() => {
@@ -112,21 +214,19 @@ export function PipelineBoard({
             </button>
           )}
         </div>
-        <div className="flex items-center gap-5 text-xs text-muted">
-          <span>
-            <span className="text-foreground font-semibold tabular-nums">{dealCount}</span>{" "}
-            <span className="text-muted">open deals</span>
-          </span>
-          <span className="hidden sm:inline h-3 w-px bg-border" />
-          <span>
-            <span className="text-foreground font-semibold tabular-nums">
-              {fmtMoneyCompact(total)}
-            </span>{" "}
-            <span className="text-muted">unweighted</span>
-          </span>
-          <span aria-hidden className={`hidden sm:inline-block h-2 w-2 rounded-full ${dotColor}`} />
-        </div>
+        <span aria-hidden className={`hidden sm:inline-block h-2 w-2 rounded-full ${dotColor}`} />
       </div>
+
+      <KpiStrip totals={totals} filtered={filtersActive} />
+
+      {moveError && (
+        <div
+          role="alert"
+          className="rounded-md border border-danger/40 bg-danger/5 px-3 py-2 text-xs text-danger"
+        >
+          {moveError}
+        </div>
+      )}
 
       <div
         className={`-mx-[clamp(1rem,3vw,2.5rem)] page-pad-x overflow-x-auto pb-3 ${
@@ -140,6 +240,22 @@ export function PipelineBoard({
               stage={stage}
               pipelineKey={pipeline.key}
               fillHeight={fillHeight}
+              draggingDealId={draggingDealId}
+              dragOverStageId={dragOverStageId}
+              onDragStartDeal={(dealId) => setDraggingDealId(dealId)}
+              onDragEndDeal={() => {
+                setDraggingDealId(null);
+                setDragOverStageId(null);
+              }}
+              onDragOverStage={(stageId) => setDragOverStageId(stageId)}
+              onDragLeaveStage={(stageId) => {
+                setDragOverStageId(prev => (prev === stageId ? null : prev));
+              }}
+              onDropOnStage={(dealId, fromStageId, toStageId) => {
+                setDraggingDealId(null);
+                setDragOverStageId(null);
+                void moveDeal(dealId, fromStageId, toStageId);
+              }}
             />
           ))}
         </div>
@@ -156,6 +272,47 @@ function FilterField({ label, children }: { label: string; children: React.React
       </span>
       {children}
     </label>
+  );
+}
+
+type Totals = { unweighted: number; weighted: number; dealCount: number };
+
+function computeTotals(pipeline: PipelineKanban): Totals {
+  let unweighted = 0;
+  let weighted = 0;
+  let dealCount = 0;
+  for (const stage of pipeline.stages) {
+    for (const deal of stage.deals) {
+      unweighted += deal.amount;
+      weighted += deal.weighted;
+      dealCount += 1;
+    }
+  }
+  return { unweighted, weighted, dealCount };
+}
+
+function KpiStrip({ totals, filtered }: { totals: Totals; filtered: boolean }) {
+  const hint = filtered ? "Filtered subset" : null;
+  return (
+    <Card className="overflow-hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+        <KpiCell label="Pipeline value" primary={fmtMoneyCompact(totals.unweighted)} hint={hint ?? "Sum of open deal amounts"} />
+        <KpiCell label="Weighted value" primary={fmtMoneyCompact(totals.weighted)} hint={hint ?? "Probability-adjusted, from HubSpot"} />
+        <KpiCell label="Open deals" primary={totals.dealCount.toLocaleString()} hint={hint ?? "Count of open deals"} />
+      </div>
+    </Card>
+  );
+}
+
+function KpiCell({ label, primary, hint }: { label: string; primary: string; hint: string }) {
+  return (
+    <div className="px-5 py-4">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-muted">{label}</div>
+      <div className="mt-1 text-[26px] font-semibold tabular-nums tracking-tight text-foreground">
+        {primary}
+      </div>
+      <div className="mt-1 text-xs text-muted">{hint}</div>
+    </div>
   );
 }
 
@@ -254,18 +411,66 @@ function StageColumnView({
   stage,
   pipelineKey,
   fillHeight,
+  draggingDealId,
+  dragOverStageId,
+  onDragStartDeal,
+  onDragEndDeal,
+  onDragOverStage,
+  onDragLeaveStage,
+  onDropOnStage,
 }: {
   stage: StageColumn;
   pipelineKey: string;
   fillHeight?: boolean;
+  draggingDealId: string | null;
+  dragOverStageId: string | null;
+  onDragStartDeal: (dealId: string) => void;
+  onDragEndDeal: () => void;
+  onDragOverStage: (stageId: string) => void;
+  onDragLeaveStage: (stageId: string) => void;
+  onDropOnStage: (dealId: string, fromStageId: string, toStageId: string) => void;
 }) {
   const probabilityPct = Math.round(stage.probability * 100);
   const barColor = pipelineKey === "sales" ? "bg-primary" : "bg-info";
+  const isDragTarget = draggingDealId !== null && dragOverStageId === stage.id;
+  const isAnyDragging = draggingDealId !== null;
+
+  function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
+    if (!isAnyDragging) return;
+    // Must preventDefault to allow drop.
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    if (dragOverStageId !== stage.id) onDragOverStage(stage.id);
+  }
+
+  function handleDragLeave(e: React.DragEvent<HTMLDivElement>) {
+    // Only clear if we left the column entirely (dragleave fires on inner
+    // children too). Compare currentTarget against the related target.
+    const next = e.relatedTarget as Node | null;
+    if (next && (e.currentTarget as Node).contains(next)) return;
+    onDragLeaveStage(stage.id);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const payload = e.dataTransfer?.getData(DRAG_MIME);
+    if (!payload) return;
+    const [dealId, fromStageId] = payload.split("|");
+    if (!dealId || !fromStageId) return;
+    onDropOnStage(dealId, fromStageId, stage.id);
+  }
+
   return (
     <div
-      className={`w-[300px] shrink-0 rounded-xl bg-surface/60 border border-border flex flex-col ${
-        fillHeight ? "h-full min-h-[480px]" : "max-h-[720px]"
-      }`}
+      className={`w-[300px] shrink-0 rounded-xl border flex flex-col transition-colors ${
+        isDragTarget
+          ? "bg-primary/5 border-primary/50 ring-2 ring-primary/20"
+          : "bg-surface/60 border-border"
+      } ${fillHeight ? "h-full min-h-[480px]" : "max-h-[720px]"}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      aria-dropeffect={isAnyDragging ? "move" : undefined}
     >
       <div className="px-3.5 pt-3.5 pb-3 border-b border-border/70">
         <div className="flex items-center justify-between gap-2">
@@ -295,11 +500,32 @@ function StageColumnView({
 
       <div className="p-2 space-y-2 overflow-y-auto flex-1">
         {stage.deals.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border/80 px-3 py-6 text-center text-[11px] text-muted">
-            No deals
+          <div
+            className={`rounded-md border border-dashed px-3 py-6 text-center text-[11px] ${
+              isDragTarget
+                ? "border-primary/50 text-primary"
+                : "border-border/80 text-muted"
+            }`}
+          >
+            {isDragTarget ? "Drop to move here" : "No deals"}
           </div>
         ) : (
-          stage.deals.map(deal => <DealCardView key={deal.id} deal={deal} />)
+          stage.deals.map(deal => (
+            <DealCardView
+              key={deal.id}
+              deal={deal}
+              draggable
+              isDragging={draggingDealId === deal.id}
+              onDragStart={(e) => {
+                if (e.dataTransfer) {
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData(DRAG_MIME, `${deal.id}|${stage.id}`);
+                }
+                onDragStartDeal(deal.id);
+              }}
+              onDragEnd={() => onDragEndDeal()}
+            />
+          ))
         )}
       </div>
     </div>

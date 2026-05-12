@@ -979,6 +979,7 @@ export type DealUpdateInput = {
   tier?: DealTier | null;
   format?: DealFormat | null;
   amount?: number;
+  stageId?: string;
 };
 
 export type UpdatedDealFields = {
@@ -987,6 +988,8 @@ export type UpdatedDealFields = {
   format: DealFormat | null;
   amount: number;
   weighted: number;
+  stageId: string | null;
+  probability: number;
 };
 
 /** PATCH the editable fields on a HubSpot deal (tier, format, amount). Returns
@@ -1004,6 +1007,8 @@ export async function updateDeal(
       format: input.format ?? null,
       amount: input.amount ?? 0,
       weighted: 0,
+      stageId: input.stageId ?? null,
+      probability: 0,
     };
   }
   if (!/^\d+$/.test(dealId)) throw new Error("Invalid deal id");
@@ -1016,6 +1021,10 @@ export async function updateDeal(
       throw new Error("Invalid amount");
     }
     properties.amount = String(input.amount);
+  }
+  if (input.stageId !== undefined) {
+    if (!/^[\w-]+$/.test(input.stageId)) throw new Error("Invalid stage id");
+    properties.dealstage = input.stageId;
   }
 
   if (Object.keys(properties).length === 0) {
@@ -1037,7 +1046,7 @@ export async function updateDeal(
   // weighted value on amount change). One small extra request keeps the card
   // honest after the save.
   const getRes = await timedFetch(
-    `${HUBSPOT_API}/crm/v3/objects/deals/${dealId}?properties=tier,format,amount,hs_projected_amount`,
+    `${HUBSPOT_API}/crm/v3/objects/deals/${dealId}?properties=tier,format,amount,hs_projected_amount,dealstage,hs_deal_stage_probability,pipeline`,
     { headers: { Authorization: `Bearer ${t}` }, cache: "no-store" },
   );
   if (!getRes.ok) {
@@ -1051,6 +1060,8 @@ export async function updateDeal(
     format: asFormat(data.properties.format),
     amount: Number(data.properties.amount ?? 0) || 0,
     weighted: Number(data.properties.hs_projected_amount ?? 0) || 0,
+    stageId: data.properties.dealstage ?? null,
+    probability: Number(data.properties.hs_deal_stage_probability ?? 0) || 0,
   };
 }
 
