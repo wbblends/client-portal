@@ -70,8 +70,8 @@ async function searchFetch(url: string, init: RequestInit): Promise<Response> {
 // Sales Pipeline + Account Expansion are the two we care about for marketing.
 // "Upcoming Orders" (794004256) is empty and excluded per Devin.
 export const PIPELINES = {
-  sales: { id: "698803061", label: "Sales Pipeline" },
-  expansion: { id: "756080816", label: "Account Expansion" },
+  sales: { id: "698803061", label: "New Logo Pipeline" },
+  expansion: { id: "756080816", label: "Wallet Share Pipeline" },
 } as const;
 
 export type PipelineKey = keyof typeof PIPELINES;

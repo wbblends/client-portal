@@ -22,8 +22,8 @@ type FlatDeal = DealCard & {
 
 const SCOPE_LABEL: Record<Scope, string> = {
   combined: "Combined Pipelines",
-  sales: "Sales Pipeline",
-  expansion: "Account Expansion Pipeline",
+  sales: "New Logo Pipeline",
+  expansion: "Wallet Share Pipeline",
 };
 
 const TIER_ORDER = ["AA", "A", "B", "C", "Unset"] as const;
@@ -187,8 +187,8 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
 function ScopeToggle({ value, onChange }: { value: Scope; onChange: (s: Scope) => void }) {
   const options: { key: Scope; label: string }[] = [
     { key: "combined", label: "Combined Pipelines" },
-    { key: "sales", label: "Sales Pipeline" },
-    { key: "expansion", label: "Account Expansion Pipeline" },
+    { key: "sales", label: "New Logo Pipeline" },
+    { key: "expansion", label: "Wallet Share Pipeline" },
   ];
   return (
     <div

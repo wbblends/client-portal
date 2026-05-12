@@ -13,6 +13,7 @@ import {
   Factory,
   Truck,
   Kanban,
+  DollarSign,
   Building2,
   LogOut,
   Sun,
@@ -31,6 +32,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Factory,
   Truck,
   Kanban,
+  DollarSign,
 };
 
 type DashboardItem = {

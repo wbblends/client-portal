@@ -13,8 +13,8 @@ export async function SalesPipelineDashboard() {
   return (
     <SinglePipelinePage
       kicker="Sales"
-      title="Sales Pipeline"
-      description="Open deals in the Sales Pipeline, grouped by stage. Click any card to see the most recent notes from HubSpot."
+      title="New Logo Pipeline"
+      description="Open deals in the New Logo Pipeline, grouped by stage. Click any card to see the most recent notes from HubSpot."
       pipeline={pipeline}
       source={data.source}
     />
@@ -27,8 +27,8 @@ export async function AccountExpansionDashboard() {
   return (
     <SinglePipelinePage
       kicker="Sales"
-      title="Account Expansion"
-      description="Open deals in the Account Expansion pipeline, grouped by stage. Click any card to see the most recent notes from HubSpot."
+      title="Wallet Share Pipeline"
+      description="Open deals in the Wallet Share Pipeline, grouped by stage. Click any card to see the most recent notes from HubSpot."
       pipeline={pipeline}
       source={data.source}
     />

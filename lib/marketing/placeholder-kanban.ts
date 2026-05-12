@@ -15,8 +15,8 @@ const HS_PLACEHOLDER_URL = "https://app.hubspot.com/contacts/20659581";
 // Pipeline labels are inlined here (rather than imported from hubspot.ts) so
 // this module has no runtime dependency on hubspot.ts — keeps the
 // import graph acyclic and the placeholder file standalone.
-const SALES_LABEL = "Sales Pipeline";
-const EXPANSION_LABEL = "Account Expansion";
+const SALES_LABEL = "New Logo Pipeline";
+const EXPANSION_LABEL = "Wallet Share Pipeline";
 
 export const PLACEHOLDER_KANBAN: KanbanData = {
   source: "placeholder",

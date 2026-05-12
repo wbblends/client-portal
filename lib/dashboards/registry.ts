@@ -32,7 +32,8 @@ export type Dashboard = {
     | "Briefcase"
     | "Factory"
     | "Truck"
-    | "Kanban";
+    | "Kanban"
+    | "DollarSign";
 };
 
 export const DASHBOARDS: readonly Dashboard[] = [
@@ -58,22 +59,22 @@ export const DASHBOARDS: readonly Dashboard[] = [
     category: "Sales",
     description:
       "Booked POs by customer for the year — editable spreadsheet seeded from the 2026 POs workbook, swappable for an Acumatica feed.",
-    iconName: "Truck",
+    iconName: "DollarSign",
   },
   {
     id: "sales-pipeline",
     slug: "sales-pipeline",
-    name: "Sales Pipeline",
+    name: "New Logo Pipeline",
     category: "Sales",
-    description: "Kanban view of open deals in the HubSpot Sales Pipeline.",
+    description: "Kanban view of open deals in the HubSpot New Logo Pipeline.",
     iconName: "Kanban",
   },
   {
     id: "account-expansion",
     slug: "account-expansion",
-    name: "Account Expansion",
+    name: "Wallet Share Pipeline",
     category: "Sales",
-    description: "Kanban view of open deals in the HubSpot Account Expansion pipeline.",
+    description: "Kanban view of open deals in the HubSpot Wallet Share Pipeline.",
     iconName: "TrendingUp",
   },
   {

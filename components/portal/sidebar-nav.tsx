@@ -16,6 +16,7 @@ import {
   Factory,
   Truck,
   Kanban,
+  DollarSign,
   ChevronDown,
   type LucideIcon,
 } from "lucide-react";
@@ -34,6 +35,7 @@ const ICONS: Record<Dashboard["iconName"], LucideIcon> = {
   Factory,
   Truck,
   Kanban,
+  DollarSign,
 };
 
 /**
@@ -333,9 +335,10 @@ function CollapsibleGroup({
         id={headerId}
         aria-expanded={open}
         aria-controls={panelId}
+        aria-label={label}
         onClick={() => setOpen(o => !o)}
         className={cn(
-          "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+          "group flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors",
           groupHasActive && !open
             // When the active route lives inside a collapsed group, give the
             // header a faint tint so the user can still see "this section is
@@ -352,7 +355,7 @@ function CollapsibleGroup({
               : "text-muted group-hover:text-foreground-soft",
           )}
         />
-        <span className="flex-1 text-left">{label}</span>
+        <span className="sr-only">{label}</span>
         <ChevronDown
           aria-hidden
           className={cn(
