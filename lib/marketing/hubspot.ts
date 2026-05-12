@@ -16,6 +16,7 @@
 
 import { cache } from "react";
 import { PLACEHOLDER_KANBAN } from "./placeholder-kanban";
+import { ensureDb } from "@/lib/db";
 
 const HUBSPOT_API = "https://api.hubapi.com";
 
@@ -103,6 +104,11 @@ export type DealOwner = {
   id: string;
   name: string;
   initials: string;
+  email?: string | null;
+  /** Portal `users.avatar_url` for the user whose email matches this HubSpot
+   *  owner. Null when the owner has no matching portal user, or the user has
+   *  no avatar set. The deal card falls back to initials when null. */
+  avatarUrl?: string | null;
 };
 
 export type DealCard = {
@@ -539,13 +545,60 @@ async function fetchAllOwners(): Promise<Map<string, DealOwner>> {
       const last = (o.lastName ?? "").trim();
       const name = [first, last].filter(Boolean).join(" ") || o.email || `Owner ${o.id}`;
       const initials = (first[0] ?? "") + (last[0] ?? "") || (o.email?.[0] ?? "?").toUpperCase();
-      map.set(o.id, { id: o.id, name, initials: initials.toUpperCase() });
+      map.set(o.id, {
+        id: o.id,
+        name,
+        initials: initials.toUpperCase(),
+        email: o.email ?? null,
+        avatarUrl: null,
+      });
     }
 
     after = data.paging?.next?.after;
   } while (after);
 
   return map;
+}
+
+/**
+ * Sales reps live in HubSpot as owners and in the portal as users; we match
+ * them by email (case-insensitive). When a HubSpot owner email matches a
+ * portal user, copy that user's avatar_url onto the DealOwner so deal cards
+ * render the profile photo instead of initials. Missing matches stay null
+ * and the deal card falls back to its initials avatar.
+ */
+async function attachPortalAvatars(ownersById: Map<string, DealOwner>): Promise<void> {
+  const emailToOwnerIds = new Map<string, string[]>();
+  for (const o of ownersById.values()) {
+    const e = o.email?.trim().toLowerCase();
+    if (!e) continue;
+    const list = emailToOwnerIds.get(e);
+    if (list) list.push(o.id);
+    else emailToOwnerIds.set(e, [o.id]);
+  }
+  if (emailToOwnerIds.size === 0) return;
+
+  try {
+    const client = await ensureDb();
+    const emails = Array.from(emailToOwnerIds.keys());
+    const placeholders = emails.map(() => "?").join(",");
+    const rs = await client.execute({
+      sql: `SELECT LOWER(email) AS email, avatar_url FROM users WHERE LOWER(email) IN (${placeholders})`,
+      args: emails,
+    });
+    for (const row of rs.rows) {
+      const email = String(row.email ?? "");
+      const avatarUrl = (row.avatar_url as string | null) ?? null;
+      if (!avatarUrl) continue;
+      for (const id of emailToOwnerIds.get(email) ?? []) {
+        const existing = ownersById.get(id);
+        if (existing) existing.avatarUrl = avatarUrl;
+      }
+    }
+  } catch (err) {
+    // Avatar enrichment is best-effort — cards render initials on failure.
+    console.error("[marketing/hubspot] attachPortalAvatars failed:", err);
+  }
 }
 
 function dealHubspotUrl(dealId: string): string {
@@ -671,7 +724,10 @@ export async function getPipelineKanban(): Promise<KanbanData> {
     ]);
 
     const allDealIds = [...salesDeals, ...expansionDeals].map(d => d.id);
-    const dealCompany = await resolveDealCompanyInfo(allDealIds);
+    const [dealCompany] = await Promise.all([
+      resolveDealCompanyInfo(allDealIds),
+      attachPortalAvatars(owners),
+    ]);
 
     return {
       source: "live",

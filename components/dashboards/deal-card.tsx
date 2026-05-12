@@ -92,7 +92,13 @@ export function DealCardView({
               )}
             </div>
           </div>
-          {deal.owner && <OwnerAvatar name={deal.owner.name} initials={deal.owner.initials} />}
+          {deal.owner && (
+            <OwnerAvatar
+              name={deal.owner.name}
+              initials={deal.owner.initials}
+              avatarUrl={deal.owner.avatarUrl ?? null}
+            />
+          )}
         </div>
 
         <div className="mt-2.5 flex items-center justify-between gap-2">
@@ -471,7 +477,28 @@ function NotesSkeleton() {
   );
 }
 
-function OwnerAvatar({ name, initials }: { name: string; initials: string }) {
+function OwnerAvatar({
+  name,
+  initials,
+  avatarUrl,
+}: {
+  name: string;
+  initials: string;
+  avatarUrl: string | null;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (avatarUrl && !failed) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        title={name}
+        onError={() => setFailed(true)}
+        loading="lazy"
+        className="shrink-0 h-6 w-6 rounded-full object-cover ring-1 ring-border bg-surface"
+      />
+    );
+  }
   return (
     <div
       title={name}
