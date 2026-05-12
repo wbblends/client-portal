@@ -671,7 +671,12 @@ export function OrdersPortalGrid({
                     key={`f-${col.monthIdx}-${idx}`}
                     className="text-right min-w-[128px] bg-warning-soft/70 text-warning"
                   >
-                    {MONTH_SHORT[col.monthIdx]} fcst
+                    <div className="leading-tight">
+                      <div>{MONTH_SHORT[col.monthIdx]}</div>
+                      <div className="text-[9px] font-medium normal-case tracking-normal opacity-80">
+                        forecast
+                      </div>
+                    </div>
                   </Th>
                 ),
               )}
