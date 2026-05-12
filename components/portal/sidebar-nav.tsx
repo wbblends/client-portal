@@ -21,7 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Dashboard, DashboardCategory } from "@/lib/dashboards/registry";
+import type { Dashboard } from "@/lib/dashboards/registry";
 import type { Customer } from "@/lib/customers/registry";
 import { CustomerPicker } from "./customer-picker";
 
@@ -36,19 +36,6 @@ const ICONS: Record<Dashboard["iconName"], LucideIcon> = {
   Truck,
   Kanban,
   DollarSign,
-};
-
-/**
- * Icon shown next to each collapsible category header. The category badge
- * gives each group its own glanceable identity in the sidebar — so even
- * when every group is collapsed, you can scan the rail vertically and find
- * "the sales one" or "the marketing one" without reading labels.
- */
-const CATEGORY_ICON: Record<DashboardCategory | "Admin", LucideIcon> = {
-  Board: Briefcase,
-  Sales: TrendingUp,
-  Marketing: LineChart,
-  Admin: ShieldCheck,
 };
 
 type AccountLink = {
@@ -75,9 +62,11 @@ const OPEN_GROUPS_STORAGE_KEY = "portal:sidebar:open-groups";
  *    (Overview / Documents / Invoices / Quality / Contact) linked to
  *    whichever customer is active.
  *  - For customer-role users: the Account section linked to their own id.
- *  - Cross-customer dashboards the user has permission for, grouped by category
- *    as collapsible sections with category icons + right-aligned chevrons.
- *  - Admin link to /admin/users for admins only.
+ *  - One collapsible "Sales and Marketing" section listing every dashboard
+ *    the user has permission for.
+ *  - Admin Users link pinned to the bottom of the rail (above the user-menu
+ *    footer) via `mt-auto` so it floats to the bottom regardless of how many
+ *    dashboards sit above it.
  *
  * Used in two vertical layouts:
  *  - Desktop sidebar (lg+)
@@ -101,8 +90,6 @@ export function SidebarNav({
 }) {
   const pathname = usePathname();
 
-  const grouped = groupByCategory(dashboards);
-
   // Active customer = whatever's in the URL (/c/<id>/...). Falls back to
   // ownCustomerId. For customer-role users, they're locked to their own id
   // by the route guard regardless.
@@ -112,8 +99,13 @@ export function SidebarNav({
   const customerScopeActive = !!accountTargetId &&
     ACCOUNT_LINKS.some(l => pathname.startsWith(`/c/${accountTargetId}/${l.rel}`));
 
+  const dashboardsActive = dashboards.some(d =>
+    pathname === `/dashboards/${d.slug}` ||
+    pathname.startsWith(`/dashboards/${d.slug}/`),
+  );
+
   return (
-    <nav className="flex flex-col gap-1.5 px-3">
+    <nav className="flex h-full flex-col gap-1.5 px-3">
       {/* Customer Dashboard panel — special primary unit (picker + scoped
            account links). Sits at the top, always visible, like the hero
            "Dashboard" item in the ROCHAINX reference. */}
@@ -128,7 +120,6 @@ export function SidebarNav({
         <CollapsibleGroup
           id="customer-dashboard"
           label="Customer Dashboard"
-          icon={LayoutDashboard}
           pathname={pathname}
           containsActivePath={customerScopeActive}
         >
@@ -144,22 +135,16 @@ export function SidebarNav({
         </CollapsibleGroup>
       )}
 
-      {/* Cross-customer dashboards — Board, Sales, Marketing. Each is a
-           collapsible section so the rail stays scannable even as the
-           registry grows. */}
-      {grouped.map(({ category, items }) => (
+      {/* Single consolidated dashboards section. Header is text-only —
+           individual items keep their icons. */}
+      {dashboards.length > 0 && (
         <CollapsibleGroup
-          key={category}
-          id={`category-${category}`}
-          label={category}
-          icon={CATEGORY_ICON[category]}
+          id="dashboards"
+          label="Sales and Marketing"
           pathname={pathname}
-          containsActivePath={items.some(d =>
-            pathname === `/dashboards/${d.slug}` ||
-            pathname.startsWith(`/dashboards/${d.slug}/`),
-          )}
+          containsActivePath={dashboardsActive}
         >
-          {items.map(d => (
+          {dashboards.map(d => (
             <NavLink
               key={d.id}
               href={`/dashboards/${d.slug}`}
@@ -169,24 +154,20 @@ export function SidebarNav({
             />
           ))}
         </CollapsibleGroup>
-      ))}
+      )}
 
-      {/* Admin sits last so it's right above the user-menu footer. */}
+      {/* Admin link pinned to the bottom of the rail, just above the
+           user-menu footer. `mt-auto` consumes whatever vertical space is
+           left after the other groups. */}
       {isAdmin && (
-        <CollapsibleGroup
-          id="admin"
-          label="Admin"
-          icon={CATEGORY_ICON.Admin}
-          pathname={pathname}
-          containsActivePath={pathname.startsWith("/admin")}
-        >
+        <div className="mt-auto pt-2">
           <NavLink
             href="/admin/users"
             label="Users"
             icon={Users}
             pathname={pathname}
           />
-        </CollapsibleGroup>
+        </div>
       )}
     </nav>
   );
@@ -299,14 +280,12 @@ function useOpenGroupState(groupId: string, defaultOpen: boolean) {
 function CollapsibleGroup({
   id,
   label,
-  icon: Icon,
   pathname,
   containsActivePath,
   children,
 }: {
   id: string;
   label: string;
-  icon: LucideIcon;
   pathname: string;
   containsActivePath: boolean;
   children: React.ReactNode;
@@ -335,7 +314,6 @@ function CollapsibleGroup({
         id={headerId}
         aria-expanded={open}
         aria-controls={panelId}
-        aria-label={label}
         onClick={() => setOpen(o => !o)}
         className={cn(
           "group flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors",
@@ -347,15 +325,7 @@ function CollapsibleGroup({
             : "text-foreground-soft hover:bg-accent hover:text-foreground",
         )}
       >
-        <Icon
-          className={cn(
-            "h-[17px] w-[17px] shrink-0",
-            groupHasActive && !open
-              ? "text-primary"
-              : "text-muted group-hover:text-foreground-soft",
-          )}
-        />
-        <span className="sr-only">{label}</span>
+        <span className="text-left">{label}</span>
         <ChevronDown
           aria-hidden
           className={cn(
@@ -414,18 +384,4 @@ function NavLink({
 function extractCustomerIdFromPath(pathname: string): string | null {
   const m = pathname.match(/^\/c\/([^/]+)/);
   return m ? decodeURIComponent(m[1]) : null;
-}
-
-function groupByCategory(
-  dashboards: Dashboard[],
-): { category: DashboardCategory; items: Dashboard[] }[] {
-  const order: DashboardCategory[] = ["Board", "Sales", "Marketing"];
-  const map = new Map<DashboardCategory, Dashboard[]>();
-  for (const d of dashboards) {
-    if (!map.has(d.category)) map.set(d.category, []);
-    map.get(d.category)!.push(d);
-  }
-  return order
-    .filter(c => map.has(c))
-    .map(c => ({ category: c, items: map.get(c)! }));
 }

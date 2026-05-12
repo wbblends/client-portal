@@ -8,13 +8,10 @@
  *   3. Wire the component into `app/(portal)/dashboards/[slug]/page.tsx`'s
  *      `RENDERERS` map.
  *
- * Categories drive the grouping in the sidebar. Add a new category by using
- * a new value here — the sidebar reads it dynamically.
+ * The sidebar currently renders every dashboard under a single section
+ * header. The category field is kept on each entry for future re-grouping.
  */
-export type DashboardCategory =
-  | "Board"
-  | "Sales"
-  | "Marketing";
+export type DashboardCategory = "Sales and Marketing";
 
 export type Dashboard = {
   id: string;
@@ -45,18 +42,10 @@ export const DASHBOARDS: readonly Dashboard[] = [
   // app/(portal)/dashboards/[slug]/page.tsx, the page falls back to a
   // "coming soon" placeholder.
   {
-    id: "board-summary",
-    slug: "board-summary",
-    name: "Board Summary",
-    category: "Board",
-    description: "The monthly board pack — same shape every month.",
-    iconName: "Briefcase",
-  },
-  {
     id: "orders-portal",
     slug: "orders-portal",
     name: "Orders",
-    category: "Sales",
+    category: "Sales and Marketing",
     description:
       "Booked POs by customer for the year — editable spreadsheet seeded from the 2026 POs workbook, swappable for an Acumatica feed.",
     iconName: "DollarSign",
@@ -65,7 +54,7 @@ export const DASHBOARDS: readonly Dashboard[] = [
     id: "sales-pipeline",
     slug: "sales-pipeline",
     name: "New Logo Pipeline",
-    category: "Sales",
+    category: "Sales and Marketing",
     description: "Kanban view of open deals in the HubSpot New Logo Pipeline.",
     iconName: "Kanban",
   },
@@ -73,7 +62,7 @@ export const DASHBOARDS: readonly Dashboard[] = [
     id: "account-expansion",
     slug: "account-expansion",
     name: "Wallet Share Pipeline",
-    category: "Sales",
+    category: "Sales and Marketing",
     description: "Kanban view of open deals in the HubSpot Wallet Share Pipeline.",
     iconName: "TrendingUp",
   },
@@ -81,7 +70,7 @@ export const DASHBOARDS: readonly Dashboard[] = [
     id: "pipeline-analytics",
     slug: "pipeline-analytics",
     name: "Pipeline Analytics",
-    category: "Sales",
+    category: "Sales and Marketing",
     description: "Top-line totals and per-rep breakdown across both HubSpot pipelines.",
     iconName: "PieChart",
   },
@@ -89,7 +78,7 @@ export const DASHBOARDS: readonly Dashboard[] = [
     id: "marketing-overview",
     slug: "marketing-overview",
     name: "Marketing Overview",
-    category: "Marketing",
+    category: "Sales and Marketing",
     description:
       "HubSpot pipeline value (weighted + unweighted), ad spend, inbound leads, and rep handoff rate.",
     iconName: "LineChart",
