@@ -23,7 +23,7 @@ const FORMAT_DOT: Record<DealFormat, string> = {
   Powder: "bg-warning",
 };
 
-function CompanyLogo({ domain, name }: { domain: string; name: string | null }) {
+export function CompanyLogo({ domain, name }: { domain: string; name: string | null }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
   return (
@@ -150,7 +150,7 @@ type ModalChange = {
   amount?: number;
 };
 
-function DealNotesModal({
+export function DealNotesModal({
   deal,
   tier,
   format,
