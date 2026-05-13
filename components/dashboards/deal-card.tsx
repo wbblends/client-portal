@@ -69,7 +69,7 @@ export function DealCardView({
         draggable={draggable}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
-        className={`text-left w-full block rounded-lg bg-card border border-border px-3 py-2.5 shadow-[var(--shadow-card)] hover:border-primary/40 hover:shadow-[var(--shadow-card-hover)] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+        className={`text-left w-full block rounded-lg bg-card border border-border px-3.5 py-3 shadow-[var(--shadow-card)] hover:border-primary/40 hover:shadow-[var(--shadow-card-hover)] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
           draggable ? "cursor-grab active:cursor-grabbing" : ""
         } ${isDragging ? "opacity-40" : ""}`}
       >
@@ -105,8 +105,8 @@ export function DealCardView({
           <span className="font-semibold text-foreground tabular-nums text-[14px]">
             {fmtMoneyCompact(amount)}
           </span>
-          <span className="text-[11px] text-muted tabular-nums">
-            {formatCloseDate(deal.closeDate, deal.monthExpected)}
+          <span className="text-[11px] text-muted truncate" title={deal.owner?.name ?? ""}>
+            {firstName(deal.owner?.name)}
           </span>
         </div>
 
@@ -130,6 +130,10 @@ export function DealCardView({
             )}
           </div>
         )}
+
+        <div className="mt-2 flex justify-end text-[10px] text-muted tabular-nums">
+          Last Note: {formatLastNoteDate(deal.lastNoteDate)}
+        </div>
       </button>
 
       {open && (
@@ -520,15 +524,17 @@ function fmtMoneyCompact(n: number): string {
   return `$${n.toFixed(0)}`;
 }
 
-function formatCloseDate(iso: string | null, monthExpected: string | null): string {
-  if (iso) {
-    const d = new Date(iso);
-    if (!Number.isNaN(d.getTime())) {
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    }
-  }
-  if (monthExpected) return monthExpected.slice(0, 3);
-  return "—";
+function firstName(name: string | null | undefined): string {
+  if (!name) return "—";
+  const first = name.trim().split(/\s+/)[0];
+  return first || "—";
+}
+
+function formatLastNoteDate(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function formatNoteTime(iso: string | null): string {

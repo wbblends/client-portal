@@ -462,7 +462,7 @@ function StageColumnView({
 
   return (
     <div
-      className={`w-[300px] shrink-0 rounded-xl border flex flex-col transition-colors ${
+      className={`w-[320px] shrink-0 rounded-xl border flex flex-col transition-colors ${
         isDragTarget
           ? "bg-primary/5 border-primary/50 ring-2 ring-primary/20"
           : "bg-surface/60 border-border"

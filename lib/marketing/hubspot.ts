@@ -135,6 +135,10 @@ export type DealCard = {
    *  e.g. ORGANIC_SEARCH, PAID_SEARCH, REFERRALS, DIRECT_TRAFFIC. Null when
    *  HubSpot couldn't attribute. Used for the by-source breakdown. */
   source: string | null;
+  /** ISO timestamp from HubSpot's notes_last_updated — the last time a note
+   *  was added or edited on this deal. Null when the deal has no notes.
+   *  Shown in the bottom-right of each pipeline card. */
+  lastNoteDate: string | null;
 };
 
 export type StageColumn = {
@@ -478,6 +482,7 @@ async function fetchOpenDeals(pipelineId: string): Promise<RawDeal[]> {
         "hs_lastmodifieddate",
         "createdate",
         "hs_analytics_source",
+        "notes_last_updated",
       ],
       limit: 100,
       ...(after ? { after } : {}),
@@ -643,6 +648,7 @@ function buildPipelineFromRaw(
       lastModified: d.properties.hs_lastmodifieddate ?? null,
       createDate: d.properties.createdate ?? null,
       source: d.properties.hs_analytics_source ?? null,
+      lastNoteDate: d.properties.notes_last_updated ?? null,
     };
     if (!dealsByStage.has(stageId)) dealsByStage.set(stageId, []);
     dealsByStage.get(stageId)!.push(card);
