@@ -41,20 +41,6 @@ function nextColor(c: TicketColor): TicketColor {
   return COLOR_CYCLE[(i + 1) % COLOR_CYCLE.length];
 }
 
-// Explicit left-to-right order for the tab strip. A tab not in this list (e.g.
-// a new sheet the coworker starts sending) sorts to the end alphabetically so
-// it never silently disappears.
-const TAB_ORDER = [
-  "Quote",
-  "Requote",
-  "R&D",
-  "FPS",
-  "Document Request",
-  "SFP",
-  "Label Review",
-  "Certification",
-];
-
 // ── Sorting ──
 type SortKey =
   | "rank"
@@ -135,9 +121,13 @@ const EMPTY_FILTERS: FilterState = {
 };
 
 export function TicketsBoard({
+  activeTab,
   initialTickets,
   initialLastSyncedAt,
 }: {
+  /** The PM ticket type this page renders — comes from the route, not
+   *  in-page state. Rows are filtered to tickets whose `tab` matches. */
+  activeTab: string;
   initialTickets: Ticket[];
   initialLastSyncedAt: string | null;
 }) {
@@ -181,28 +171,12 @@ export function TicketsBoard({
     };
   }, []);
 
-  // ── Tabs derived from incoming data, ordered by TAB_ORDER ──
-  const tabs = useMemo(() => {
-    const set = new Set<string>();
-    for (const t of tickets) set.add(t.tab || "—");
-    return Array.from(set).sort((a, b) => {
-      const ai = TAB_ORDER.indexOf(a);
-      const bi = TAB_ORDER.indexOf(b);
-      if (ai === -1 && bi === -1) return a.localeCompare(b);
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
-      return ai - bi;
-    });
-  }, [tickets]);
-  const [activeTab, setActiveTab] = useState<string>(tabs[0] ?? "");
-
-  // Keep the active tab valid: on first load (empty initial tickets) and if the
-  // selected tab disappears from a later sync, fall back to the first tab.
-  useEffect(() => {
-    if (tabs.length > 0 && !tabs.includes(activeTab)) {
-      setActiveTab(tabs[0]);
-    }
-  }, [tabs, activeTab]);
+  // Every row on this page belongs to one ticket type — the rest of the board
+  // (sort, filters, drag-to-reorder) works against this slice.
+  const tabTickets = useMemo(
+    () => tickets.filter(t => (t.tab || "—") === activeTab),
+    [tickets, activeTab],
+  );
 
   // ── Sort state ──
   // Default view is due date ascending — most overdue first, blank due dates
@@ -228,12 +202,13 @@ export function TicketsBoard({
   // ── Field filter state ──
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
 
-  // Filter options are derived from the full ticket set (not the active tab)
-  // so a selected value doesn't vanish from the dropdown when you switch tabs.
+  // Filter options are scoped to this ticket type — the dropdowns only offer
+  // customers, products, salespeople, and statuses that actually appear on
+  // this page.
   const filterOptions = useMemo(() => {
     const distinct = (pick: (t: Ticket) => string) =>
       Array.from(
-        new Set(tickets.map(t => pick(t).trim()).filter(Boolean)),
+        new Set(tabTickets.map(t => pick(t).trim()).filter(Boolean)),
       ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
     return {
       customer: distinct(t => t.customer),
@@ -241,7 +216,7 @@ export function TicketsBoard({
       salesperson: distinct(t => t.salesperson),
       status: distinct(t => t.status),
     } as Record<FieldFilterKey, string[]>;
-  }, [tickets]);
+  }, [tabTickets]);
 
   const activeFilterCount = useMemo(
     () => FIELD_FILTER_KEYS.reduce((n, k) => n + filters[k].length, 0),
@@ -268,9 +243,9 @@ export function TicketsBoard({
 
   const clearAllFilters = useCallback(() => setFilters(EMPTY_FILTERS), []);
 
-  // ── Visible rows: active tab → field filters → sort ──
+  // ── Visible rows: this ticket type → field filters → sort ──
   const rows = useMemo(() => {
-    let r = tickets.filter(t => (t.tab || "—") === activeTab);
+    let r = tabTickets;
 
     for (const key of FIELD_FILTER_KEYS) {
       const sel = filters[key];
@@ -281,7 +256,7 @@ export function TicketsBoard({
     // last, then due date, then id) so drag-to-reorder math stays correct.
     if (sortKey === "rank" && sortDir === "asc") return r;
     return [...r].sort((a, b) => compareTickets(a, b, sortKey, sortDir));
-  }, [tickets, activeTab, filters, sortKey, sortDir]);
+  }, [tabTickets, filters, sortKey, sortDir]);
 
   // The rank input is live in any Rank view; drag-to-reorder additionally
   // requires the natural Rank ↑ order with no field filters, because it
@@ -413,13 +388,7 @@ export function TicketsBoard({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <TabsRow
-          tabs={tabs}
-          active={activeTab}
-          onChange={setActiveTab}
-          counts={countByTab(tickets)}
-        />
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <p className="text-xs text-muted">
           {lastSyncedAt
             ? `Last synced ${formatLastSynced(lastSyncedAt)}`
@@ -482,8 +451,10 @@ export function TicketsBoard({
                         <code className="font-mono">/api/tickets/sync</code> and
                         they&apos;ll appear here.
                       </>
+                    ) : tabTickets.length === 0 ? (
+                      `No ${activeTab} tickets right now.`
                     ) : (
-                      "No tickets match the current tab and filters."
+                      "No tickets match the current filters."
                     )}
                   </td>
                 </tr>
@@ -724,67 +695,6 @@ function MultiSelectFilter({
   );
 }
 
-function TabsRow({
-  tabs,
-  active,
-  onChange,
-  counts,
-}: {
-  tabs: string[];
-  active: string;
-  onChange: (t: string) => void;
-  counts: Map<string, number>;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {tabs.map(t => (
-        <TabPill
-          key={t}
-          label={t}
-          count={counts.get(t) ?? 0}
-          active={active === t}
-          onClick={() => onChange(t)}
-        />
-      ))}
-    </div>
-  );
-}
-
-function TabPill({
-  label,
-  count,
-  active,
-  onClick,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-        active
-          ? "bg-primary text-primary-foreground"
-          : "bg-card border border-border text-foreground-soft hover:border-border-strong hover:bg-accent",
-      )}
-    >
-      <span>{label}</span>
-      <span
-        className={cn(
-          "rounded-full px-1.5 text-[11px] font-semibold tabular-nums",
-          active ? "bg-white/20" : "bg-accent text-muted",
-        )}
-      >
-        {count}
-      </span>
-    </button>
-  );
-}
-
 /** Customer logo cell. Resolves the free-text customer name to a domain and
  *  renders the same favicon-based logo the pipeline uses; falls back to a
  *  neutral placeholder box (matching the pipeline's stale-deals table) so the
@@ -933,15 +843,6 @@ function TicketRow({
       </td>
     </tr>
   );
-}
-
-function countByTab(tickets: Ticket[]): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const t of tickets) {
-    const k = t.tab || "—";
-    m.set(k, (m.get(k) ?? 0) + 1);
-  }
-  return m;
 }
 
 // ── Automatic row color ──

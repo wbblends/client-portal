@@ -1,39 +1,12 @@
+import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
-import { listTickets, getLastSyncedAt } from "@/lib/tickets/store";
-import { TicketsBoard } from "@/components/admin/tickets-board";
+import { TICKET_TYPES } from "@/lib/tickets/registry";
 
-export const metadata = { title: "Tickets — WB Blends Admin" };
-export const dynamic = "force-dynamic";
-
-export default async function AdminTicketsPage() {
+/**
+ * Bare `/admin/tickets` has no board of its own — each PM ticket type is its
+ * own page under `/admin/tickets/<slug>`. Land on the first type.
+ */
+export default async function AdminTicketsIndexPage() {
   await requireAdmin();
-  const tickets = await listTickets();
-  const lastSyncedAt = await getLastSyncedAt();
-
-  return (
-    <div
-      className="page-container page-pad-x page-pad-y space-y-6 sm:space-y-7"
-      style={{ maxWidth: "1400px" }}
-    >
-      <div>
-        <p className="text-sm text-muted">Admin</p>
-        <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
-          Tickets
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Open PM tickets imported daily at 7&nbsp;AM from the coworker job.
-          Sorted by due date by default — overdue rows are flagged red, and
-          parked statuses (Hold, Info Needed, Waiting on FPS, …) show gray.
-          Click any column header to sort, and use the filter bar to narrow by
-          customer, product, salesperson, or status. Switch to the
-          Rank&nbsp;↑ view (with no filters) to type a rank or drag the handle
-          to reorder. Click the swatch on a row to override its color
-          (red&nbsp;→&nbsp;white&nbsp;→&nbsp;gray). Rank and color survive each
-          sync.
-        </p>
-      </div>
-
-      <TicketsBoard initialTickets={tickets} initialLastSyncedAt={lastSyncedAt} />
-    </div>
-  );
+  redirect(`/admin/tickets/${TICKET_TYPES[0].slug}`);
 }

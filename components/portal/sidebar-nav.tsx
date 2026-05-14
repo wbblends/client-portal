@@ -18,12 +18,20 @@ import {
   Kanban,
   DollarSign,
   Ticket as TicketIcon,
+  RefreshCw,
+  FlaskConical,
+  ClipboardCheck,
+  FileSearch,
+  FileCheck,
+  Tag,
+  BadgeCheck,
   ChevronDown,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Dashboard } from "@/lib/dashboards/registry";
 import type { Customer } from "@/lib/customers/registry";
+import { TICKET_TYPES, type TicketTypeIconName } from "@/lib/tickets/registry";
 import { CustomerPicker } from "./customer-picker";
 
 const ICONS: Record<Dashboard["iconName"], LucideIcon> = {
@@ -37,6 +45,17 @@ const ICONS: Record<Dashboard["iconName"], LucideIcon> = {
   Truck,
   Kanban,
   DollarSign,
+};
+
+const TICKET_TYPE_ICONS: Record<TicketTypeIconName, LucideIcon> = {
+  FileText,
+  RefreshCw,
+  FlaskConical,
+  ClipboardCheck,
+  FileSearch,
+  FileCheck,
+  Tag,
+  BadgeCheck,
 };
 
 type AccountLink = {
@@ -65,9 +84,11 @@ const OPEN_GROUPS_STORAGE_KEY = "portal:sidebar:open-groups";
  *  - For customer-role users: the Account section linked to their own id.
  *  - One collapsible "Sales and Marketing" section listing every dashboard
  *    the user has permission for.
+ *  - For admins: a collapsible "Project Management" section, one sub-item
+ *    per PM ticket type (each its own page under /admin/tickets/<slug>).
  *  - Admin Users link pinned to the bottom of the rail (above the user-menu
  *    footer) via `mt-auto` so it floats to the bottom regardless of how many
- *    dashboards sit above it.
+ *    sections sit above it.
  *
  * Used in two vertical layouts:
  *  - Desktop sidebar (lg+)
@@ -104,6 +125,8 @@ export function SidebarNav({
     pathname === `/dashboards/${d.slug}` ||
     pathname.startsWith(`/dashboards/${d.slug}/`),
   );
+
+  const projectManagementActive = pathname.startsWith("/admin/tickets");
 
   return (
     <nav className="flex h-full flex-col gap-1.5 px-3">
@@ -157,17 +180,32 @@ export function SidebarNav({
         </CollapsibleGroup>
       )}
 
-      {/* Admin links pinned to the bottom of the rail, just above the
+      {/* Project Management — admin only, a peer of Sales and Marketing.
+           One sub-item per PM ticket type; each links to its own page. */}
+      {isAdmin && (
+        <CollapsibleGroup
+          id="project-management"
+          label="Project Management"
+          pathname={pathname}
+          containsActivePath={projectManagementActive}
+        >
+          {TICKET_TYPES.map(t => (
+            <NavLink
+              key={t.slug}
+              href={`/admin/tickets/${t.slug}`}
+              label={t.label}
+              icon={TICKET_TYPE_ICONS[t.iconName] ?? TicketIcon}
+              pathname={pathname}
+            />
+          ))}
+        </CollapsibleGroup>
+      )}
+
+      {/* Admin Users link pinned to the bottom of the rail, just above the
            user-menu footer. `mt-auto` consumes whatever vertical space is
            left after the other groups. */}
       {isAdmin && (
-        <div className="mt-auto pt-2 flex flex-col gap-0.5">
-          <NavLink
-            href="/admin/tickets"
-            label="Tickets"
-            icon={TicketIcon}
-            pathname={pathname}
-          />
+        <div className="mt-auto pt-2">
           <NavLink
             href="/admin/users"
             label="Users"
