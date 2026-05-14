@@ -6,6 +6,11 @@ import {
   CumulativePipelineChart,
   PipelineFlowChart,
 } from "@/components/dashboard/marketing-pipeline-chart";
+import {
+  PaidVisitsTrendChart,
+  TrafficShareChart,
+  EngagementCompareChart,
+} from "@/components/dashboard/ad-analytics-charts";
 import { formatCurrency, formatNumber, formatDate } from "@/lib/utils";
 import {
   getPipelineSummary,
@@ -14,8 +19,11 @@ import {
 } from "@/lib/marketing/hubspot";
 import { getMarketingInfluencedPOs } from "@/lib/marketing/orders";
 import { getPipelineHistory } from "@/lib/marketing/pipeline-history";
-import { getGoogleAdSpend } from "@/lib/marketing/google-ads";
-import { getLinkedInAdSpend } from "@/lib/marketing/linkedin-ads";
+import {
+  getAdAnalytics,
+  type NetworkMetrics,
+  type AdAnalyticsSummary,
+} from "@/lib/marketing/hubspot-analytics";
 import { resolveRange, getCompareRange } from "@/lib/data/range";
 import { pctChange } from "@/lib/data/aggregate";
 
@@ -48,10 +56,10 @@ export async function MarketingOverviewDashboard({
     isPlaceholder: attribution.source === "placeholder",
     range: { from: range.from, to: range.to },
   });
-  const [googleAds, linkedInAds] = await Promise.all([
-    getGoogleAdSpend(),
-    getLinkedInAdSpend(),
-  ]);
+  const adAnalytics = await getAdAnalytics(
+    { from: range.from, to: range.to },
+    { from: compare.from, to: compare.to },
+  );
 
   const leadDelta = pctChange(leadCounts.inRange, leadCounts.inCompareRange);
 
@@ -238,14 +246,168 @@ export async function MarketingOverviewDashboard({
         )}
       </section>
 
-      {/* Ad spend */}
+      {/* Paid traffic & engagement (Google Ads + LinkedIn Ads) */}
       <section className="space-y-3">
-        <SectionHeader title="Ad spend" description="Paid media across Google and LinkedIn." />
+        <SectionHeader
+          title="Paid traffic & engagement"
+          description="Post-click analytics from HubSpot's traffic-sources report. Visits = ad clicks that landed on the site (Google = paid search, LinkedIn = paid social). Impressions / CTR / ad spend aren't exposed by HubSpot's public API — those live in Google Ads & LinkedIn Campaign Manager."
+          source={adAnalytics.source}
+        />
+        <AdAnalyticsKpis analytics={adAnalytics} compareLabel={compare.shortLabel} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <AdSpendCard title="Google Ads" stats={googleAds} />
-          <AdSpendCard title="LinkedIn Ads" stats={linkedInAds} />
+          <NetworkCard metrics={adAnalytics.byNetwork[0]} accent="google" />
+          <NetworkCard metrics={adAnalytics.byNetwork[1]} accent="linkedin" />
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Daily paid visits</CardTitle>
+            <CardDescription>
+              Stacked daily series — Google Ads (paid search) and LinkedIn Ads (paid social) over
+              the selected range.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PaidVisitsTrendChart points={adAnalytics.daily} />
+          </CardContent>
+        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Traffic source share</CardTitle>
+              <CardDescription>
+                Every traffic source in the range. Paid slices highlighted.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TrafficShareChart slices={adAnalytics.trafficShare} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Engagement quality by network</CardTitle>
+              <CardDescription>
+                Lower bounce + higher pages/session = better post-click experience.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EngagementCompareChart networks={adAnalytics.byNetwork} />
+            </CardContent>
+          </Card>
         </div>
       </section>
+    </div>
+  );
+}
+
+function AdAnalyticsKpis({
+  analytics,
+  compareLabel,
+}: {
+  analytics: AdAnalyticsSummary;
+  compareLabel: string;
+}) {
+  const c = analytics.combined;
+  const prev = analytics.combinedCompare;
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <KpiTile
+        label="Paid visits"
+        value={formatNumber(c.visits)}
+        delta={pctChange(c.visits, prev.visits)}
+        hint={`vs ${formatNumber(prev.visits)} ${compareLabel.toLowerCase()}`}
+      />
+      <KpiTile
+        label="Pages / session"
+        value={c.pageviewsPerSession.toFixed(2)}
+        delta={pctChange(c.pageviewsPerSession, prev.pageviewsPerSession)}
+        hint="Higher = deeper engagement"
+      />
+      <KpiTile
+        label="Bounce rate"
+        value={`${(c.bounceRate * 100).toFixed(1)}%`}
+        delta={pctChange(c.bounceRate, prev.bounceRate)}
+        preferDirection="down"
+        hint="Lower = better landing fit"
+      />
+      <KpiTile
+        label="Avg time on site"
+        value={`${c.timePerSession.toFixed(0)}s`}
+        delta={pctChange(c.timePerSession, prev.timePerSession)}
+        hint={`${formatNumber(c.contacts)} new contacts from paid`}
+      />
+    </div>
+  );
+}
+
+function NetworkCard({
+  metrics,
+  accent,
+}: {
+  metrics: NetworkMetrics;
+  accent: "google" | "linkedin";
+}) {
+  const isLinkedIn = accent === "linkedin";
+  const dotClass = isLinkedIn ? "bg-[#0a66c2]" : "bg-primary";
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <CardTitle className="inline-flex items-center gap-2">
+            <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} aria-hidden />
+            {isLinkedIn ? "LinkedIn Ads" : "Google Ads"}
+          </CardTitle>
+          <span className="text-xs text-muted tabular-nums">
+            <span className="text-foreground-soft font-medium">
+              {formatNumber(metrics.visitors)}
+            </span>{" "}
+            unique visitors
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-1">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <NetworkStat label="Visits" value={formatNumber(metrics.visits)} />
+          <NetworkStat label="Pageviews" value={formatNumber(metrics.pageviews)} />
+          <NetworkStat
+            label="Bounce"
+            value={`${(metrics.bounceRate * 100).toFixed(1)}%`}
+          />
+          <NetworkStat
+            label="Time / session"
+            value={`${metrics.timePerSession.toFixed(0)}s`}
+          />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 border-t border-border pt-3">
+          <NetworkStat
+            label="Pages / session"
+            value={metrics.pageviewsPerSession.toFixed(2)}
+          />
+          <NetworkStat
+            label="New visitor %"
+            value={`${(metrics.newVisitorSessionRate * 100).toFixed(0)}%`}
+          />
+          <NetworkStat label="Contacts" value={formatNumber(metrics.contacts)} />
+          <NetworkStat
+            label="Visit ÷ visitor"
+            value={
+              metrics.visitors > 0
+                ? (metrics.visits / metrics.visitors).toFixed(2)
+                : "—"
+            }
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function NetworkStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10px] font-medium uppercase tracking-wide text-muted">{label}</div>
+      <div className="mt-0.5 text-[18px] font-semibold tabular-nums tracking-tight text-foreground">
+        {value}
+      </div>
     </div>
   );
 }
@@ -327,46 +489,3 @@ function PipelineCard({
   );
 }
 
-function AdSpendCard({
-  title,
-  stats,
-}: {
-  title: string;
-  stats: { source: "live" | "placeholder"; last7d: number; last30d: number; mtd: number };
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle>{title}</CardTitle>
-            <CardDescription>Paid media spend</CardDescription>
-          </div>
-          {stats.source === "placeholder" && (
-            <Badge tone="warning" className="shrink-0">
-              Demo data
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-3 divide-x divide-border">
-          <AdSpendStat label="Last 7d" value={stats.last7d} />
-          <AdSpendStat label="Last 30d" value={stats.last30d} />
-          <AdSpendStat label="MTD" value={stats.mtd} last />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function AdSpendStat({ label, value, last }: { label: string; value: number; last?: boolean }) {
-  return (
-    <div className={last ? "pl-4" : "pr-4 first:pl-0"}>
-      <div className="text-[11px] font-medium uppercase tracking-wide text-muted">{label}</div>
-      <div className="mt-1 text-[20px] font-semibold tabular-nums tracking-tight text-foreground">
-        {formatCurrency(value, { compact: true })}
-      </div>
-    </div>
-  );
-}
