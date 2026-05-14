@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
@@ -32,7 +32,7 @@ type MonthCol =
 
 /**
  * Editable, spreadsheet-style grid mirroring the "2026 POs" tab. Rows live in
- * the `orders_portal_rows` table â€” any admin's edit becomes visible to every
+ * the `orders_portal_rows` table — any admin's edit becomes visible to every
  * other user on their next poll (every 10s). Read-only viewers see the same
  * data but can't change it. YTD, Remaining-to-Target, MTD, Q1..Q4, current-
  * month thermometer, and column auto-sums are all derived live from the rows
@@ -57,7 +57,7 @@ export function OrdersPortalGrid({
    */
   const dirtyRef = useRef<Set<string>>(new Set());
 
-  // â”€â”€ Polling: every 10s pick up edits from other users. We pause polling
+  // ── Polling: every 10s pick up edits from other users. We pause polling
   // while there's a pending write so we don't race our own optimistic update.
   const pendingWritesRef = useRef(0);
   useEffect(() => {
@@ -73,7 +73,7 @@ export function OrdersPortalGrid({
           setRows(data.rows);
         }
       } catch {
-        // ignore â€” next tick will retry
+        // ignore — next tick will retry
       }
     };
     const id = setInterval(refresh, 10_000);
@@ -83,7 +83,7 @@ export function OrdersPortalGrid({
     };
   }, []);
 
-  // â”€â”€ Mutations through the API. All write helpers patch local state
+  // ── Mutations through the API. All write helpers patch local state
   // optimistically, then send the change to the server. canEdit guards the
   // UI affordances; the server also enforces admin-only writes.
   const patchRow = useCallback(
@@ -97,12 +97,12 @@ export function OrdersPortalGrid({
         });
         if (!res.ok) {
           const data = (await res.json().catch(() => ({}))) as { error?: string };
-          setSyncError(data.error ?? "Save failed â€” your edit hasn't been shared yet.");
+          setSyncError(data.error ?? "Save failed — your edit hasn't been shared yet.");
         } else {
           setSyncError(null);
         }
       } catch {
-        setSyncError("Network error â€” your edit hasn't been shared yet.");
+        setSyncError("Network error — your edit hasn't been shared yet.");
       } finally {
         pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
         // Clear dirty markers for this row so polling can refresh it again.
@@ -187,7 +187,7 @@ export function OrdersPortalGrid({
       setRows(prev => [...prev, row]);
       setSyncError(null);
     } catch {
-      setSyncError("Network error â€” couldn't add a row.");
+      setSyncError("Network error — couldn't add a row.");
     } finally {
       pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
     }
@@ -208,7 +208,7 @@ export function OrdersPortalGrid({
         setSyncError(null);
       }
     } catch {
-      setSyncError("Network error â€” couldn't delete that row.");
+      setSyncError("Network error — couldn't delete that row.");
     } finally {
       pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
     }
@@ -218,7 +218,7 @@ export function OrdersPortalGrid({
    * When the new-order form submits, hand the order to the server which
    * folds it into the appropriate row (creating a customer row if needed).
    * The response carries the canonical row so we can update local state in
-   * one shot â€” no double-write.
+   * one shot — no double-write.
    */
   const onOrderSubmit = async (draft: OrderDraft) => {
     pendingWritesRef.current += 1;
@@ -237,7 +237,7 @@ export function OrdersPortalGrid({
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        setSyncError(data.error ?? "Order didn't sync â€” try again.");
+        setSyncError(data.error ?? "Order didn't sync — try again.");
         return;
       }
       const { row, created } = (await res.json()) as {
@@ -250,7 +250,7 @@ export function OrdersPortalGrid({
       });
       setSyncError(null);
     } catch {
-      setSyncError("Network error â€” order didn't sync.");
+      setSyncError("Network error — order didn't sync.");
     } finally {
       pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
     }
@@ -277,13 +277,13 @@ export function OrdersPortalGrid({
       setRows(fresh);
       setSyncError(null);
     } catch {
-      setSyncError("Network error â€” couldn't reset the grid.");
+      setSyncError("Network error — couldn't reset the grid.");
     } finally {
       pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
     }
   };
 
-  // â”€â”€ Aggregates
+  // ── Aggregates
   const monthTotals = useMemo(() => {
     const out = Array(12).fill(0);
     for (const r of rows) {
@@ -313,7 +313,7 @@ export function OrdersPortalGrid({
 
   const targetGrand = useMemo(() => MONTHLY_TARGETS.reduce((s, v) => s + v, 0), []);
 
-  // Today's month â€” drives the "Orders this month" / "Orders target" pair and
+  // Today's month — drives the "Orders this month" / "Orders target" pair and
   // the thermometer at the top of the page. Initialized after mount so the
   // user's clock (not the server's) decides which month is "current"; avoids
   // a hydration mismatch at the month boundary across timezones.
@@ -364,7 +364,7 @@ export function OrdersPortalGrid({
     const order = [...REP_SUGGESTIONS];
     const seen = new Set<string>(order);
     for (const r of rows) {
-      const k = r.rep || "â€”";
+      const k = r.rep || "—";
       if (!seen.has(k)) {
         order.push(k);
         seen.add(k);
@@ -372,7 +372,7 @@ export function OrdersPortalGrid({
     }
     const buckets = new Map<string, OrdersPortalRow[]>();
     for (const r of rows) {
-      const k = r.rep || "â€”";
+      const k = r.rep || "—";
       if (!buckets.has(k)) buckets.set(k, []);
       buckets.get(k)!.push(r);
     }
@@ -424,7 +424,7 @@ export function OrdersPortalGrid({
 
   return (
     <div className="space-y-6">
-      {/* â”€â”€ Current-month focus card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Current-month focus card ──────────────────────────────────── */}
       {/* Full-width card styled like the Quarter cards below: short label +
           delta chip on top, big actual number, "of $target (pct%)" sub line,
           and a progress bar at the bottom. */}
@@ -515,7 +515,7 @@ export function OrdersPortalGrid({
         })}
       </div>
 
-      {/* â”€â”€ Quarter cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Quarter cards ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {quarters.map(q => {
           const delta = q.actual - q.target;
@@ -558,13 +558,13 @@ export function OrdersPortalGrid({
         })}
       </div>
 
-      {/* â”€â”€ Monthly Booked vs Target (below the Quarters) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Monthly Booked vs Target (below the Quarters) ─────────────── */}
       <section className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
         <header className="flex items-center justify-between px-5 pt-4 pb-2">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Monthly Booked vs Target</h2>
             <p className="mt-0.5 text-xs text-muted">
-              Rolled up across all customers Â· green = at or above plan Â·
+              Rolled up across all customers · green = at or above plan ·
               YTD <span className="text-foreground-soft font-medium">{fmtCurrency(ytdGrand)}</span>
               {" "}of <span className="text-foreground-soft font-medium">{fmtCurrency(targetGrand)}</span>
             </p>
@@ -610,7 +610,7 @@ export function OrdersPortalGrid({
                     hasData ? "text-foreground" : "text-muted-soft",
                   )}
                 >
-                  {hasData ? fmtCurrencyShort(actual) : "â€”"}
+                  {hasData ? fmtCurrencyShort(actual) : "—"}
                 </div>
                 <div className="mt-0.5 text-[10px] tabular-nums text-muted">
                   {hasData ? (
@@ -628,12 +628,12 @@ export function OrdersPortalGrid({
         </div>
       </section>
 
-      {/* â”€â”€ Toolbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Toolbar ───────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
         <div className="flex flex-wrap items-center gap-3">
           <div className="text-xs text-muted">
             <span className="text-foreground-soft font-medium">{rows.length}</span>{" "}
-            customers Â·{" "}
+            customers ·{" "}
             {canEdit ? (
               <span>edits sync to every user</span>
             ) : (
@@ -693,7 +693,7 @@ export function OrdersPortalGrid({
         </div>
       </div>
 
-      {/* â”€â”€ Spreadsheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Spreadsheet ──────────────────────────────────────────────── */}
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
         <table className="w-full border-separate border-spacing-0 text-[13px] tabular-nums">
           <thead>
@@ -735,7 +735,7 @@ export function OrdersPortalGrid({
                 Remaining
               </Th>
             </tr>
-            {/* Autosum row â€” column totals across all visible customers,
+            {/* Autosum row — column totals across all visible customers,
                 pinned right below the header so the per-month grand totals
                 stay visible while scrolling the row body. */}
             <tr className="bg-card/95 text-[11px] font-semibold border-b border-border">
@@ -744,7 +744,7 @@ export function OrdersPortalGrid({
                 sticky="left-10"
                 className="min-w-[220px] border-l border-border text-[10px] uppercase tracking-wide text-muted"
               >
-                Î£ totals
+                Σ totals
               </Th>
               <Th className="min-w-[120px]" />
               <Th className="min-w-[120px]" />
@@ -778,7 +778,7 @@ export function OrdersPortalGrid({
                             : "text-muted-soft font-normal",
                         )}
                       >
-                        {hasData ? fmtCurrencyShort(actual) : "â€”"}
+                        {hasData ? fmtCurrencyShort(actual) : "—"}
                       </div>
                       <div className="mt-0.5 text-[10px] font-normal text-muted">
                         tgt {fmtCurrencyShort(target)}
@@ -802,7 +802,7 @@ export function OrdersPortalGrid({
                         hasData ? "text-warning" : "text-muted-soft font-normal",
                       )}
                     >
-                      {hasData ? fmtCurrencyShort(fc) : "â€”"}
+                      {hasData ? fmtCurrencyShort(fc) : "—"}
                     </div>
                     <div className="mt-0.5 text-[10px] font-normal text-muted">
                       tgt {fmtCurrencyShort(target)}
@@ -975,7 +975,7 @@ function Row({
       )}
 
       <Td striped={striped} className="text-right bg-primary-soft/40 font-semibold text-foreground">
-        {ytd === 0 ? <span className="text-muted-soft font-normal">â€”</span> : fmtCurrency(ytd)}
+        {ytd === 0 ? <span className="text-muted-soft font-normal">—</span> : fmtCurrency(ytd)}
       </Td>
       <Td
         striped={striped}
@@ -985,7 +985,7 @@ function Row({
         )}
       >
         {row.projection === 0 && ytd === 0 ? (
-          <span className="text-muted-soft font-normal">â€”</span>
+          <span className="text-muted-soft font-normal">—</span>
         ) : (
           fmtCurrency(remaining)
         )}
@@ -1048,7 +1048,7 @@ function NumberCell({
           display ? "text-foreground" : "text-muted-soft",
         )}
       >
-        {display || "â€”"}
+        {display || "—"}
       </span>
     );
   }
@@ -1091,13 +1091,13 @@ function NumberCell({
         display ? "text-foreground" : "text-muted-soft",
       )}
     >
-      {display || "â€”"}
+      {display || "—"}
     </button>
   );
 }
 
 /**
- * Tier pill â€” high-contrast, color-coded by tier so AA / A / B / C are
+ * Tier pill — high-contrast, color-coded by tier so AA / A / B / C are
  * unmistakable at a glance. Visually a pill; functionally a real <select>
  * for keyboard support, layered transparently over the pill.
  *
@@ -1133,7 +1133,7 @@ function TierSelect({
         disabled && "opacity-90 cursor-default",
       )}
     >
-      <span className="flex-1 text-center select-none">{value || "â€”"}</span>
+      <span className="flex-1 text-center select-none">{value || "—"}</span>
       <ChevronDown className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
       <select
         value={value}
@@ -1142,7 +1142,7 @@ function TierSelect({
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default"
         aria-label="Tier"
       >
-        <option value="">â€”</option>
+        <option value="">—</option>
         {TIERS.map(t => (
           <option key={t} value={t}>
             {t}
@@ -1154,7 +1154,7 @@ function TierSelect({
 }
 
 /**
- * Rep cell â€” combobox input that wears the rep's color as a soft chip
+ * Rep cell — combobox input that wears the rep's color as a soft chip
  * around the editable text. Supports adding new rep names while still
  * surfacing the canonical 5 as datalist suggestions.
  */
