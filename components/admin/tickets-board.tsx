@@ -41,7 +41,19 @@ function nextColor(c: TicketColor): TicketColor {
   return COLOR_CYCLE[(i + 1) % COLOR_CYCLE.length];
 }
 
-const ALL_TAB = "__all__";
+// Explicit left-to-right order for the tab strip. A tab not in this list (e.g.
+// a new sheet the coworker starts sending) sorts to the end alphabetically so
+// it never silently disappears.
+const TAB_ORDER = [
+  "Quote",
+  "Requote",
+  "R&D",
+  "FPS",
+  "Document Request",
+  "SFP",
+  "Label Review",
+  "Certification",
+];
 
 // ── Sorting ──
 type SortKey =
@@ -169,13 +181,28 @@ export function TicketsBoard({
     };
   }, []);
 
-  // ── Tabs derived from incoming data ──
+  // ── Tabs derived from incoming data, ordered by TAB_ORDER ──
   const tabs = useMemo(() => {
     const set = new Set<string>();
     for (const t of tickets) set.add(t.tab || "—");
-    return Array.from(set).sort();
+    return Array.from(set).sort((a, b) => {
+      const ai = TAB_ORDER.indexOf(a);
+      const bi = TAB_ORDER.indexOf(b);
+      if (ai === -1 && bi === -1) return a.localeCompare(b);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
   }, [tickets]);
-  const [activeTab, setActiveTab] = useState<string>(ALL_TAB);
+  const [activeTab, setActiveTab] = useState<string>(tabs[0] ?? "");
+
+  // Keep the active tab valid: on first load (empty initial tickets) and if the
+  // selected tab disappears from a later sync, fall back to the first tab.
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.includes(activeTab)) {
+      setActiveTab(tabs[0]);
+    }
+  }, [tabs, activeTab]);
 
   // ── Sort state ──
   // Rank-ascending is the default "natural" view: it's the only ordering in
@@ -241,10 +268,7 @@ export function TicketsBoard({
 
   // ── Visible rows: active tab → field filters → sort ──
   const rows = useMemo(() => {
-    let r =
-      activeTab === ALL_TAB
-        ? tickets
-        : tickets.filter(t => (t.tab || "—") === activeTab);
+    let r = tickets.filter(t => (t.tab || "—") === activeTab);
 
     for (const key of FIELD_FILTER_KEYS) {
       const sel = filters[key];
@@ -393,7 +417,6 @@ export function TicketsBoard({
           active={activeTab}
           onChange={setActiveTab}
           counts={countByTab(tickets)}
-          totalCount={tickets.length}
         />
         <p className="text-xs text-muted">
           {lastSyncedAt
@@ -470,7 +493,6 @@ export function TicketsBoard({
                     <TicketRow
                       key={rowKey}
                       ticket={t}
-                      showTabBadge={activeTab === ALL_TAB}
                       inRankView={inRankView}
                       canReorder={canReorder}
                       onCycleColor={() => cycleColor(t.tab, t.id)}
@@ -705,22 +727,14 @@ function TabsRow({
   active,
   onChange,
   counts,
-  totalCount,
 }: {
   tabs: string[];
   active: string;
   onChange: (t: string) => void;
   counts: Map<string, number>;
-  totalCount: number;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <TabPill
-        label="All"
-        count={totalCount}
-        active={active === ALL_TAB}
-        onClick={() => onChange(ALL_TAB)}
-      />
       {tabs.map(t => (
         <TabPill
           key={t}
@@ -785,7 +799,6 @@ function TicketCustomerLogo({ customer }: { customer: string }) {
 
 function TicketRow({
   ticket,
-  showTabBadge,
   inRankView,
   canReorder,
   onCycleColor,
@@ -797,7 +810,6 @@ function TicketRow({
   markDirty,
 }: {
   ticket: Ticket;
-  showTabBadge: boolean;
   inRankView: boolean;
   canReorder: boolean;
   onCycleColor: () => void;
@@ -873,14 +885,7 @@ function TicketRow({
         />
       </td>
       <td className="px-3 py-2 font-mono text-xs text-foreground">
-        <div className="flex items-center gap-1.5">
-          {showTabBadge && (
-            <span className="rounded bg-accent/60 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
-              {ticket.tab}
-            </span>
-          )}
-          <span>{ticket.id}</span>
-        </div>
+        {ticket.id}
       </td>
       <td className="px-3 py-2 text-xs text-muted">{ticket.version}</td>
       <td className="px-3 py-2 font-medium text-foreground">{ticket.name}</td>
