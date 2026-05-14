@@ -205,10 +205,12 @@ export function TicketsBoard({
   }, [tabs, activeTab]);
 
   // ── Sort state ──
-  // Rank-ascending is the default "natural" view: it's the only ordering in
-  // which the rank input and drag-to-reorder are live. Any other sort is a
-  // read-only view of the same rows.
-  const [sortKey, setSortKey] = useState<SortKey>("rank");
+  // Default view is due date ascending — most overdue first, blank due dates
+  // last. Rank-ascending is still the "natural" reorder view (the only
+  // ordering in which the rank input and drag-to-reorder are live), but it's
+  // no longer the default: click the Rank header to get there. Any non-rank
+  // sort is a read-only view of the same rows.
+  const [sortKey, setSortKey] = useState<SortKey>("dueDate");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const onSort = useCallback(
@@ -829,12 +831,16 @@ function TicketRow({
     setLocalRank(ticket.rank == null ? "" : String(ticket.rank));
   }, [ticket.rank]);
 
+  // Manual swatch color wins; otherwise the row is colored automatically from
+  // its status / due date.
+  const displayColor = effectiveColor(ticket);
+
   return (
     <tr
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={cn(rowColorClass(ticket.color), isDragging && "opacity-50")}
-      style={rowColorStyle(ticket.color)}
+      className={cn(rowColorClass(displayColor), isDragging && "opacity-50")}
+      style={rowColorStyle(displayColor)}
     >
       <td className="px-3 py-2 align-middle">
         {inRankView ? (
@@ -936,6 +942,83 @@ function countByTab(tickets: Ticket[]): Map<string, number> {
     m.set(k, (m.get(k) ?? 0) + 1);
   }
   return m;
+}
+
+// ── Automatic row color ──
+// A ticket's `color` field is a manual override an admin sets with the row
+// swatch. When it's null, the row takes an automatic color instead:
+//   • gray — status is one of the "parked / waiting on someone else" states
+//   • red  — past its due date
+// Gray wins over red: a parked ticket stays gray even when overdue, because
+// it isn't actionable on our side until the status changes.
+const GRAY_STATUSES = new Set<string>([
+  "awaiting fps",
+  "documents gathered",
+  "hold",
+  "in process",
+  "in r&d",
+  "in requote",
+  "info needed",
+  "waiting for label proof",
+  "waiting on fps",
+  "waiting on sfp",
+]);
+
+// Status text arrives free-form from the source spreadsheet — fold case and
+// collapse whitespace so casing/spacing drift still matches.
+function normalizeStatus(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Parse a free-text due date to a local-midnight Date. The source spreadsheet
+ * sends M/D/YY (its usual format); the sync API also documents ISO. Both are
+ * built in local time so a day-granularity comparison doesn't drift a day
+ * across timezones. Returns null for blank/unparseable values.
+ */
+function parseDueDate(s: string | null): Date | null {
+  if (!s) return null;
+  const trimmed = s.trim();
+  if (!trimmed) return null;
+
+  const slash = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(trimmed);
+  if (slash) {
+    const month = Number(slash[1]);
+    const day = Number(slash[2]);
+    let year = Number(slash[3]);
+    if (year < 100) year += year < 50 ? 2000 : 1900;
+    return new Date(year, month - 1, day);
+  }
+
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
+  if (iso) {
+    return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  }
+
+  const t = Date.parse(trimmed);
+  return Number.isFinite(t) ? new Date(t) : null;
+}
+
+/** True when the due date is strictly before today. Due today is not overdue. */
+function isOverdue(dueDate: string | null): boolean {
+  const due = parseDueDate(dueDate);
+  if (!due) return false;
+  const now = new Date();
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate()).getTime();
+  const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return dueDay < todayDay;
+}
+
+/** The color a row shows when no manual override is set. */
+function autoColor(ticket: Ticket): TicketColor {
+  if (GRAY_STATUSES.has(normalizeStatus(ticket.status))) return "gray";
+  if (isOverdue(ticket.dueDate)) return "red";
+  return null;
+}
+
+/** Manual swatch color wins; otherwise fall back to the automatic color. */
+function effectiveColor(ticket: Ticket): TicketColor {
+  return ticket.color ?? autoColor(ticket);
 }
 
 /**

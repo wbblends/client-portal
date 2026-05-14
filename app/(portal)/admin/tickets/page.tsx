@@ -22,11 +22,13 @@ export default async function AdminTicketsPage() {
         </h1>
         <p className="mt-1 text-sm text-muted">
           Open PM tickets imported daily at 7&nbsp;AM from the coworker job.
+          Sorted by due date by default — overdue rows are flagged red, and
+          parked statuses (Hold, Info Needed, Waiting on FPS, …) show gray.
           Click any column header to sort, and use the filter bar to narrow by
-          customer, product, salesperson, or status. Type a rank or drag the
-          handle to reorder — available in the default Rank&nbsp;↑ view with no
-          filters applied. Click the swatch on a row to cycle
-          red&nbsp;→&nbsp;white&nbsp;→&nbsp;gray. Rank and color survive each
+          customer, product, salesperson, or status. Switch to the
+          Rank&nbsp;↑ view (with no filters) to type a rank or drag the handle
+          to reorder. Click the swatch on a row to override its color
+          (red&nbsp;→&nbsp;white&nbsp;→&nbsp;gray). Rank and color survive each
           sync.
         </p>
       </div>
