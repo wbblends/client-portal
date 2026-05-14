@@ -1368,3 +1368,234 @@ export async function getMarketingAttribution(): Promise<MarketingAttribution> {
     return PLACEHOLDER_ATTRIBUTION;
   }
 }
+
+// ─── Account penetration ────────────────────────────────────────────────────
+//
+// "How far into an account are we?" For a set of named accounts, compares the
+// deal value we originally closed in the Sales Pipeline (the account's initial
+// projection) against what we've since won and what's still in flight in the
+// Wallet Share pipeline:
+//
+//   projection = Σ amount of the account's CLOSED WON Sales Pipeline deals —
+//                the baseline we measure penetration against
+//   captured   = Σ amount of the account's CLOSED WON Wallet Share deals
+//   inProgress = Σ amount of the account's OPEN Wallet Share deals
+//                (quoting / formulation / onboarding — not yet won or lost)
+//
+// Wallet Share closed-lost deals are intentionally excluded — they're neither
+// captured nor in flight. `hs_is_closed_won` is unreliable in this HubSpot
+// account (reads "false" even on won deals), so won/lost is derived from
+// pipeline STAGE metadata instead.
+
+/** Accounts shown on the penetration dashboard. HubSpot company IDs are stable
+ *  — add a row here to track another account. */
+const PENETRATION_ACCOUNTS: { companyId: string; name: string }[] = [
+  { companyId: "14801654147", name: "Clean Nutraceuticals" },
+  { companyId: "7045543278", name: "Sports Research Corp" },
+  { companyId: "15494931750", name: "Just Ingredients" },
+  { companyId: "6970544160", name: "Codeage" },
+];
+
+export type AccountPenetration = {
+  companyId: string;
+  name: string;
+  /** Σ amount of the account's closed-won Sales Pipeline deals. */
+  projection: number;
+  /** Σ amount of the account's closed-won Wallet Share deals. */
+  captured: number;
+  capturedDealCount: number;
+  /** Σ amount of the account's open Wallet Share deals. */
+  inProgress: number;
+  inProgressDealCount: number;
+  hubspotUrl: string;
+};
+
+export type AccountPenetrationData = {
+  source: "live" | "placeholder";
+  accounts: AccountPenetration[];
+};
+
+function companyHubspotUrl(companyId: string): string {
+  // 0-2 is the HubSpot object type id for companies.
+  return `https://app.hubspot.com/contacts/20659581/record/0-2/${companyId}`;
+}
+
+const PLACEHOLDER_ACCOUNT_PENETRATION: AccountPenetrationData = {
+  source: "placeholder",
+  accounts: [
+    {
+      companyId: "14801654147",
+      name: "Clean Nutraceuticals",
+      projection: 6_000_000,
+      captured: 5_471_500,
+      capturedDealCount: 9,
+      inProgress: 10_267_830,
+      inProgressDealCount: 48,
+      hubspotUrl: companyHubspotUrl("14801654147"),
+    },
+    {
+      companyId: "7045543278",
+      name: "Sports Research Corp",
+      projection: 3_000_000,
+      captured: 250_000,
+      capturedDealCount: 1,
+      inProgress: 1_600_000,
+      inProgressDealCount: 10,
+      hubspotUrl: companyHubspotUrl("7045543278"),
+    },
+    {
+      companyId: "15494931750",
+      name: "Just Ingredients",
+      projection: 3_000_000,
+      captured: 0,
+      capturedDealCount: 0,
+      inProgress: 0,
+      inProgressDealCount: 0,
+      hubspotUrl: companyHubspotUrl("15494931750"),
+    },
+    {
+      companyId: "6970544160",
+      name: "Codeage",
+      projection: 2_000_000,
+      captured: 0,
+      capturedDealCount: 0,
+      inProgress: 0,
+      inProgressDealCount: 0,
+      hubspotUrl: companyHubspotUrl("6970544160"),
+    },
+  ],
+};
+
+type StageOutcome = "won" | "lost" | "open";
+
+/** Classify each stage of a pipeline as won / lost / open from its metadata.
+ *  A closed stage is "won" when its probability is 1 (HubSpot's convention for
+ *  a won stage) or its label says so — the per-deal `hs_is_closed_won` flag
+ *  isn't trustworthy in this account. */
+function classifyStages(stages: RawStage[]): Map<string, StageOutcome> {
+  const out = new Map<string, StageOutcome>();
+  for (const s of stages) {
+    if (s.metadata?.isClosed !== "true") {
+      out.set(s.id, "open");
+      continue;
+    }
+    const probability = Number(s.metadata?.probability ?? 0);
+    const won = (Number.isFinite(probability) && probability >= 1) || /won/i.test(s.label);
+    out.set(s.id, won ? "won" : "lost");
+  }
+  return out;
+}
+
+/** Every deal associated with one company, open or closed, across all
+ *  pipelines. Paginated; routed through the shared search throttle. */
+async function fetchDealsForCompany(companyId: string): Promise<RawDeal[]> {
+  const t = token();
+  if (!t) throw new Error("Missing HUBSPOT_PRIVATE_APP_TOKEN");
+
+  const all: RawDeal[] = [];
+  let after: string | undefined;
+
+  do {
+    const body = {
+      filterGroups: [
+        {
+          filters: [
+            { propertyName: "associations.company", operator: "EQ", value: companyId },
+          ],
+        },
+      ],
+      properties: ["amount", "pipeline", "dealstage"],
+      limit: 100,
+      ...(after ? { after } : {}),
+    };
+
+    const res = await searchFetch(`${HUBSPOT_API}/crm/v3/objects/deals/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${t}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      throw new Error(`HubSpot account deals search failed: ${res.status} ${await res.text()}`);
+    }
+
+    const data = (await res.json()) as {
+      results: RawDeal[];
+      paging?: { next?: { after: string } };
+    };
+
+    all.push(...data.results);
+    after = data.paging?.next?.after;
+  } while (after);
+
+  return all;
+}
+
+/**
+ * Penetration metrics for every account in PENETRATION_ACCOUNTS. Stage
+ * definitions for both pipelines are fetched once and shared; each account's
+ * deals are then bucketed into projection / captured / inProgress.
+ */
+export async function getAccountPenetration(): Promise<AccountPenetrationData> {
+  if (!token()) return PLACEHOLDER_ACCOUNT_PENETRATION;
+
+  try {
+    const [salesStages, expansionStages] = await Promise.all([
+      fetchPipelineStages(PIPELINES.sales.id),
+      fetchPipelineStages(PIPELINES.expansion.id),
+    ]);
+    const salesOutcome = classifyStages(salesStages);
+    const expansionOutcome = classifyStages(expansionStages);
+
+    const accounts = await Promise.all(
+      PENETRATION_ACCOUNTS.map(async ({ companyId, name }): Promise<AccountPenetration> => {
+        const deals = await fetchDealsForCompany(companyId);
+
+        let projection = 0;
+        let captured = 0;
+        let capturedDealCount = 0;
+        let inProgress = 0;
+        let inProgressDealCount = 0;
+
+        for (const d of deals) {
+          const amount = Number(d.properties.amount ?? 0) || 0;
+          const stageId = d.properties.dealstage ?? "";
+
+          if (d.properties.pipeline === PIPELINES.sales.id) {
+            if (salesOutcome.get(stageId) === "won") projection += amount;
+          } else if (d.properties.pipeline === PIPELINES.expansion.id) {
+            const outcome = expansionOutcome.get(stageId);
+            if (outcome === "won") {
+              captured += amount;
+              capturedDealCount++;
+            } else if (outcome === "open") {
+              inProgress += amount;
+              inProgressDealCount++;
+            }
+            // expansion "lost" deals are intentionally excluded
+          }
+        }
+
+        return {
+          companyId,
+          name,
+          projection,
+          captured,
+          capturedDealCount,
+          inProgress,
+          inProgressDealCount,
+          hubspotUrl: companyHubspotUrl(companyId),
+        };
+      }),
+    );
+
+    return { source: "live", accounts };
+  } catch (err) {
+    console.error("[marketing/hubspot] getAccountPenetration failed:", err);
+    return PLACEHOLDER_ACCOUNT_PENETRATION;
+  }
+}

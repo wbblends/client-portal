@@ -67,6 +67,15 @@ export const DASHBOARDS: readonly Dashboard[] = [
     iconName: "TrendingUp",
   },
   {
+    id: "account-penetration",
+    slug: "account-penetration",
+    name: "Account Penetration",
+    category: "Sales and Marketing",
+    description:
+      "Per-account progress bars — wallet share won and in progress against each account's initial Sales Pipeline projection.",
+    iconName: "Briefcase",
+  },
+  {
     id: "pipeline-analytics",
     slug: "pipeline-analytics",
     name: "Pipeline Analytics",

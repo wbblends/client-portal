@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth";
 import { getDashboard, userCanSeeDashboard } from "@/lib/dashboards/registry";
 import { PlaceholderDashboard } from "@/components/dashboards/placeholder";
 import { MarketingOverviewDashboard } from "@/components/dashboards/marketing-overview";
+import { AccountPenetrationDashboard } from "@/components/dashboards/account-penetration";
 import { OrdersPortalDashboard } from "@/components/dashboards/orders-portal";
 import {
   SalesPipelineDashboard,
@@ -44,6 +45,8 @@ export default async function DashboardSlugPage(props: PageProps<"/dashboards/[s
       return <SalesPipelineDashboard />;
     case "account-expansion":
       return <AccountExpansionDashboard />;
+    case "account-penetration":
+      return <AccountPenetrationDashboard />;
     case "pipeline-analytics":
       return <PipelineAnalyticsDashboard />;
     default:
