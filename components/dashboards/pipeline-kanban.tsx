@@ -16,7 +16,6 @@ export async function SalesPipelineDashboard() {
     <SinglePipelinePage
       kicker="Sales"
       title="New Logo Pipeline"
-      description="Open deals in the New Logo Pipeline, grouped by stage. Click any card to see the most recent notes from HubSpot."
       pipeline={pipeline}
       source={data.source}
     />
@@ -30,7 +29,6 @@ export async function AccountExpansionDashboard() {
     <SinglePipelinePage
       kicker="Sales"
       title="Wallet Share Pipeline"
-      description="Open deals in the Wallet Share Pipeline, grouped by stage. Click any card to see the most recent notes from HubSpot."
       pipeline={pipeline}
       source={data.source}
     />
@@ -57,9 +55,6 @@ export async function PipelineAnalyticsDashboard() {
           <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
             Pipeline Analytics
           </h1>
-          <p className="mt-1 max-w-[640px] text-sm text-muted">
-            Open-deal value across both HubSpot pipelines, sliced by rep, tier, format, and source.
-          </p>
         </div>
         {data.source === "placeholder" && (
           <Badge tone="warning">Placeholder data — set HUBSPOT_PRIVATE_APP_TOKEN</Badge>
@@ -87,13 +82,11 @@ export async function PipelineAnalyticsDashboard() {
 function SinglePipelinePage({
   kicker,
   title,
-  description,
   pipeline,
   source,
 }: {
   kicker: string;
   title: string;
-  description: string;
   pipeline: PipelineKanban | undefined;
   source: "live" | "placeholder";
 }) {
@@ -105,7 +98,6 @@ function SinglePipelinePage({
           <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
             {title}
           </h1>
-          <p className="mt-1 max-w-[640px] text-sm text-muted">{description}</p>
         </div>
         {source === "placeholder" && (
           <Badge tone="warning">Placeholder data — set HUBSPOT_PRIVATE_APP_TOKEN</Badge>

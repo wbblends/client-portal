@@ -18,9 +18,6 @@ export default async function SecurityPage() {
         <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
           Security
         </h1>
-        <p className="mt-1 text-sm text-muted">
-          Manage two-factor authentication for <strong>{me.username}</strong>.
-        </p>
       </div>
 
       <Card>

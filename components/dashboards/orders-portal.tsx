@@ -25,12 +25,6 @@ export async function OrdersPortalDashboard({ dashboard }: { dashboard: Dashboar
         <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
           {dashboard.name}
         </h1>
-        <p className="mt-1 text-sm text-muted">
-          Booked POs by customer for the year.{" "}
-          {canEdit
-            ? "Edits persist for every user — admins can update numbers as POs land."
-            : "Read-only view — admins maintain these numbers."}
-        </p>
       </div>
 
       <OrdersPortalGrid initialRows={initialRows} canEdit={canEdit} />

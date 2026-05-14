@@ -35,10 +35,6 @@ export default async function NewUserPage() {
         <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
           New user
         </h1>
-        <p className="mt-1 text-sm text-muted">
-          Fill out the form below. The user will receive an invite email with a link to set
-          their own password — they should arrive within a minute.
-        </p>
       </div>
 
       <Card>

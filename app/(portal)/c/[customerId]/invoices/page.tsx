@@ -24,10 +24,6 @@ export default async function InvoicesPage(props: PageProps<"/c/[customerId]/inv
         <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
           Invoices
         </h1>
-        <p className="mt-1 text-sm text-muted">
-          Every invoice on your account with current payment status from our AR system. Statements
-          are emailed monthly — questions can go straight to your AR contact.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">

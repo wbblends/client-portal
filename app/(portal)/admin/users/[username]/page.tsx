@@ -41,10 +41,6 @@ export default async function EditUserPage(props: PageProps<"/admin/users/[usern
         <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
           {user.name}
         </h1>
-        <p className="mt-1 text-sm text-muted">
-          Editing <code className="rounded bg-accent px-1 py-0.5 text-xs">{user.username}</code>{" "}
-          — changes take effect immediately.
-        </p>
       </div>
 
       <Card>

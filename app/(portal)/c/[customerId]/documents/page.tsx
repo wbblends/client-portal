@@ -60,10 +60,6 @@ export default async function DocumentsPage(props: PageProps<"/c/[customerId]/do
           <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
             Documents
           </h1>
-          <p className="mt-1 text-sm text-muted">
-            Finished Product Specs, COAs, certifications, and shared files between your team and
-            ours. We email you whenever something new is uploaded.
-          </p>
         </div>
         <Badge tone={isEditor ? "info" : "neutral"} className="shrink-0">
           {isEditor ? (

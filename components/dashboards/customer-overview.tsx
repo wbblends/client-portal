@@ -20,7 +20,7 @@ import { SkuGrid } from "@/components/dashboard/sku-grid";
 import { SalesByProduct } from "@/components/dashboard/sales-by-product";
 import { OpenOrdersReport } from "@/components/dashboard/open-orders-report";
 import { OnboardingReport } from "@/components/dashboard/onboarding-report";
-import { formatCurrency, formatNumber, formatDate } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 
 /**
  * Renderer for the per-customer overview dashboard. Server component.
@@ -87,12 +87,6 @@ export async function CustomerOverviewDashboard({
           <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground break-words">
             {profile.name}
           </h1>
-          <p className="mt-1 text-sm text-muted">
-            Customer #{profile.id} · Account Since {profile.accountSince} · Showing{" "}
-            <span className="text-foreground-soft font-medium">
-              {formatDate(range.from, "short")} – {formatDate(range.to, "short")}
-            </span>
-          </p>
         </div>
         <DateRangePicker from={range.from} to={range.to} presetId={range.presetId} />
       </div>

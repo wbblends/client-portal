@@ -8,7 +8,7 @@ import {
   TrafficShareChart,
   EngagementCompareChart,
 } from "@/components/dashboard/ad-analytics-charts";
-import { formatCurrency, formatNumber, formatDate } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 import {
   getPipelineSummary,
   getMarketingAttribution,
@@ -68,13 +68,6 @@ export async function MarketingOverviewDashboard({
           <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
             Marketing Overview
           </h1>
-          <p className="mt-1 text-sm text-muted">
-            Showing{" "}
-            <span className="text-foreground-soft font-medium">
-              {formatDate(range.from, "short")} – {formatDate(range.to, "short")}
-            </span>
-            . Pipeline KPIs always reflect the current snapshot.
-          </p>
         </div>
         <DateRangePicker from={range.from} to={range.to} presetId={range.presetId} />
       </div>

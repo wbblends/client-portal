@@ -20,10 +20,6 @@ export default async function QualityPage(props: PageProps<"/c/[customerId]/qual
         <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
           Quality
         </h1>
-        <p className="mt-1 text-sm text-muted">
-          Every quality ticket WB is working through with you — open issues, retains, decisions,
-          and credits. 1 in 10 of our team works exclusively in quality.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">

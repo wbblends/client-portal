@@ -15,7 +15,6 @@ export function PlaceholderDashboard({ dashboard }: { dashboard: Dashboard }) {
           <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
             {dashboard.name}
           </h1>
-          <p className="mt-1 max-w-[640px] text-sm text-muted">{dashboard.description}</p>
         </div>
         <Badge tone="warning">Coming soon</Badge>
       </div>

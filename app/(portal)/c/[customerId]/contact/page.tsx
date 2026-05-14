@@ -18,10 +18,6 @@ export default async function ContactPage(props: PageProps<"/c/[customerId]/cont
         <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
           Your <span className="text-primary">Team</span>.
         </h1>
-        <p className="mt-1 text-sm text-muted">
-          The people you&apos;ll work with day to day. Day-to-day questions go to your account
-          manager — bigger swings to whoever fits. We respond in under one business day.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">

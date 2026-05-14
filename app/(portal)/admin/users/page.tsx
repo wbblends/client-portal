@@ -29,10 +29,6 @@ export default async function AdminUsersPage() {
           <h1 className="mt-0.5 font-display text-[clamp(28px,4.6vw,38px)] leading-[1.1] tracking-tight text-foreground">
             Users
           </h1>
-          <p className="mt-1 text-sm text-muted">
-            Create accounts, set permissions, and resend invites. New users get an email with a
-            link to choose their own password.
-          </p>
         </div>
         <Link href="/admin/users/new" className={buttonClasses({ size: "md" })}>
           <Plus className="h-4 w-4" />
