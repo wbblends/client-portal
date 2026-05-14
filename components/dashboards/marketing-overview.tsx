@@ -2,10 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
 import { DateRangePicker } from "@/components/dashboard/date-range-picker";
-import {
-  CumulativePipelineChart,
-  PipelineFlowChart,
-} from "@/components/dashboard/marketing-pipeline-chart";
+import { PipelineFlowChart } from "@/components/dashboard/marketing-pipeline-chart";
 import {
   PaidVisitsTrendChart,
   TrafficShareChart,
@@ -102,25 +99,13 @@ export async function MarketingOverviewDashboard({
         </div>
       </section>
 
-      {/* Pipeline trend (range-scoped chart) */}
+      {/* Pipeline flow (range-scoped chart) */}
       <section className="space-y-3">
         <SectionHeader
-          title="Pipeline trend"
-          description="Reconstructed from current deals + their create / close dates. Top: open pipeline value at the end of each bucket. Bottom: deals added vs closed-won/lost during each bucket."
+          title="Pipeline flow"
+          description="Reconstructed from current deals + their create / close dates. Deals added vs closed-won / closed-lost during each bucket."
           source={history.source}
         />
-        <Card>
-          <CardHeader>
-            <CardTitle>Cumulative open pipeline</CardTitle>
-            <CardDescription>
-              {history.bucketing === "week" ? "Weekly" : "Monthly"} buckets across the selected
-              range.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CumulativePipelineChart buckets={history.buckets} />
-          </CardContent>
-        </Card>
         <Card>
           <CardHeader>
             <CardTitle>Pipeline flow</CardTitle>

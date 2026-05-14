@@ -16,7 +16,7 @@
  *      stages multiple times will be counted once, on its final close date.
  */
 
-import { PIPELINES } from "./hubspot";
+import { PIPELINES, type PipelineKey } from "./hubspot";
 import { buildBuckets, pickBucketing, type Bucket } from "@/lib/data/aggregate";
 
 const HUBSPOT_API = "https://api.hubapi.com";
@@ -52,6 +52,7 @@ async function searchFetch(url: string, init: RequestInit): Promise<Response> {
 
 type DealRecord = {
   id: string;
+  pipelineKey: PipelineKey;
   amount: number;
   weighted: number;
   /** ms since epoch — when the deal was created in HubSpot. */
@@ -70,6 +71,9 @@ export type PipelineHistoryBucket = {
   openCount: number;
   openUnweighted: number;
   openWeighted: number;
+  /** Open unweighted value at bucket end, split by pipeline. The two values
+   *  sum to `openUnweighted` — powers the stacked cumulative bar chart. */
+  openUnweightedByPipeline: Record<PipelineKey, number>;
   // Flow during bucket:
   addedCount: number;
   addedAmount: number;
@@ -88,19 +92,27 @@ export type PipelineHistory = {
 const PLACEHOLDER_HISTORY: PipelineHistory = {
   source: "placeholder",
   bucketing: "month",
-  buckets: ["Jan", "Feb", "Mar", "Apr", "May"].map((label, i) => ({
-    label,
-    key: `placeholder-${i}`,
-    openCount: 120 + i * 12,
-    openUnweighted: 80_000_000 + i * 9_000_000,
-    openWeighted: 45_000_000 + i * 5_000_000,
-    addedCount: 18 + i * 2,
-    addedAmount: 9_500_000 + i * 1_200_000,
-    closedWonCount: 4 + i,
-    closedWonAmount: 1_800_000 + i * 350_000,
-    closedLostCount: 6,
-    closedLostAmount: 1_200_000 + i * 200_000,
-  })),
+  buckets: ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May"].map(
+    (label, i) => {
+      const openUnweighted = 62_000_000 + i * 5_000_000;
+      // New Logo carries the larger share in the demo data.
+      const salesOpen = Math.round(openUnweighted * 0.62);
+      return {
+        label,
+        key: `placeholder-${i}`,
+        openCount: 120 + i * 12,
+        openUnweighted,
+        openWeighted: 35_000_000 + i * 3_000_000,
+        openUnweightedByPipeline: { sales: salesOpen, expansion: openUnweighted - salesOpen },
+        addedCount: 18 + i * 2,
+        addedAmount: 9_500_000 + i * 1_200_000,
+        closedWonCount: 4 + i,
+        closedWonAmount: 1_800_000 + i * 350_000,
+        closedLostCount: 6,
+        closedLostAmount: 1_200_000 + i * 200_000,
+      };
+    },
+  ),
 };
 
 function token(): string | null {
@@ -112,7 +124,12 @@ async function fetchAllDealsForHistory(): Promise<DealRecord[]> {
   if (!t) throw new Error("Missing HUBSPOT_PRIVATE_APP_TOKEN");
   const out: DealRecord[] = [];
 
-  for (const pipelineId of [PIPELINES.sales.id, PIPELINES.expansion.id]) {
+  const pipelineList: { key: PipelineKey; id: string }[] = [
+    { key: "sales", id: PIPELINES.sales.id },
+    { key: "expansion", id: PIPELINES.expansion.id },
+  ];
+
+  for (const { key: pipelineKey, id: pipelineId } of pipelineList) {
     let after: string | undefined;
     do {
       const body = {
@@ -161,6 +178,7 @@ async function fetchAllDealsForHistory(): Promise<DealRecord[]> {
           })() : null;
         out.push({
           id: r.id,
+          pipelineKey,
           amount: Number.isFinite(amount) ? amount : 0,
           weighted: Number.isFinite(weighted) ? weighted : 0,
           createdate,
@@ -183,6 +201,7 @@ function bucketDeals(buckets: Bucket[], deals: DealRecord[]): PipelineHistoryBuc
     let openCount = 0;
     let openUnweighted = 0;
     let openWeighted = 0;
+    const openUnweightedByPipeline: Record<PipelineKey, number> = { sales: 0, expansion: 0 };
     let addedCount = 0;
     let addedAmount = 0;
     let closedWonCount = 0;
@@ -198,6 +217,7 @@ function bucketDeals(buckets: Bucket[], deals: DealRecord[]): PipelineHistoryBuc
         openCount++;
         openUnweighted += d.amount;
         openWeighted += d.weighted;
+        openUnweightedByPipeline[d.pipelineKey] += d.amount;
       }
       // Was it created during this bucket?
       if (d.createdate >= start && d.createdate <= end) {
@@ -222,6 +242,7 @@ function bucketDeals(buckets: Bucket[], deals: DealRecord[]): PipelineHistoryBuc
       openCount,
       openUnweighted,
       openWeighted,
+      openUnweightedByPipeline,
       addedCount,
       addedAmount,
       closedWonCount,
