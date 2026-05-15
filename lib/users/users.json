@@ -28,7 +28,7 @@
       "email": "tboysen@wbblends.com",
       "company": "Western Botanicals",
       "role": "internal",
-      "dashboards": ["orders-portal", "orders-backlog", "orders-received", "rolling-pipeline", "sales-pipeline", "account-expansion", "pipeline-analytics", "marketing-overview"],
+      "dashboards": ["orders-portal", "orders-backlog", "sales-pipeline", "account-expansion", "pipeline-analytics", "marketing-overview"],
       "avatarUrl": "/avatars/tboysen.jpg"
     },
     {
@@ -38,7 +38,7 @@
       "email": "jfishback@wbblends.com",
       "company": "Western Botanicals",
       "role": "internal",
-      "dashboards": ["orders-portal", "orders-backlog", "orders-received", "rolling-pipeline", "sales-pipeline", "account-expansion", "pipeline-analytics", "marketing-overview"],
+      "dashboards": ["orders-portal", "orders-backlog", "sales-pipeline", "account-expansion", "pipeline-analytics", "marketing-overview"],
       "avatarUrl": "/avatars/jfishback.jpg"
     },
     {
@@ -48,7 +48,7 @@
       "email": "cboone@wbblends.com",
       "company": "Western Botanicals",
       "role": "internal",
-      "dashboards": ["orders-portal", "orders-backlog", "orders-received", "rolling-pipeline", "sales-pipeline", "account-expansion", "pipeline-analytics", "marketing-overview"],
+      "dashboards": ["orders-portal", "orders-backlog", "sales-pipeline", "account-expansion", "pipeline-analytics", "marketing-overview"],
       "avatarUrl": "/avatars/cboone.jpg"
     },
     {
@@ -58,7 +58,7 @@
       "email": "nicole@wbblends.com",
       "company": "Western Botanicals",
       "role": "internal",
-      "dashboards": ["orders-portal", "orders-backlog", "orders-received", "rolling-pipeline", "sales-pipeline", "account-expansion", "pipeline-analytics", "marketing-overview"],
+      "dashboards": ["orders-portal", "orders-backlog", "sales-pipeline", "account-expansion", "pipeline-analytics", "marketing-overview"],
       "avatarUrl": "/avatars/nvonsternberg.jpg"
     }
   ]

@@ -51,40 +51,30 @@ export const DASHBOARDS: readonly Dashboard[] = [
   // app/(portal)/dashboards/[slug]/page.tsx, the page falls back to a
   // "coming soon" placeholder.
   {
-    id: "orders-portal",
-    slug: "orders-portal",
-    name: "Orders",
-    category: "Orders",
-    description:
-      "Booked POs by customer for the year — editable spreadsheet seeded from the 2026 POs workbook, swappable for an Acumatica feed.",
-    iconName: "DollarSign",
-  },
-  {
     id: "orders-backlog",
     slug: "orders-backlog",
-    name: "Open POs Backlog",
+    name: "Orders Backlog",
     category: "Orders",
     description:
       "Open PO backlog value at each snapshot point — quarterly 2024–2025, then monthly through current.",
     iconName: "Briefcase",
   },
   {
-    id: "orders-received",
-    slug: "orders-received",
-    name: "Monthly POs Received",
+    id: "orders-portal",
+    slug: "orders-portal",
+    name: "Order Tracker",
     category: "Orders",
     description:
-      "Monthly PO revenue received vs target — 2025 actuals + 2026 actuals to date, sourced from the orders sheet.",
-    iconName: "TrendingUp",
+      "Booked POs by customer for the year — editable spreadsheet seeded from the 2026 POs workbook, swappable for an Acumatica feed.",
+    iconName: "DollarSign",
   },
   {
-    id: "rolling-pipeline",
-    slug: "rolling-pipeline",
-    name: "Rolling Pipeline",
-    category: "Orders",
-    description:
-      "Cumulative open pipeline value at each month-end, stacked by pipeline — New Logo + Wallet Share.",
-    iconName: "LineChart",
+    id: "pipeline-analytics",
+    slug: "pipeline-analytics",
+    name: "Pipeline Analytics",
+    category: "Sales and Marketing",
+    description: "Top-line totals and per-rep breakdown across both HubSpot pipelines.",
+    iconName: "PieChart",
   },
   {
     id: "sales-pipeline",
@@ -110,14 +100,6 @@ export const DASHBOARDS: readonly Dashboard[] = [
     description:
       "Per-account progress bars — wallet share won and in progress against each account's initial Sales Pipeline projection.",
     iconName: "Briefcase",
-  },
-  {
-    id: "pipeline-analytics",
-    slug: "pipeline-analytics",
-    name: "Pipeline Analytics",
-    category: "Sales and Marketing",
-    description: "Top-line totals and per-rep breakdown across both HubSpot pipelines.",
-    iconName: "PieChart",
   },
   {
     id: "marketing-overview",

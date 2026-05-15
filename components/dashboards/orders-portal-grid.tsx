@@ -25,6 +25,25 @@ import {
   type OrderDraft,
 } from "@/lib/data/orders-portal";
 import { NewOrderForm } from "./new-order-form";
+import { MonthlyPosReceivedChart } from "@/components/dashboard/orders-received-chart";
+import type { MonthlyPosReceivedPoint } from "@/components/dashboard/orders-received-chart-impl";
+
+// 2025 monthly PO revenue actuals — historical, used as the prior-year
+// baseline in the Monthly POs Received chart below.
+const ACTUALS_2025: { month: string; value: number }[] = [
+  { month: "Jan", value: 4_662_705 },
+  { month: "Feb", value: 5_038_802 },
+  { month: "Mar", value: 6_618_716 },
+  { month: "Apr", value: 7_109_174 },
+  { month: "May", value: 7_068_753 },
+  { month: "Jun", value: 5_725_431 },
+  { month: "Jul", value: 9_589_585 },
+  { month: "Aug", value: 7_111_473 },
+  { month: "Sep", value: 6_037_133 },
+  { month: "Oct", value: 8_733_145 },
+  { month: "Nov", value: 6_998_905 },
+  { month: "Dec", value: 8_376_343 },
+];
 
 type MonthCol =
   | { kind: "actual"; monthIdx: number }
@@ -311,7 +330,36 @@ export function OrdersPortalGrid({
     [monthTotals],
   );
 
-  const targetGrand = useMemo(() => MONTHLY_TARGETS.reduce((s, v) => s + v, 0), []);
+  /**
+   * Points feeding the Monthly POs Received chart below: 2025 actuals
+   * (hardcoded) followed by 2026 actuals to date, paired with each month's
+   * 2026 target. We trim 2026 to the last month with any booked revenue so
+   * future months don't render as zero bars.
+   */
+  const posReceivedPoints = useMemo<MonthlyPosReceivedPoint[]>(() => {
+    let lastWithData = -1;
+    for (let i = 11; i >= 0; i--) {
+      if (monthTotals[i] > 0) {
+        lastWithData = i;
+        break;
+      }
+    }
+    const actuals2026 = lastWithData === -1 ? [] : monthTotals.slice(0, lastWithData + 1);
+    return [
+      ...ACTUALS_2025.map(({ month, value }) => ({
+        label: `${month}-25`,
+        actual: value,
+        target: null,
+        isYear2026: false,
+      })),
+      ...actuals2026.map((value, i) => ({
+        label: `${MONTH_SHORT[i]}-26`,
+        actual: value,
+        target: MONTHLY_TARGETS[i],
+        isYear2026: true,
+      })),
+    ];
+  }, [monthTotals]);
 
   // Today's month — drives the "Orders this month" / "Orders target" pair and
   // the thermometer at the top of the page. Initialized after mount so the
@@ -558,73 +606,16 @@ export function OrdersPortalGrid({
         })}
       </div>
 
-      {/* ── Monthly Booked vs Target (below the Quarters) ─────────────── */}
+      {/* ── Monthly POs Received (below the Quarters) ─────────────────── */}
       <section className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-        <header className="flex items-center justify-between px-5 pt-4 pb-2">
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Monthly Booked vs Target</h2>
-            <p className="mt-0.5 text-xs text-muted">
-              Rolled up across all customers · green = at or above plan ·
-              YTD <span className="text-foreground-soft font-medium">{fmtCurrency(ytdGrand)}</span>
-              {" "}of <span className="text-foreground-soft font-medium">{fmtCurrency(targetGrand)}</span>
-            </p>
-          </div>
-          <div className="text-xs text-muted">
-            <span
-              className={cn(
-                "font-medium",
-                ytdGrand >= targetGrand ? "text-success" : "text-warning",
-              )}
-            >
-              {ytdGrand >= targetGrand ? "+" : ""}
-              {fmtCurrencyShort(ytdGrand - targetGrand)}
-            </span>{" "}
-            vs YTD plan
-          </div>
+        <header className="px-5 pt-4 pb-2">
+          <h2 className="text-sm font-semibold text-foreground">Monthly POs Received</h2>
+          <p className="mt-0.5 text-xs text-muted">
+            Monthly PO revenue — 2025 actuals plus 2026 actuals to date, with 2026 monthly target overlay.
+          </p>
         </header>
-        <div className="grid grid-cols-6 lg:grid-cols-12 gap-2 px-3 pb-4">
-          {MONTH_SHORT.map((m, i) => {
-            const actual = monthTotals[i];
-            const target = MONTHLY_TARGETS[i];
-            const delta = actual - target;
-            const onTrack = delta >= 0;
-            const hasData = actual > 0;
-            return (
-              <div
-                key={m}
-                className={cn(
-                  "rounded-lg border px-2.5 py-2 transition-colors",
-                  hasData
-                    ? onTrack
-                      ? "border-success-soft bg-success-soft/40"
-                      : "border-warning-soft bg-warning-soft/40"
-                    : "border-border bg-accent/20",
-                )}
-              >
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">
-                  {m}
-                </div>
-                <div
-                  className={cn(
-                    "mt-0.5 font-semibold tabular-nums leading-tight text-[13px]",
-                    hasData ? "text-foreground" : "text-muted-soft",
-                  )}
-                >
-                  {hasData ? fmtCurrencyShort(actual) : "—"}
-                </div>
-                <div className="mt-0.5 text-[10px] tabular-nums text-muted">
-                  {hasData ? (
-                    <span className={onTrack ? "text-success" : "text-warning"}>
-                      {onTrack ? "+" : ""}
-                      {fmtCurrencyShort(delta)}
-                    </span>
-                  ) : (
-                    <span className="text-muted-soft">tgt {fmtCurrencyShort(target)}</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        <div className="px-3 pb-4">
+          <MonthlyPosReceivedChart points={posReceivedPoints} />
         </div>
       </section>
 
