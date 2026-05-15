@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  Home,
   LayoutDashboard,
   FolderClosed,
   FileText,
@@ -165,6 +166,18 @@ export function SidebarNav({
 
   return (
     <nav className="flex h-full flex-col gap-1.5 px-3">
+      {/* Home — the portal's default landing page. Pinned at the very top
+           of the rail above every collapsible section so it's always one
+           click away. Clicking it (or otherwise landing on /home) causes
+           every CollapsibleGroup below to collapse — see the effect inside
+           CollapsibleGroup that watches for pathname === "/home". */}
+      <NavLink
+        href="/home"
+        label="Home"
+        icon={Home}
+        pathname={pathname}
+      />
+
       {/* Customer-role users see their own Customer Dashboard pinned at the
            top — they can't switch customers, so the picker/dropdown UI for
            admins doesn't apply. Admins navigate to a customer via the
@@ -248,6 +261,8 @@ export function SidebarNav({
         <CollapsibleGroup
           id="customers"
           label="Customers"
+          suffix="in progress"
+          dim
           pathname={pathname}
           containsActivePath={!!activeCustomerId}
         >
@@ -355,7 +370,9 @@ function useOpenGroupState(groupId: string, defaultOpen: boolean) {
 function CollapsibleGroup({
   id,
   label,
+  suffix,
   leading,
+  dim,
   pathname,
   containsActivePath,
   defaultOpen = true,
@@ -363,9 +380,16 @@ function CollapsibleGroup({
 }: {
   id: string;
   label: string;
+  /** Optional short tag rendered next to the label in a fainter style — used
+   *  to mark sections like "Customers" as work-in-progress without obscuring
+   *  the primary label. */
+  suffix?: string;
   /** Optional node rendered to the left of the label in the header (e.g.
    *  a customer logo). When omitted the header keeps its text-only layout. */
   leading?: React.ReactNode;
+  /** Render the header in a softer tint than the default. Used to de-
+   *  emphasize sections that aren't fully wired up yet. */
+  dim?: boolean;
   pathname: string;
   containsActivePath: boolean;
   /** Default open state, used only on first render before localStorage is
@@ -387,6 +411,14 @@ function CollapsibleGroup({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, containsActivePath]);
 
+  // Navigating to /home collapses every group, giving the homepage a clean
+  // rail. Only fires on the pathname transition — if the user manually
+  // opens a group while staying on /home, it doesn't snap shut.
+  useEffect(() => {
+    if (pathname === "/home") setOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   const headerId = `sidebar-group-${id}-header`;
   const panelId = `sidebar-group-${id}-panel`;
   const groupHasActive = containsActivePath;
@@ -406,16 +438,30 @@ function CollapsibleGroup({
             // header a faint tint so the user can still see "this section is
             // where you are" without opening it.
             ? "text-foreground hover:bg-accent"
-            : "text-foreground-soft hover:bg-accent hover:text-foreground",
+            : dim
+              ? "text-muted hover:bg-accent hover:text-foreground-soft"
+              : "text-foreground-soft hover:bg-accent hover:text-foreground",
         )}
       >
         {leading ? (
           <span className="flex min-w-0 items-center gap-2 text-left">
             {leading}
             <span className="truncate">{label}</span>
+            {suffix && (
+              <span className="text-xs font-normal italic text-muted-soft">
+                {suffix}
+              </span>
+            )}
           </span>
         ) : (
-          <span className="text-left">{label}</span>
+          <span className="flex min-w-0 items-center gap-2 text-left">
+            <span className="truncate">{label}</span>
+            {suffix && (
+              <span className="text-xs font-normal italic text-muted-soft">
+                {suffix}
+              </span>
+            )}
+          </span>
         )}
         <ChevronDown
           aria-hidden
