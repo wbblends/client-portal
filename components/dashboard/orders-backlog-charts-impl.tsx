@@ -18,7 +18,6 @@ import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 
 const fmt = (v: number) => formatCurrency(v, { compact: true });
 
-// TODO: Apr-26 and May-26 values to be filled in by Cowork.
 const BACKLOG_SNAPSHOTS: Array<{ label: string; value: number | null }> = [
   { label: "Q1-24", value: 7_600_000 },
   { label: "Q2-24", value: 10_300_000 },
@@ -30,8 +29,8 @@ const BACKLOG_SNAPSHOTS: Array<{ label: string; value: number | null }> = [
   { label: "Q4-25", value: 27_100_000 },
   { label: "Feb-26", value: 28_800_000 },
   { label: "Mar-26", value: 30_300_000 },
-  { label: "Apr-26", value: null },
-  { label: "May-26", value: null },
+  { label: "Apr-26", value: 30_376_233 },
+  { label: "May-26", value: 27_705_627 },
 ];
 
 const WEEKLY_BACKLOG: Array<{ label: string; value: number }> = [
