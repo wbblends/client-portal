@@ -1,53 +1,43 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/portal/service-worker-register";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
-// import localFont from "next/font/local";
+import { Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 /**
- * Brand fonts.
+ * Brand fonts — licensed faces shipped in `public/brand/fonts/`.
  *
- * Production fonts are paid licenses (Editor's Note by Production Type +
- * Sequel Sans Display by Hello Type). Drop the .woff2 files into
- * `public/brand/fonts/` and swap the `localFont` blocks below in for the
- * Google fallbacks. The CSS variable names (`--font-display`, `--font-body`)
- * stay the same so nothing else has to change.
+ * Editor's Note (Production Type): display serif. Regular for headlines and
+ * stat numbers; italic is the editorial accent for emphasis words.
+ * Sequel Sans Display (Hello Type): variable body sans (weight axis 100–900).
+ * Mono falls back to Geist Mono — used only for codes, IDs, kbd hints.
  */
 
-const displayFallback = Instrument_Serif({
+const display = localFont({
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
+  display: "swap",
+  src: [
+    { path: "../public/brand/fonts/EditorsNote-Regular.otf", weight: "400", style: "normal" },
+    { path: "../public/brand/fonts/EditorsNote-Italic.otf", weight: "400", style: "italic" },
+  ],
 });
 
-const bodyFallback = Geist({
+const body = localFont({
   variable: "--font-body",
-  subsets: ["latin"],
+  display: "swap",
+  src: [
+    {
+      path: "../public/brand/fonts/SequelSansDisplay-VF.woff2",
+      weight: "100 900",
+      style: "normal",
+    },
+  ],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
-// const display = localFont({
-//   variable: "--font-display",
-//   src: [
-//     { path: "../public/brand/fonts/EditorsNote-Regular.woff2", weight: "400", style: "normal" },
-//     { path: "../public/brand/fonts/EditorsNote-Italic.woff2", weight: "400", style: "italic" },
-//     { path: "../public/brand/fonts/EditorsNote-Semibold.woff2", weight: "600", style: "normal" },
-//   ],
-// });
-//
-// const body = localFont({
-//   variable: "--font-body",
-//   src: [
-//     { path: "../public/brand/fonts/SequelSansDisplay-Regular.woff2", weight: "400", style: "normal" },
-//     { path: "../public/brand/fonts/SequelSansDisplay-Medium.woff2", weight: "500", style: "normal" },
-//     { path: "../public/brand/fonts/SequelSansDisplay-Semibold.woff2", weight: "600", style: "normal" },
-//   ],
-// });
 
 export const metadata: Metadata = {
   title: "WB Blends — Customer Portal",
@@ -75,7 +65,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#6e5bfe",
+  themeColor: "#6540e3",
 };
 
 /**
@@ -104,7 +94,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${displayFallback.variable} ${bodyFallback.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${display.variable} ${body.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

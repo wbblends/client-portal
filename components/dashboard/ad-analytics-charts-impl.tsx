@@ -202,7 +202,7 @@ export function TrafficShareChart({ slices }: { slices: TrafficShareSlice[] }) {
         <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
           Paid share
         </div>
-        <div className="text-[24px] font-semibold tabular-nums tracking-tight text-foreground">
+        <div className="font-display text-[24px] tabular-nums tracking-tight text-foreground">
           {fmtPct(paidShare)}
         </div>
         <div className="text-[11px] text-muted">{fmtInt(total)} total visits</div>

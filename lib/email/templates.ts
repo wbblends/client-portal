@@ -27,7 +27,7 @@ The link is good for 7 days. If it expires, ask ${v.inviterName} to send you a n
     <p>${escapeHtml(v.inviterName)} has set up an account for you on the WB Blends customer portal.</p>
     <p>To finish setting up your account and choose a password, click the button below.</p>
     <p style="margin: 28px 0;">
-      <a href="${escapeAttr(v.inviteUrl)}" style="background:#6e5bfe;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">
+      <a href="${escapeAttr(v.inviteUrl)}" style="background:#6540e3;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">
         Set my password
       </a>
     </p>
@@ -59,12 +59,12 @@ ${v.threadUrl}
 — WB Blends`;
   const html = wrap(`
     <p>Hi ${escapeHtml(v.recipientName)},</p>
-    <p><strong>${escapeHtml(v.mentionerName)}</strong> mentioned you in a comment on <code style="background:#f2efff;padding:2px 6px;border-radius:4px;font-size:13px;">${escapeHtml(v.routeLabel)}</code>.</p>
-    <blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid #6e5bfe;background:#f6f4ff;color:#2a2350;border-radius:0 8px 8px 0;font-size:14px;">
+    <p><strong>${escapeHtml(v.mentionerName)}</strong> mentioned you in a comment on <code style="background:#f2f0ff;padding:2px 6px;border-radius:4px;font-size:13px;">${escapeHtml(v.routeLabel)}</code>.</p>
+    <blockquote style="margin:16px 0;padding:12px 16px;border-left:3px solid #6540e3;background:#f2f0ff;color:#1f1f1f;border-radius:0 8px 8px 0;font-size:14px;">
       ${escapeHtml(v.excerpt)}
     </blockquote>
     <p style="margin: 28px 0;">
-      <a href="${escapeAttr(v.threadUrl)}" style="background:#6e5bfe;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">
+      <a href="${escapeAttr(v.threadUrl)}" style="background:#6540e3;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">
         Open comment
       </a>
     </p>
@@ -93,7 +93,7 @@ The link is good for 1 hour. If you didn't request this, you can safely ignore t
     <p>Hi ${escapeHtml(v.name)},</p>
     <p>You (or someone using your email) asked to reset your WB Blends Portal password.</p>
     <p style="margin: 28px 0;">
-      <a href="${escapeAttr(v.resetUrl)}" style="background:#6e5bfe;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">
+      <a href="${escapeAttr(v.resetUrl)}" style="background:#6540e3;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">
         Choose a new password
       </a>
     </p>
@@ -106,7 +106,7 @@ The link is good for 1 hour. If you didn't request this, you can safely ignore t
 
 function wrap(inner: string): string {
   return `<!doctype html>
-<html><body style="margin:0;background:#f6f6fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#15102b;">
+<html><body style="margin:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111111;">
   <div style="max-width:560px;margin:32px auto;background:#fff;border:1px solid #ececf2;border-radius:14px;padding:32px;">
     <div style="font-weight:700;font-size:18px;letter-spacing:-0.01em;margin-bottom:18px;">WB Blends</div>
     ${inner}

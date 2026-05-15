@@ -383,7 +383,7 @@ function NetworkStat({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="text-[10px] font-medium uppercase tracking-wide text-muted">{label}</div>
-      <div className="mt-0.5 text-[18px] font-semibold tabular-nums tracking-tight text-foreground">
+      <div className="mt-0.5 font-display text-[18px] tabular-nums tracking-tight text-foreground">
         {value}
       </div>
     </div>
@@ -449,7 +449,7 @@ function PipelineCard({
             <dt className="text-[11px] font-medium uppercase tracking-wide text-muted">
               Unweighted
             </dt>
-            <dd className="mt-1 text-[24px] font-semibold tabular-nums tracking-tight text-foreground">
+            <dd className="mt-1 font-display text-[24px] tabular-nums tracking-tight text-foreground">
               {formatCurrency(totals.unweighted, { compact: true })}
             </dd>
           </div>
@@ -457,7 +457,7 @@ function PipelineCard({
             <dt className="text-[11px] font-medium uppercase tracking-wide text-muted">
               Weighted
             </dt>
-            <dd className="mt-1 text-[24px] font-semibold tabular-nums tracking-tight text-foreground-soft">
+            <dd className="mt-1 font-display text-[24px] tabular-nums tracking-tight text-foreground-soft">
               {formatCurrency(totals.weighted, { compact: true })}
             </dd>
           </div>

@@ -50,7 +50,7 @@ export function KpiTile({
         <div className="text-[13px] font-medium text-muted">{label}</div>
         {deltaUi}
       </div>
-      <div className="mt-1.5 text-[28px] font-semibold tracking-tight tabular-nums text-foreground">
+      <div className="mt-1.5 font-display text-[28px] tracking-tight tabular-nums text-foreground">
         {value}
       </div>
       {hint && <div className="mt-0.5 text-xs text-muted">{hint}</div>}

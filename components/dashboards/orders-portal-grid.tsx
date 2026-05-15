@@ -502,7 +502,7 @@ export function OrdersPortalGrid({
                   {fmtCurrencyShort(delta)}
                 </div>
               </div>
-              <div className="mt-2 text-[28px] font-semibold tabular-nums leading-tight text-foreground">
+              <div className="mt-2 font-display text-[28px] tabular-nums leading-tight text-foreground">
                 {fmtCurrency(monthActual)}
               </div>
               <div className="mt-0.5 text-sm text-muted">
@@ -546,7 +546,7 @@ export function OrdersPortalGrid({
                   {fmtCurrencyShort(delta)}
                 </div>
               </div>
-              <div className="mt-2 text-[28px] font-semibold tabular-nums leading-tight text-foreground">
+              <div className="mt-2 font-display text-[28px] tabular-nums leading-tight text-foreground">
                 {fmtCurrency(fc)}
               </div>
               <div className="mt-0.5 text-sm text-muted">
@@ -589,7 +589,7 @@ export function OrdersPortalGrid({
                   {fmtCurrencyShort(delta)}
                 </div>
               </div>
-              <div className="mt-2 text-[22px] font-semibold tabular-nums text-foreground">
+              <div className="mt-2 font-display text-[22px] tabular-nums text-foreground">
                 {fmtCurrency(q.actual)}
               </div>
               <div className="mt-0.5 text-xs text-muted">

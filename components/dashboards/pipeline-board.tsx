@@ -308,7 +308,7 @@ function KpiCell({ label, primary, hint }: { label: string; primary: string; hin
   return (
     <div className="px-5 py-4">
       <div className="text-[11px] font-medium uppercase tracking-wide text-muted">{label}</div>
-      <div className="mt-1 text-[26px] font-semibold tabular-nums tracking-tight text-foreground">
+      <div className="mt-1 font-display text-[26px] tabular-nums tracking-tight text-foreground">
         {primary}
       </div>
       <div className="mt-1 text-xs text-muted">{hint}</div>

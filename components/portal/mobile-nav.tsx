@@ -127,7 +127,7 @@ export function MobileNav({
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
-            className="relative flex h-full w-[min(86vw,320px)] flex-col bg-card shadow-[0_24px_48px_-12px_rgba(21,16,43,0.4)] animate-drawer-slide"
+            className="relative flex h-full w-[min(86vw,320px)] flex-col bg-card shadow-[0_24px_48px_-12px_rgba(17,11,41,0.4)] animate-drawer-slide"
             style={{
               paddingTop: "env(safe-area-inset-top)",
               paddingBottom: "env(safe-area-inset-bottom)",

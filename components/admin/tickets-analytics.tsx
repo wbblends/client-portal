@@ -197,7 +197,7 @@ function StatCard({
       <p className="text-xs font-medium uppercase tracking-wide text-muted">
         {label}
       </p>
-      <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+      <p className="mt-1 font-display text-3xl tabular-nums tracking-tight text-foreground">
         {formatNumber(value)}
       </p>
       <p className="mt-0.5 text-xs text-muted">{hint}</p>
@@ -285,7 +285,7 @@ function DonutChart({
         </PieChart>
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pb-8">
-        <div className="text-[26px] font-semibold tabular-nums tracking-tight text-foreground">
+        <div className="font-display text-[26px] tabular-nums tracking-tight text-foreground">
           {formatNumber(total)}
         </div>
         <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
