@@ -29,7 +29,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Dashboard } from "@/lib/dashboards/registry";
+import {
+  DASHBOARD_CATEGORY_ORDER,
+  type Dashboard,
+  type DashboardCategory,
+} from "@/lib/dashboards/registry";
 import type { Customer } from "@/lib/customers/registry";
 import { TICKET_TYPES, type TicketTypeIconName } from "@/lib/tickets/registry";
 import { CustomerPicker } from "./customer-picker";
@@ -121,10 +125,39 @@ export function SidebarNav({
   const customerScopeActive = !!accountTargetId &&
     ACCOUNT_LINKS.some(l => pathname.startsWith(`/c/${accountTargetId}/${l.rel}`));
 
-  const dashboardsActive = dashboards.some(d =>
-    pathname === `/dashboards/${d.slug}` ||
-    pathname.startsWith(`/dashboards/${d.slug}/`),
-  );
+  // Group dashboards by category, ordered by DASHBOARD_CATEGORY_ORDER.
+  const dashboardGroups: Array<{
+    category: DashboardCategory;
+    groupId: string;
+    dashboards: Dashboard[];
+    containsActivePath: boolean;
+  }> = (() => {
+    const byCategory = new Map<DashboardCategory, Dashboard[]>();
+    for (const d of dashboards) {
+      const list = byCategory.get(d.category) ?? [];
+      list.push(d);
+      byCategory.set(d.category, list);
+    }
+    const ordered: DashboardCategory[] = [
+      ...DASHBOARD_CATEGORY_ORDER.filter(c => byCategory.has(c)),
+      ...[...byCategory.keys()].filter(
+        c => !DASHBOARD_CATEGORY_ORDER.includes(c),
+      ),
+    ];
+    return ordered.map(category => {
+      const groupDashes = byCategory.get(category)!;
+      return {
+        category,
+        groupId: `dashboards-${category.toLowerCase().replace(/\s+/g, "-")}`,
+        dashboards: groupDashes,
+        containsActivePath: groupDashes.some(
+          d =>
+            pathname === `/dashboards/${d.slug}` ||
+            pathname.startsWith(`/dashboards/${d.slug}/`),
+        ),
+      };
+    });
+  })();
 
   const projectManagementActive = pathname.startsWith("/admin/tickets");
 
@@ -159,16 +192,18 @@ export function SidebarNav({
         </CollapsibleGroup>
       )}
 
-      {/* Single consolidated dashboards section. Header is text-only —
-           individual items keep their icons. */}
-      {dashboards.length > 0 && (
+      {/* One collapsible section per dashboard category. Categories are
+           ordered by DASHBOARD_CATEGORY_ORDER in the registry; items inside
+           keep their icons. */}
+      {dashboardGroups.map(group => (
         <CollapsibleGroup
-          id="dashboards"
-          label="Sales and Marketing"
+          key={group.category}
+          id={group.groupId}
+          label={group.category}
           pathname={pathname}
-          containsActivePath={dashboardsActive}
+          containsActivePath={group.containsActivePath}
         >
-          {dashboards.map(d => (
+          {group.dashboards.map(d => (
             <NavLink
               key={d.id}
               href={`/dashboards/${d.slug}`}
@@ -178,10 +213,11 @@ export function SidebarNav({
             />
           ))}
         </CollapsibleGroup>
-      )}
+      ))}
 
       {/* Project Management — admin only, a peer of Sales and Marketing.
-           One sub-item per PM ticket type; each links to its own page. */}
+           An Analytics roll-up pinned to the top, then one sub-item per PM
+           ticket type; each links to its own page. */}
       {isAdmin && (
         <CollapsibleGroup
           id="project-management"
@@ -189,6 +225,12 @@ export function SidebarNav({
           pathname={pathname}
           containsActivePath={projectManagementActive}
         >
+          <NavLink
+            href="/admin/tickets/analytics"
+            label="Analytics"
+            icon={PieChart}
+            pathname={pathname}
+          />
           {TICKET_TYPES.map(t => (
             <NavLink
               key={t.slug}

@@ -1,11 +1,9 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   getPipelineKanban,
   type PipelineKanban,
 } from "@/lib/marketing/hubspot";
-import { getPipelineHistory } from "@/lib/marketing/pipeline-history";
-import { CumulativePipelineChart } from "@/components/dashboard/marketing-pipeline-chart";
 import { PipelineBoard } from "./pipeline-board";
 import { PipelineAnalyticsView } from "./pipeline-analytics-view";
 
@@ -37,16 +35,6 @@ export async function AccountExpansionDashboard() {
 
 export async function PipelineAnalyticsDashboard() {
   const data = await getPipelineKanban();
-
-  // Cumulative chart is fixed to a trailing 12-month window — independent of
-  // the per-deal scope toggle below. `from` is the first of the month 11
-  // months back, giving 12 monthly buckets through the current month.
-  const now = new Date();
-  const history = await getPipelineHistory({
-    from: new Date(now.getFullYear(), now.getMonth() - 11, 1),
-    to: now,
-  });
-
   return (
     <div className="page-container page-pad-x page-pad-y space-y-5 sm:space-y-7">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
@@ -60,19 +48,6 @@ export async function PipelineAnalyticsDashboard() {
           <Badge tone="warning">Placeholder data — set HUBSPOT_PRIVATE_APP_TOKEN</Badge>
         )}
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Cumulative open pipeline</CardTitle>
-          <CardDescription>
-            Total open pipeline value at each month-end over the last 12 months, stacked by
-            pipeline — New Logo + Wallet Share.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CumulativePipelineChart buckets={history.buckets} />
-        </CardContent>
-      </Card>
 
       <PipelineAnalyticsView data={data} />
     </div>

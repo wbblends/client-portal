@@ -5,6 +5,9 @@ import { PlaceholderDashboard } from "@/components/dashboards/placeholder";
 import { MarketingOverviewDashboard } from "@/components/dashboards/marketing-overview";
 import { AccountPenetrationDashboard } from "@/components/dashboards/account-penetration";
 import { OrdersPortalDashboard } from "@/components/dashboards/orders-portal";
+import { OrdersBacklogDashboard } from "@/components/dashboards/orders-backlog";
+import { OrdersReceivedDashboard } from "@/components/dashboards/orders-received";
+import { RollingPipelineDashboard } from "@/components/dashboards/rolling-pipeline";
 import {
   SalesPipelineDashboard,
   AccountExpansionDashboard,
@@ -41,6 +44,12 @@ export default async function DashboardSlugPage(props: PageProps<"/dashboards/[s
       );
     case "orders-portal":
       return <OrdersPortalDashboard dashboard={dashboard} />;
+    case "orders-backlog":
+      return <OrdersBacklogDashboard dashboard={dashboard} />;
+    case "orders-received":
+      return <OrdersReceivedDashboard dashboard={dashboard} />;
+    case "rolling-pipeline":
+      return <RollingPipelineDashboard dashboard={dashboard} />;
     case "sales-pipeline":
       return <SalesPipelineDashboard />;
     case "account-expansion":

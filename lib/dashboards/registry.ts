@@ -11,7 +11,16 @@
  * The sidebar currently renders every dashboard under a single section
  * header. The category field is kept on each entry for future re-grouping.
  */
-export type DashboardCategory = "Sales and Marketing";
+export type DashboardCategory = "Orders" | "Sales and Marketing";
+
+/**
+ * Order in which categories appear in the sidebar. Categories not listed here
+ * fall to the end. Keep this aligned with the union above.
+ */
+export const DASHBOARD_CATEGORY_ORDER: readonly DashboardCategory[] = [
+  "Orders",
+  "Sales and Marketing",
+];
 
 export type Dashboard = {
   id: string;
@@ -45,10 +54,37 @@ export const DASHBOARDS: readonly Dashboard[] = [
     id: "orders-portal",
     slug: "orders-portal",
     name: "Orders",
-    category: "Sales and Marketing",
+    category: "Orders",
     description:
       "Booked POs by customer for the year — editable spreadsheet seeded from the 2026 POs workbook, swappable for an Acumatica feed.",
     iconName: "DollarSign",
+  },
+  {
+    id: "orders-backlog",
+    slug: "orders-backlog",
+    name: "Open POs Backlog",
+    category: "Orders",
+    description:
+      "Open PO backlog value at each snapshot point — quarterly 2024–2025, then monthly through current.",
+    iconName: "Briefcase",
+  },
+  {
+    id: "orders-received",
+    slug: "orders-received",
+    name: "Monthly POs Received",
+    category: "Orders",
+    description:
+      "Monthly PO revenue received vs target — 2025 actuals + 2026 actuals to date, sourced from the orders sheet.",
+    iconName: "TrendingUp",
+  },
+  {
+    id: "rolling-pipeline",
+    slug: "rolling-pipeline",
+    name: "Rolling Pipeline",
+    category: "Orders",
+    description:
+      "Cumulative open pipeline value at each month-end, stacked by pipeline — New Logo + Wallet Share.",
+    iconName: "LineChart",
   },
   {
     id: "sales-pipeline",
