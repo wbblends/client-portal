@@ -7,6 +7,7 @@ import {
   resolveMentions,
 } from "@/lib/comments/store";
 import { notifyMentions, parseMentionHandles } from "@/lib/comments/mentions";
+import { recordMentionNotifications } from "@/lib/notifications/store";
 
 const MAX_BODY = 5000;
 
@@ -59,7 +60,17 @@ export async function POST(request: NextRequest) {
     mentions,
   });
 
-  // Fire-and-forget mention emails — don't block the API response on Resend.
+  // In-app notification rows are awaited (local DB write, cheap) so the
+  // bell stays consistent with what shipped. Emails stay fire-and-forget —
+  // don't block the API response on Resend.
+  await recordMentionNotifications({
+    recipientUsernames: mentions,
+    actorUsername: me.username,
+    commentId,
+    threadId,
+    route,
+    body: text,
+  });
   void notifyMentions({
     mentionedUsernames: mentions,
     mentionerUsername: me.username,

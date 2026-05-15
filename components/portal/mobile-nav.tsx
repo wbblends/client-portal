@@ -28,6 +28,7 @@ export function MobileNav({
   isAdmin,
   canSwitchCustomers,
   user,
+  initialUnread = 0,
 }: {
   dashboards: Dashboard[];
   customers: Customer[];
@@ -40,6 +41,7 @@ export function MobileNav({
     company: string;
     avatarUrl?: string;
   };
+  initialUnread?: number;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -109,6 +111,7 @@ export function MobileNav({
             email={user.email}
             company={user.company}
             avatarUrl={user.avatarUrl}
+            initialUnread={initialUnread}
             className="border-0 p-0 bg-transparent gap-2"
             compact
           />
@@ -160,6 +163,7 @@ export function MobileNav({
                 email={user.email}
                 company={user.company}
                 avatarUrl={user.avatarUrl}
+                initialUnread={initialUnread}
               />
             </div>
           </aside>

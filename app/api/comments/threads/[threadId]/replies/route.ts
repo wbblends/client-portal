@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { addReply, getThread, resolveMentions } from "@/lib/comments/store";
 import { notifyMentions, parseMentionHandles } from "@/lib/comments/mentions";
+import { recordMentionNotifications } from "@/lib/notifications/store";
 
 const MAX_BODY = 5000;
 
@@ -37,6 +38,14 @@ export async function POST(
     mentions,
   });
 
+  await recordMentionNotifications({
+    recipientUsernames: mentions,
+    actorUsername: me.username,
+    commentId,
+    threadId,
+    route: thread.route,
+    body: text,
+  });
   void notifyMentions({
     mentionedUsernames: mentions,
     mentionerUsername: me.username,

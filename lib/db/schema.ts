@@ -95,6 +95,30 @@ CREATE TABLE IF NOT EXISTS comment_mentions (
   PRIMARY KEY (comment_id, username)
 );
 
+-- In-app notifications. Today only 'mention' is produced (when someone @s
+-- you in a comment), but the type column leaves room for future kinds
+-- (replies, resolves, etc) without a migration. comment_id / thread_id /
+-- route are denormalised so a notification stays clickable even after the
+-- underlying comment is deleted (the FK ON DELETE SET NULL keeps the row
+-- but the link gracefully degrades). read_at is null while unread; the
+-- index orders by it so the unread fetch is a cheap prefix scan.
+CREATE TABLE IF NOT EXISTS notifications (
+  id                 TEXT PRIMARY KEY,
+  recipient_username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+  type               TEXT NOT NULL DEFAULT 'mention'
+                     CHECK (type IN ('mention')),
+  actor_username     TEXT REFERENCES users(username) ON DELETE SET NULL,
+  comment_id         TEXT REFERENCES comments(id) ON DELETE SET NULL,
+  thread_id          TEXT REFERENCES comment_threads(id) ON DELETE SET NULL,
+  route              TEXT NOT NULL,
+  excerpt            TEXT NOT NULL DEFAULT '',
+  read_at            TEXT,
+  created_at         TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient
+  ON notifications(recipient_username, read_at, created_at DESC);
+
 -- Orders Portal rows. One row per customer-year line, mirroring the in-grid
 -- spreadsheet shape. Edits made by any admin become visible to every other
 -- user the next time their grid polls. The 12 monthly values are stored as a

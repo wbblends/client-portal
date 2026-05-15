@@ -2,6 +2,7 @@ import { requireSession } from "@/lib/auth";
 import { getDashboardsForUser } from "@/lib/dashboards/registry";
 import { listCustomers } from "@/lib/customers/registry";
 import { isAdminRole } from "@/lib/users/store";
+import { unreadCountForUser } from "@/lib/notifications/store";
 import { Logo } from "@/components/ui/logo";
 import { SidebarNav } from "@/components/portal/sidebar-nav";
 import { UserMenu } from "@/components/portal/user-menu";
@@ -18,6 +19,8 @@ export default async function PortalLayout({ children }: { children: React.React
   const isAdmin = isAdminRole(user.role);
   const canSwitchCustomers = isAdminRole(user.role) || user.role === "internal";
   const ownCustomerId = user.customerIds[0] ?? null;
+  // Seed the bell badge so it doesn't flash 0 before the first client poll.
+  const initialUnread = await unreadCountForUser(user.username);
 
   // Strip down dashboards/customers to plain JSON for the client-side
   // command palette (the registry types include extra metadata we don't need
@@ -63,6 +66,7 @@ export default async function PortalLayout({ children }: { children: React.React
               email={user.email}
               company={user.company}
               avatarUrl={user.avatarUrl ?? undefined}
+              initialUnread={initialUnread}
             />
           </div>
         </div>
@@ -80,6 +84,7 @@ export default async function PortalLayout({ children }: { children: React.React
             company: user.company,
             avatarUrl: user.avatarUrl ?? undefined,
           }}
+          initialUnread={initialUnread}
         />
       }
       bottomBar={<BottomTabBar ownCustomerId={ownCustomerId} />}

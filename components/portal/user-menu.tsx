@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 import { LogOut, Shield, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
+import { NotificationBell } from "./notification-bell";
 
 export function UserMenu({
   name,
   email,
   company,
   avatarUrl,
+  initialUnread = 0,
   className,
   compact = false,
 }: {
@@ -19,6 +21,9 @@ export function UserMenu({
   email: string;
   company: string;
   avatarUrl?: string;
+  /** Seed for the bell badge — avoids a flash of "0" before the first poll
+   *  resolves. Read server-side from the notifications store. */
+  initialUnread?: number;
   className?: string;
   /** Compact mode — avatar + sign-out only, used in the mobile top bar where
    *  horizontal space is precious and the full name+company already shows in
@@ -42,6 +47,7 @@ export function UserMenu({
   if (compact) {
     return (
       <div className={cn("flex items-center gap-0.5", className)}>
+        <NotificationBell initialUnread={initialUnread} />
         <ThemeToggle />
         <Avatar name={name} initials={initials} src={avatarUrl} size={28} />
         <button
@@ -69,6 +75,7 @@ export function UserMenu({
         </div>
       </div>
       <div className="flex items-center justify-start gap-0.5 border-t border-border pt-2">
+        <NotificationBell initialUnread={initialUnread} />
         <Link
           href="/account/profile"
           className="rounded-md p-1.5 text-muted hover:bg-accent hover:text-foreground transition-colors"

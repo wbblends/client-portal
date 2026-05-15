@@ -11,6 +11,7 @@ import {
   resolveMentions,
 } from "@/lib/comments/store";
 import { notifyMentions, parseMentionHandles } from "@/lib/comments/mentions";
+import { recordMentionNotifications } from "@/lib/notifications/store";
 
 const MAX_BODY = 5000;
 
@@ -51,6 +52,14 @@ export async function PATCH(
   if (newMentions.length > 0) {
     const thread = await getThread(existing.threadId);
     if (thread) {
+      await recordMentionNotifications({
+        recipientUsernames: newMentions,
+        actorUsername: me.username,
+        commentId,
+        threadId: thread.id,
+        route: thread.route,
+        body: text,
+      });
       void notifyMentions({
         mentionedUsernames: newMentions,
         mentionerUsername: me.username,
