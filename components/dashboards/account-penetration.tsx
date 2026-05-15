@@ -93,9 +93,16 @@ function AccountCard({ account }: { account: AccountPenetration }) {
   return (
     <Card className="p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-1">
-        <h2 className="font-display text-[20px] leading-tight tracking-tight text-foreground">
-          {account.name}
-        </h2>
+        <div className="min-w-0">
+          <h2 className="font-display text-[20px] leading-tight tracking-tight text-foreground">
+            {account.name}
+          </h2>
+          <p className="mt-0.5 text-xs text-muted">
+            {account.firstNewLogoCloseDate
+              ? `First closed in New Logo Pipeline · ${formatDate(account.firstNewLogoCloseDate)}`
+              : "No closed-won deal in New Logo Pipeline"}
+          </p>
+        </div>
         <a
           href={account.hubspotUrl}
           target="_blank"
@@ -113,8 +120,8 @@ function AccountCard({ account }: { account: AccountPenetration }) {
               against. */}
           <div className="mt-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
-                Captured
+              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">
+                Original Projection Captured
               </p>
               <p className="mt-1 font-display text-[36px] leading-none tabular-nums tracking-tight text-foreground">
                 {capturedPct}%
@@ -125,7 +132,7 @@ function AccountCard({ account }: { account: AccountPenetration }) {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">
                 Initial projection
               </p>
               <p className="mt-1 font-display text-[36px] leading-none tabular-nums tracking-tight text-foreground">
@@ -241,7 +248,7 @@ function WonDealsTable({ account }: { account: AccountPenetration }) {
       </summary>
       <div className="mt-3 overflow-hidden rounded-md border border-border">
         <table className="w-full text-sm">
-          <thead className="bg-accent/40 text-[11px] uppercase tracking-[0.06em] text-muted">
+          <thead className="bg-accent/40 text-[11px] font-bold uppercase tracking-[0.06em] text-muted">
             <tr>
               <th className="px-3 py-2 text-left font-semibold">Deal</th>
               <th className="px-3 py-2 text-right font-semibold">Amount</th>

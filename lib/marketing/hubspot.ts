@@ -1410,6 +1410,10 @@ export type AccountPenetration = {
   name: string;
   /** Σ amount of the account's closed-won Sales Pipeline deals. */
   projection: number;
+  /** Earliest close date across the account's closed-won Sales Pipeline (New
+   *  Logo) deals — when we first "landed" the account. ISO YYYY-MM-DD, or
+   *  null if no won Sales Pipeline deal had a close date. */
+  firstNewLogoCloseDate: string | null;
   /** Σ amount of the account's closed-won Wallet Share deals. */
   captured: number;
   capturedDealCount: number;
@@ -1439,6 +1443,7 @@ const PLACEHOLDER_ACCOUNT_PENETRATION: AccountPenetrationData = {
       companyId: "14801654147",
       name: "Clean Nutraceuticals",
       projection: 6_000_000,
+      firstNewLogoCloseDate: "2023-09-14",
       captured: 5_471_500,
       capturedDealCount: 9,
       capturedDeals: [
@@ -1460,6 +1465,7 @@ const PLACEHOLDER_ACCOUNT_PENETRATION: AccountPenetrationData = {
       companyId: "7045543278",
       name: "Sports Research Corp",
       projection: 3_000_000,
+      firstNewLogoCloseDate: "2024-02-22",
       captured: 250_000,
       capturedDealCount: 1,
       capturedDeals: [
@@ -1473,6 +1479,7 @@ const PLACEHOLDER_ACCOUNT_PENETRATION: AccountPenetrationData = {
       companyId: "15494931750",
       name: "Just Ingredients",
       projection: 3_000_000,
+      firstNewLogoCloseDate: "2024-11-05",
       captured: 0,
       capturedDealCount: 0,
       capturedDeals: [],
@@ -1484,6 +1491,7 @@ const PLACEHOLDER_ACCOUNT_PENETRATION: AccountPenetrationData = {
       companyId: "6970544160",
       name: "Codeage",
       projection: 2_000_000,
+      firstNewLogoCloseDate: "2025-01-30",
       captured: 0,
       capturedDealCount: 0,
       capturedDeals: [],
@@ -1584,6 +1592,7 @@ export async function getAccountPenetration(): Promise<AccountPenetrationData> {
         const deals = await fetchDealsForCompany(companyId);
 
         let projection = 0;
+        let firstNewLogoCloseDate: string | null = null;
         let captured = 0;
         let capturedDealCount = 0;
         let inProgress = 0;
@@ -1595,7 +1604,13 @@ export async function getAccountPenetration(): Promise<AccountPenetrationData> {
           const stageId = d.properties.dealstage ?? "";
 
           if (d.properties.pipeline === PIPELINES.sales.id) {
-            if (salesOutcome.get(stageId) === "won") projection += amount;
+            if (salesOutcome.get(stageId) === "won") {
+              projection += amount;
+              const closeDate = d.properties.closedate ?? null;
+              if (closeDate && (!firstNewLogoCloseDate || closeDate < firstNewLogoCloseDate)) {
+                firstNewLogoCloseDate = closeDate;
+              }
+            }
           } else if (d.properties.pipeline === PIPELINES.expansion.id) {
             const outcome = expansionOutcome.get(stageId);
             if (outcome === "won") {
@@ -1622,6 +1637,7 @@ export async function getAccountPenetration(): Promise<AccountPenetrationData> {
           companyId,
           name,
           projection,
+          firstNewLogoCloseDate,
           captured,
           capturedDealCount,
           capturedDeals,
