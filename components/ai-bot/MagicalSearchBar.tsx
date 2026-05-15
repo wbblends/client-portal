@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * Magical AI search bar — rainbow-glow input that answers questions about
+ * Magical AI search bar — liquid-glass input that answers questions about
  * the portal by calling /api/ai-bot. SSE stream renders into a panel below.
  *
- * Design intent: feels iOS-like. A rotating conic-gradient ring (animated via
- * `transform: rotate` on a pseudo-element, not @property — wider browser
- * support) wraps a frosted-glass body. The ring brightens while the bot is
- * thinking; tool calls show as tiny breadcrumbs above the streaming answer.
+ * Design intent: a rotating conic-gradient sits *inside* the bar, heavily
+ * blurred so it reads as swirling liquid; a translucent frosted-glass pane
+ * floats on top, with the rainbow showing through. The swirl quickens and
+ * brightens while the bot is thinking. Everything is clipped to the bar's
+ * rounded rectangle (overflow:hidden) — nothing bleeds onto the page.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -91,7 +92,7 @@ function renderInline(text: string): React.ReactNode {
 }
 
 export function MagicalSearchBar({
-  placeholder = "Ask anything — find a page, check a number, get unstuck…",
+  placeholder = "Ask Claude about your data, update your profile, and more!",
 }: {
   placeholder?: string;
 }) {
@@ -214,59 +215,56 @@ export function MagicalSearchBar({
           position: relative;
           border-radius: var(--magical-radius);
           isolation: isolate;
+          overflow: hidden;
+          box-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.04),
+            0 10px 28px -12px rgba(165, 120, 255, 0.28);
         }
         .magical-ring::before {
+          /* Rainbow swirl contained inside the bar — the liquid behind the glass. */
           content: '';
           position: absolute;
-          inset: -120%;
+          top: 50%;
+          left: 50%;
+          width: 220%;
+          aspect-ratio: 1 / 1;
+          transform: translate(-50%, -50%);
           background: conic-gradient(
             from 0deg,
-            #ff6ec7 0%,
-            #ffb86c 14%,
-            #fff263 28%,
-            #6cf2a5 42%,
-            #6cd8ff 57%,
-            #a578ff 71%,
-            #ff6ec7 86%,
-            #ff6ec7 100%
+            #ff6ec7,
+            #ffb86c,
+            #fff263,
+            #6cf2a5,
+            #6cd8ff,
+            #a578ff,
+            #ff6ec7
           );
-          animation: magical-spin 7s linear infinite;
+          animation: magical-spin 14s linear infinite;
+          filter: blur(38px) saturate(140%);
+          opacity: 0.9;
           z-index: 0;
-          opacity: 0.95;
-          filter: blur(0px);
-        }
-        .magical-ring.is-busy::before {
-          animation-duration: 2.4s;
-          filter: blur(1px) saturate(1.15);
-        }
-        .magical-ring::after {
-          /* Soft outer glow that lingers behind the ring. */
-          content: '';
-          position: absolute;
-          inset: -10px;
-          border-radius: calc(var(--magical-radius) + 10px);
-          background: conic-gradient(
-            from 0deg,
-            #ff6ec7, #ffb86c, #fff263, #6cf2a5, #6cd8ff, #a578ff, #ff6ec7
-          );
-          animation: magical-spin 7s linear infinite;
-          z-index: -1;
-          filter: blur(22px);
-          opacity: 0.35;
           pointer-events: none;
         }
-        .magical-ring.is-busy::after { opacity: 0.55; animation-duration: 2.4s; }
+        .magical-ring.is-busy::before {
+          animation-duration: 5s;
+          filter: blur(34px) saturate(170%);
+          opacity: 1;
+        }
         .magical-inner {
           position: relative;
           z-index: 1;
-          margin: 2px;
-          border-radius: calc(var(--magical-radius) - 2px);
-          background: color-mix(in srgb, var(--color-surface, #ffffff) 88%, transparent);
-          backdrop-filter: saturate(140%) blur(18px);
-          -webkit-backdrop-filter: saturate(140%) blur(18px);
+          border-radius: var(--magical-radius);
+          background: color-mix(in srgb, var(--color-surface, #ffffff) 85%, transparent);
+          backdrop-filter: saturate(160%) blur(22px);
+          -webkit-backdrop-filter: saturate(160%) blur(22px);
+          border: 1px solid color-mix(in srgb, #ffffff 55%, transparent);
+          box-shadow:
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.55),
+            inset 0 -1px 0 0 rgba(255, 255, 255, 0.08);
         }
         @keyframes magical-spin {
-          to { transform: rotate(360deg); }
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to { transform: translate(-50%, -50%) rotate(360deg); }
         }
         .magical-input {
           background: transparent;
@@ -283,7 +281,7 @@ export function MagicalSearchBar({
         }
         .magical-link { color: var(--color-foreground, #111); }
         @media (prefers-reduced-motion: reduce) {
-          .magical-ring::before, .magical-ring::after { animation: none; }
+          .magical-ring::before { animation: none; }
         }
       `}</style>
 
@@ -296,7 +294,7 @@ export function MagicalSearchBar({
           <input
             ref={inputRef}
             type="text"
-            className="magical-input text-base sm:text-lg text-foreground"
+            className="magical-input text-sm sm:text-base text-foreground"
             placeholder={placeholder}
             value={question}
             onChange={e => setQuestion(e.target.value)}
@@ -313,9 +311,6 @@ export function MagicalSearchBar({
             disabled={false}
             aria-label="Ask the magical search bar"
           />
-          <kbd className="hidden sm:inline-flex items-center gap-1 rounded-md border border-foreground/15 bg-foreground/5 px-1.5 py-0.5 text-[10px] font-medium text-foreground/60">
-            ⌘ /
-          </kbd>
           <button
             type="button"
             onClick={() => (busy ? abortRef.current?.abort() : ask())}
