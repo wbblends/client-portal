@@ -7,6 +7,7 @@ export function KpiTile({
   delta,
   hint,
   preferDirection = "up",
+  tone = "default",
 }: {
   label: string;
   value: string;
@@ -15,6 +16,8 @@ export function KpiTile({
   hint?: string;
   /** "up" means up is good (green); "down" means down is good. */
   preferDirection?: "up" | "down";
+  /** Visual tone. "warning" tints the card yellow to match forecast styling. */
+  tone?: "default" | "warning";
 }) {
   let deltaUi: React.ReactNode = null;
   if (delta != null && Number.isFinite(delta)) {
@@ -44,16 +47,40 @@ export function KpiTile({
     );
   }
 
+  const isWarning = tone === "warning";
   return (
-    <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-[var(--shadow-card)]">
+    <div
+      className={cn(
+        "rounded-xl border px-5 py-4 shadow-[var(--shadow-card)]",
+        isWarning
+          ? "border-warning-soft bg-warning-soft/40"
+          : "border-border bg-card",
+      )}
+    >
       <div className="flex items-baseline justify-between gap-3">
-        <div className="text-[13px] font-medium text-muted">{label}</div>
+        <div
+          className={cn(
+            "text-[13px] font-medium",
+            isWarning ? "text-warning" : "text-muted",
+          )}
+        >
+          {label}
+        </div>
         {deltaUi}
       </div>
       <div className="mt-1.5 font-display text-[28px] tracking-tight tabular-nums text-foreground">
         {value}
       </div>
-      {hint && <div className="mt-0.5 text-xs text-muted">{hint}</div>}
+      {hint && (
+        <div
+          className={cn(
+            "mt-0.5 text-xs",
+            isWarning ? "text-warning/80" : "text-muted",
+          )}
+        >
+          {hint}
+        </div>
+      )}
     </div>
   );
 }

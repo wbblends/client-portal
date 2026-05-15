@@ -197,23 +197,26 @@ export default async function HomePage() {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <KpiTile
             label={`${monthLabel} actuals`}
-            value={formatCurrency(currentMonthActual, { compact: true })}
+            value={formatCurrency(currentMonthActual)}
             hint={pctOf(currentMonthActual, currentTarget)}
           />
           <KpiTile
             label={`${monthLabel} forecast`}
-            value={formatCurrency(currentMonthForecast, { compact: true })}
+            value={formatCurrency(currentMonthForecast)}
             hint={pctOf(currentMonthForecast, currentTarget)}
+            tone="warning"
           />
           <KpiTile
             label={`${nextLabel} forecast`}
-            value={formatCurrency(nextMonthForecast, { compact: true })}
+            value={formatCurrency(nextMonthForecast)}
             hint={pctOf(nextMonthForecast, nextTarget)}
+            tone="warning"
           />
           <KpiTile
             label={`${afterLabel} forecast`}
-            value={formatCurrency(monthAfterForecast, { compact: true })}
+            value={formatCurrency(monthAfterForecast)}
             hint={pctOf(monthAfterForecast, monthAfterTarget)}
+            tone="warning"
           />
         </div>
       </section>
