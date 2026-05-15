@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   FolderClosed,
@@ -36,7 +36,6 @@ import {
 } from "@/lib/dashboards/registry";
 import type { Customer } from "@/lib/customers/registry";
 import { TICKET_TYPES, type TicketTypeIconName } from "@/lib/tickets/registry";
-import { CustomerPicker } from "./customer-picker";
 
 const ICONS: Record<Dashboard["iconName"], LucideIcon> = {
   LayoutDashboard,
@@ -82,14 +81,16 @@ const OPEN_GROUPS_STORAGE_KEY = "portal:sidebar:open-groups";
 
 /**
  * Sidebar navigation. Renders:
- *  - For admin/internal: a customer picker, then the Account section
- *    (Overview / Documents / Invoices / Quality / Contact) linked to
- *    whichever customer is active.
- *  - For customer-role users: the Account section linked to their own id.
+ *  - For customer-role users: a "Customer Dashboard" section linked to
+ *    their own id (Overview / Documents / Invoices / Quality / Contact).
  *  - One collapsible "Sales and Marketing" section listing every dashboard
  *    the user has permission for.
  *  - For admins: a collapsible "Project Management" section, one sub-item
  *    per PM ticket type (each its own page under /admin/tickets/<slug>).
+ *  - For admin/internal: a collapsible "Customers" section pinned near the
+ *    bottom of the rail. Each customer is itself a nested collapsible
+ *    expanding to that customer's Account links — replaces the old
+ *    customer-picker panel that sat at the top of the sidebar.
  *  - Admin Users link pinned to the bottom of the rail (above the user-menu
  *    footer) via `mt-auto` so it floats to the bottom regardless of how many
  *    sections sit above it.
@@ -163,16 +164,10 @@ export function SidebarNav({
 
   return (
     <nav className="flex h-full flex-col gap-1.5 px-3">
-      {/* Customer Dashboard panel — special primary unit (picker + scoped
-           account links). Sits at the top, always visible, like the hero
-           "Dashboard" item in the ROCHAINX reference. */}
-      {canSwitchCustomers && (
-        <CustomerScopePanel
-          customers={customers}
-          accountTargetId={accountTargetId}
-          pathname={pathname}
-        />
-      )}
+      {/* Customer-role users see their own Customer Dashboard pinned at the
+           top — they can't switch customers, so the picker/dropdown UI for
+           admins doesn't apply. Admins navigate to a customer via the
+           "Customers" section near the bottom of the rail. */}
       {!canSwitchCustomers && accountTargetId && (
         <CollapsibleGroup
           id="customer-dashboard"
@@ -243,6 +238,44 @@ export function SidebarNav({
         </CollapsibleGroup>
       )}
 
+      {/* Customers — admin/internal only. Top-level peer of Project
+           Management; sits below it. Each customer is itself a nested
+           collapsible that, when opened, reveals the Account links
+           (Overview / Documents / Invoices / Quality / Contact) scoped to
+           that customer. Replaces the old customer picker panel. */}
+      {canSwitchCustomers && (
+        <CollapsibleGroup
+          id="customers"
+          label="Customers"
+          pathname={pathname}
+          containsActivePath={!!activeCustomerId}
+        >
+          {customers.map(c => (
+            <CollapsibleGroup
+              key={c.id}
+              id={`customer-${c.id}`}
+              label={c.name}
+              pathname={pathname}
+              containsActivePath={
+                pathname === `/c/${c.id}` ||
+                pathname.startsWith(`/c/${c.id}/`)
+              }
+              defaultOpen={false}
+            >
+              {ACCOUNT_LINKS.map(link => (
+                <NavLink
+                  key={link.rel}
+                  href={`/c/${c.id}/${link.rel}`}
+                  label={link.label}
+                  icon={link.icon}
+                  pathname={pathname}
+                />
+              ))}
+            </CollapsibleGroup>
+          ))}
+        </CollapsibleGroup>
+      )}
+
       {/* Admin Users link pinned to the bottom of the rail, just above the
            user-menu footer. `mt-auto` consumes whatever vertical space is
            left after the other groups. */}
@@ -257,59 +290,6 @@ export function SidebarNav({
         </div>
       )}
     </nav>
-  );
-}
-
-/**
- * Admin/internal-only panel that visually fuses the customer picker with the
- * Account links scoped to the selected customer. The picker sits as the
- * card header; the links sit beneath, indented behind a left rail so they
- * read as "belonging to" the chosen customer. On customer change the panel
- * pulses briefly to telegraph that the data the links point at has swapped.
- */
-function CustomerScopePanel({
-  customers,
-  accountTargetId,
-  pathname,
-}: {
-  customers: Customer[];
-  accountTargetId: string | null;
-  pathname: string;
-}) {
-  const [pulseKey, setPulseKey] = useState(0);
-  const lastIdRef = useRef<string | null>(accountTargetId);
-  useEffect(() => {
-    if (lastIdRef.current !== accountTargetId) {
-      lastIdRef.current = accountTargetId;
-      setPulseKey(k => k + 1);
-    }
-  }, [accountTargetId]);
-
-  return (
-    <div className="px-1 pb-1">
-      <div
-        key={pulseKey}
-        className="overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-card)] animate-scope-pulse"
-      >
-        <CustomerPicker customers={customers} activeCustomerId={accountTargetId} />
-        {accountTargetId && (
-          <div className="border-t border-border/70 bg-surface/50 px-2 py-1.5">
-            <ul className="relative ml-4 border-l border-border-strong/70 pl-2">
-              {ACCOUNT_LINKS.map(link => (
-                <li key={link.rel}>
-                  <NavLink
-                    href={`/c/${accountTargetId}/${link.rel}`}
-                    label={link.label}
-                    icon={link.icon}
-                    pathname={pathname}
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -369,16 +349,21 @@ function CollapsibleGroup({
   label,
   pathname,
   containsActivePath,
+  defaultOpen = true,
   children,
 }: {
   id: string;
   label: string;
   pathname: string;
   containsActivePath: boolean;
+  /** Default open state, used only on first render before localStorage is
+   *  consulted. Set to false for groups that would otherwise overwhelm the
+   *  rail when all expanded by default (e.g. the per-customer nested
+   *  collapsibles inside the Customers section). */
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
-  // Default open — we never want to hide existing nav by surprise.
-  const [open, setOpen] = useOpenGroupState(id, true);
+  const [open, setOpen] = useOpenGroupState(id, defaultOpen);
 
   // If the user navigates into a route inside this group (deep link, back
   // button, palette jump), force the group open. We deliberately do not
