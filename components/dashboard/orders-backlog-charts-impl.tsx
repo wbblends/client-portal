@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -112,98 +111,86 @@ function BacklogTooltip({
 }
 
 export function BacklogSnapshotsChart() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const reducedMotion = usePrefersReducedMotion();
 
   return (
     <div className="h-[260px] w-full">
-      {mounted ? (
-        <ResponsiveContainer>
-          <BarChart data={BACKLOG_SNAPSHOTS} margin={{ top: 24, right: 16, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
-            <XAxis
-              dataKey="label"
-              tick={{ fill: "var(--color-muted)", fontSize: 12 }}
-              tickLine={false}
-              axisLine={{ stroke: "var(--color-border)" }}
-            />
-            <YAxis
-              tickFormatter={fmt}
-              tick={{ fill: "var(--color-muted)", fontSize: 12 }}
-              tickLine={false}
-              axisLine={false}
-              width={64}
-            />
-            <Tooltip content={<BacklogTooltip />} cursor={{ fill: "var(--color-border)", opacity: 0.25 }} />
-            <Bar
+      <ResponsiveContainer>
+        <BarChart data={BACKLOG_SNAPSHOTS} margin={{ top: 24, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+            tickLine={false}
+            axisLine={{ stroke: "var(--color-border)" }}
+          />
+          <YAxis
+            tickFormatter={fmt}
+            tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+            tickLine={false}
+            axisLine={false}
+            width={64}
+          />
+          <Tooltip content={<BacklogTooltip />} cursor={{ fill: "var(--color-border)", opacity: 0.25 }} />
+          <Bar
+            dataKey="value"
+            fill="var(--color-primary)"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={42}
+            isAnimationActive={!reducedMotion}
+            animationDuration={550}
+            animationEasing="ease-out"
+          >
+            <LabelList
               dataKey="value"
-              fill="var(--color-primary)"
-              radius={[4, 4, 0, 0]}
-              maxBarSize={42}
-              isAnimationActive={!reducedMotion}
-              animationDuration={550}
-              animationEasing="ease-out"
-            >
-              <LabelList
-                dataKey="value"
-                position="top"
-                formatter={(v: unknown) =>
-                  v === null || v === undefined ? "" : fmt(Number(v))
-                }
-                fontSize={11}
-                fill="var(--color-foreground)"
-              />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      ) : (
-        <div className="h-full w-full rounded-lg bg-accent/30" />
-      )}
+              position="top"
+              formatter={(v: unknown) =>
+                v === null || v === undefined ? "" : fmt(Number(v))
+              }
+              fontSize={11}
+              fill="var(--color-foreground)"
+            />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
 export function BacklogWeeklyChart() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const reducedMotion = usePrefersReducedMotion();
 
   return (
     <div className="h-[260px] w-full">
-      {mounted ? (
-        <ResponsiveContainer>
-          <LineChart data={WEEKLY_BACKLOG} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
-            <XAxis
-              dataKey="label"
-              tick={{ fill: "var(--color-muted)", fontSize: 12 }}
-              tickLine={false}
-              axisLine={{ stroke: "var(--color-border)" }}
-            />
-            <YAxis
-              tickFormatter={fmt}
-              tick={{ fill: "var(--color-muted)", fontSize: 12 }}
-              tickLine={false}
-              axisLine={false}
-              width={64}
-            />
-            <Tooltip content={<BacklogTooltip />} />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke="var(--color-primary)"
-              strokeWidth={2}
-              dot={{ r: 3, fill: "var(--color-primary)" }}
-              activeDot={{ r: 5 }}
-              isAnimationActive={!reducedMotion}
-              animationDuration={550}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      ) : (
-        <div className="h-full w-full rounded-lg bg-accent/30" />
-      )}
+      <ResponsiveContainer>
+        <LineChart data={WEEKLY_BACKLOG} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+            tickLine={false}
+            axisLine={{ stroke: "var(--color-border)" }}
+          />
+          <YAxis
+            tickFormatter={fmt}
+            tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+            tickLine={false}
+            axisLine={false}
+            width={64}
+          />
+          <Tooltip content={<BacklogTooltip />} />
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke="var(--color-primary)"
+            strokeWidth={2}
+            dot={{ r: 3, fill: "var(--color-primary)" }}
+            activeDot={{ r: 5 }}
+            isAnimationActive={!reducedMotion}
+            animationDuration={550}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }

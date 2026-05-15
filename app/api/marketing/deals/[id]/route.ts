@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { requireSession } from "@/lib/auth";
-import { updateDeal, type DealFormat, type DealTier } from "@/lib/marketing/hubspot";
+import {
+  revalidatePipelineCache,
+  updateDeal,
+  type DealFormat,
+  type DealTier,
+} from "@/lib/marketing/hubspot";
 import { userCanSeeDashboard } from "@/lib/dashboards/registry";
 
 const TIERS: readonly DealTier[] = ["AA", "A", "B", "C"];
@@ -106,6 +111,10 @@ export async function PATCH(
         { status: 503 },
       );
     }
+    // Bust the kanban / pipeline summary / attribution caches so the next
+    // home or marketing dashboard render reflects this edit immediately,
+    // instead of waiting up to 5 minutes for the TTL.
+    revalidatePipelineCache();
     return NextResponse.json(result);
   } catch (err) {
     console.error("[api/marketing/deals] update failed:", err);

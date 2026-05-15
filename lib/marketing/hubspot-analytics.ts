@@ -16,6 +16,8 @@
  *   - "direct" / "organic" / "referrals" / "social" / "email" / "offline"
  */
 
+import { unstable_cache } from "next/cache";
+
 const HUBSPOT_API = "https://api.hubapi.com";
 const HUBSPOT_TIMEOUT_MS = 12_000;
 
@@ -365,10 +367,14 @@ const PLACEHOLDER: AdAnalyticsSummary = {
  * comparison total for the compare range so KPI tiles can render deltas.
  * Falls back to placeholder data if the token is missing or HubSpot fails.
  */
-export async function getAdAnalytics(
-  range: { from: Date; to: Date },
-  compareRange: { from: Date; to: Date },
+async function _getAdAnalytics(
+  fromMs: number,
+  toMs: number,
+  cFromMs: number,
+  cToMs: number,
 ): Promise<AdAnalyticsSummary> {
+  const range = { from: new Date(fromMs), to: new Date(toMs) };
+  const compareRange = { from: new Date(cFromMs), to: new Date(cToMs) };
   if (!token()) return { ...PLACEHOLDER, range };
 
   try {
@@ -407,4 +413,22 @@ export async function getAdAnalytics(
     console.error("[marketing/hubspot-analytics] getAdAnalytics failed:", err);
     return { ...PLACEHOLDER, range };
   }
+}
+
+const _cachedAdAnalytics = unstable_cache(
+  _getAdAnalytics,
+  ["hubspot-analytics:getAdAnalytics"],
+  { tags: ["hubspot:adAnalytics"], revalidate: 300 },
+);
+
+export async function getAdAnalytics(
+  range: { from: Date; to: Date },
+  compareRange: { from: Date; to: Date },
+): Promise<AdAnalyticsSummary> {
+  return _cachedAdAnalytics(
+    range.from.getTime(),
+    range.to.getTime(),
+    compareRange.from.getTime(),
+    compareRange.to.getTime(),
+  );
 }

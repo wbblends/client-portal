@@ -15,56 +15,33 @@
  */
 
 import { cache } from "react";
+import { unstable_cache, revalidateTag } from "next/cache";
 import { PLACEHOLDER_KANBAN } from "./placeholder-kanban";
 import { ensureDb } from "@/lib/db";
+import { searchFetch, timedFetch } from "./hubspot-throttle";
 
 const HUBSPOT_API = "https://api.hubapi.com";
 
-// Per-request HubSpot timeout. If a single fetch exceeds this we abort and
-// the caller's try/catch falls back to placeholder data — better to render
-// stale-but-fast than to hang the whole marketing dashboard on an upstream
-// blip. AbortSignal.timeout cancels the underlying socket so we don't leak
-// pending requests.
-const HUBSPOT_TIMEOUT_MS = 12_000;
+// Tags used by unstable_cache. Mutation endpoints call revalidateTag(<tag>) to
+// bust the relevant cache slice immediately instead of waiting for the TTL.
+const TAG_PIPELINE = "hubspot:pipeline";
+const TAG_TYPEFORM = "hubspot:typeform";
+const TAG_ATTRIBUTION = "hubspot:attribution";
+const TAG_CLOSED = "hubspot:closed";
+const TAG_PENETRATION = "hubspot:penetration";
 
-function timedFetch(url: string | URL, init: RequestInit = {}): Promise<Response> {
-  return fetch(url, { ...init, signal: AbortSignal.timeout(HUBSPOT_TIMEOUT_MS) });
+// 5-minute TTL across the board. Dashboards are read-heavy and HubSpot data
+// doesn't move that fast; mutations call revalidateTag so the user always
+// sees their own edit immediately.
+const CACHE_TTL_SECONDS = 300;
+
+export function revalidatePipelineCache(): void {
+  // Next 16 requires a profile arg; { expire: 0 } means "expire immediately".
+  revalidateTag(TAG_PIPELINE, { expire: 0 });
 }
 
-// HubSpot's CRM Search API enforces a tight per-second limit (4 req/sec on
-// Free/Starter, 5 on Pro). When the marketing dashboard renders, multiple
-// modules issue search calls back-to-back — pipeline summary, Typeform leads,
-// attribution. Without coordination they trip the rate limit.
-//
-// `searchFetch` is a serialized, throttled wrapper used by every search-API
-// call site. It (a) chains calls so only one is in flight at a time and
-// (b) waits SEARCH_GAP_MS between releases. Module-level state means a single
-// queue across all concurrent renders in this Node process, which is the
-// behavior we want — HubSpot doesn't care which call site issued the request.
-const SEARCH_GAP_MS = 280;
-let searchQueueTail: Promise<void> = Promise.resolve();
-
-async function searchFetch(url: string, init: RequestInit): Promise<Response> {
-  const prevTail = searchQueueTail;
-  let release: () => void = () => {};
-  searchQueueTail = new Promise<void>(r => {
-    release = r;
-  });
-
-  try {
-    await prevTail;
-    let res = await timedFetch(url, init);
-    if (res.status === 429) {
-      // Honor Retry-After if present (HubSpot returns it for SECONDLY limits).
-      const retryAfter = Number(res.headers.get("retry-after") ?? 1);
-      const waitMs = Math.max(1000, retryAfter * 1000);
-      await new Promise(r => setTimeout(r, waitMs));
-      res = await timedFetch(url, init);
-    }
-    return res;
-  } finally {
-    setTimeout(release, SEARCH_GAP_MS);
-  }
+export function revalidateAttributionCache(): void {
+  revalidateTag(TAG_ATTRIBUTION, { expire: 0 });
 }
 
 // Pipeline IDs are stable — discovered from Devin's HubSpot account 20659581.
@@ -243,7 +220,7 @@ async function searchDeals(pipelineId: string): Promise<{ amount: number; weight
   return all;
 }
 
-export async function getPipelineSummary(): Promise<PipelineSummary> {
+async function _getPipelineSummary(): Promise<PipelineSummary> {
   if (!token()) return PLACEHOLDER_PIPELINES;
 
   try {
@@ -277,6 +254,56 @@ export async function getPipelineSummary(): Promise<PipelineSummary> {
     console.error("[marketing/hubspot] getPipelineSummary failed:", err);
     return PLACEHOLDER_PIPELINES;
   }
+}
+
+export const getPipelineSummary = unstable_cache(
+  _getPipelineSummary,
+  ["hubspot:getPipelineSummary"],
+  { tags: [TAG_PIPELINE], revalidate: CACHE_TTL_SECONDS },
+);
+
+/**
+ * Derive a PipelineSummary from a fully-built KanbanData. The kanban already
+ * contains every open deal with its amount + weighted value, so we don't need
+ * a second HubSpot trip just to total them. The homepage uses this to render
+ * KPIs alongside the kanban without doubling its HubSpot search budget.
+ */
+export function summarizeKanban(kanban: KanbanData): PipelineSummary {
+  const totalsFor = (pipelineKey: PipelineKey): PipelineTotals => {
+    const p = kanban.pipelines.find(x => x.key === pipelineKey);
+    if (!p) return { unweighted: 0, weighted: 0, dealCount: 0 };
+    let unweighted = 0;
+    let weighted = 0;
+    let dealCount = 0;
+    for (const stage of p.stages) {
+      // Closed stages aren't included in the open-pipeline view; the kanban
+      // only loads `hs_is_closed = false` deals, but we filter defensively in
+      // case that ever changes.
+      if (stage.isClosed) continue;
+      for (const d of stage.deals) {
+        unweighted += d.amount;
+        weighted += d.weighted;
+        dealCount += 1;
+      }
+    }
+    return { unweighted, weighted, dealCount };
+  };
+
+  const sales = totalsFor("sales");
+  const expansion = totalsFor("expansion");
+
+  return {
+    source: kanban.source,
+    perPipeline: {
+      sales: { label: PIPELINES.sales.label, ...sales },
+      expansion: { label: PIPELINES.expansion.label, ...expansion },
+    },
+    combined: {
+      unweighted: sales.unweighted + expansion.unweighted,
+      weighted: sales.weighted + expansion.weighted,
+      dealCount: sales.dealCount + expansion.dealCount,
+    },
+  };
 }
 
 type TypeformContact = { id: number; firstConversionMs: number | null };
@@ -352,7 +379,7 @@ async function fetchAllTypeformConversionDates(): Promise<number[]> {
   return dates;
 }
 
-export async function getTypeformLeadStats(): Promise<TypeformLeadStats> {
+async function _getTypeformLeadStats(): Promise<TypeformLeadStats> {
   if (!token()) return PLACEHOLDER_TYPEFORM;
 
   try {
@@ -381,6 +408,12 @@ export async function getTypeformLeadStats(): Promise<TypeformLeadStats> {
   }
 }
 
+export const getTypeformLeadStats = unstable_cache(
+  _getTypeformLeadStats,
+  ["hubspot:getTypeformLeadStats"],
+  { tags: [TAG_TYPEFORM], revalidate: CACHE_TTL_SECONDS },
+);
+
 export type RangeLeadCounts = {
   source: "live" | "placeholder";
   inRange: number;
@@ -399,18 +432,20 @@ const PLACEHOLDER_RANGE_LEAD_COUNTS: RangeLeadCounts = {
  * Same Typeform contact dataset as `getTypeformLeadStats`, bucketed into a
  * caller-supplied range + compare range so the dashboard's date picker can
  * scope the inbound-leads KPIs.
+ *
+ * Cached on the (fromMs, toMs, cFromMs, cToMs) tuple — Dates serialize fine
+ * as unstable_cache keys but using their millisecond form keeps the cache
+ * key small and stable.
  */
-export async function getTypeformLeadCountsForRange(
-  range: { from: Date; to: Date },
-  compareRange: { from: Date; to: Date },
+async function _getTypeformLeadCountsForRange(
+  fromMs: number,
+  toMs: number,
+  cFromMs: number,
+  cToMs: number,
 ): Promise<RangeLeadCounts> {
   if (!token()) return PLACEHOLDER_RANGE_LEAD_COUNTS;
   try {
     const dates = await fetchAllTypeformConversionDates();
-    const fromMs = range.from.getTime();
-    const toMs = range.to.getTime();
-    const cFromMs = compareRange.from.getTime();
-    const cToMs = compareRange.to.getTime();
     let inRange = 0;
     let inCompareRange = 0;
     for (const ms of dates) {
@@ -422,6 +457,24 @@ export async function getTypeformLeadCountsForRange(
     console.error("[marketing/hubspot] getTypeformLeadCountsForRange failed:", err);
     return PLACEHOLDER_RANGE_LEAD_COUNTS;
   }
+}
+
+const _cachedTypeformLeadCountsForRange = unstable_cache(
+  _getTypeformLeadCountsForRange,
+  ["hubspot:getTypeformLeadCountsForRange"],
+  { tags: [TAG_TYPEFORM], revalidate: CACHE_TTL_SECONDS },
+);
+
+export async function getTypeformLeadCountsForRange(
+  range: { from: Date; to: Date },
+  compareRange: { from: Date; to: Date },
+): Promise<RangeLeadCounts> {
+  return _cachedTypeformLeadCountsForRange(
+    range.from.getTime(),
+    range.to.getTime(),
+    compareRange.from.getTime(),
+    compareRange.to.getTime(),
+  );
 }
 
 type RawStage = {
@@ -717,7 +770,7 @@ async function resolveDealCompanyInfo(
   return out;
 }
 
-export async function getPipelineKanban(): Promise<KanbanData> {
+async function _getPipelineKanban(): Promise<KanbanData> {
   if (!token()) return PLACEHOLDER_KANBAN;
 
   try {
@@ -747,6 +800,12 @@ export async function getPipelineKanban(): Promise<KanbanData> {
     return PLACEHOLDER_KANBAN;
   }
 }
+
+export const getPipelineKanban = unstable_cache(
+  _getPipelineKanban,
+  ["hubspot:getPipelineKanban"],
+  { tags: [TAG_PIPELINE], revalidate: CACHE_TTL_SECONDS },
+);
 
 // ─── Closed deals (analytics) ───────────────────────────────────────────────
 //
@@ -840,7 +899,7 @@ async function fetchClosedDealsRaw(pipelineId: string): Promise<RawDeal[]> {
   return all;
 }
 
-export async function getClosedDeals(): Promise<ClosedDealsData> {
+async function _getClosedDeals(): Promise<ClosedDealsData> {
   if (!token()) return PLACEHOLDER_CLOSED_DEALS;
 
   try {
@@ -876,6 +935,12 @@ export async function getClosedDeals(): Promise<ClosedDealsData> {
     return PLACEHOLDER_CLOSED_DEALS;
   }
 }
+
+export const getClosedDeals = unstable_cache(
+  _getClosedDeals,
+  ["hubspot:getClosedDeals"],
+  { tags: [TAG_CLOSED, TAG_PIPELINE], revalidate: CACHE_TTL_SECONDS },
+);
 
 // ─── Marketing attribution ──────────────────────────────────────────────────
 //
@@ -1327,7 +1392,7 @@ export async function getDealNotes(dealId: string, limit = 5): Promise<DealNotes
   }
 }
 
-export async function getMarketingAttribution(): Promise<MarketingAttribution> {
+async function _getMarketingAttribution(): Promise<MarketingAttribution> {
   if (!token()) return PLACEHOLDER_ATTRIBUTION;
   try {
     const contactIds = await fetchAllTypeformContactIds();
@@ -1368,6 +1433,12 @@ export async function getMarketingAttribution(): Promise<MarketingAttribution> {
     return PLACEHOLDER_ATTRIBUTION;
   }
 }
+
+export const getMarketingAttribution = unstable_cache(
+  _getMarketingAttribution,
+  ["hubspot:getMarketingAttribution"],
+  { tags: [TAG_ATTRIBUTION, TAG_PIPELINE], revalidate: CACHE_TTL_SECONDS },
+);
 
 // ─── Account penetration ────────────────────────────────────────────────────
 //
@@ -1576,7 +1647,7 @@ async function fetchDealsForCompany(companyId: string): Promise<RawDeal[]> {
  * definitions for both pipelines are fetched once and shared; each account's
  * deals are then bucketed into projection / captured / inProgress.
  */
-export async function getAccountPenetration(): Promise<AccountPenetrationData> {
+async function _getAccountPenetration(): Promise<AccountPenetrationData> {
   if (!token()) return PLACEHOLDER_ACCOUNT_PENETRATION;
 
   try {
@@ -1654,3 +1725,9 @@ export async function getAccountPenetration(): Promise<AccountPenetrationData> {
     return PLACEHOLDER_ACCOUNT_PENETRATION;
   }
 }
+
+export const getAccountPenetration = unstable_cache(
+  _getAccountPenetration,
+  ["hubspot:getAccountPenetration"],
+  { tags: [TAG_PENETRATION, TAG_PIPELINE], revalidate: CACHE_TTL_SECONDS },
+);

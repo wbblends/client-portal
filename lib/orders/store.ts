@@ -8,6 +8,7 @@
  * that the DB is the source of truth — the seed is reachable again only via
  * the explicit reset endpoint.
  */
+import { unstable_cache, revalidateTag } from "next/cache";
 import { ensureDb } from "@/lib/db";
 import {
   ORDERS_PORTAL_SEED,
@@ -17,7 +18,18 @@ import {
 
 export type DbOrdersRow = OrdersPortalRow;
 
-const EMPTY_MONTHS = "[null,null,null,null,null,null,null,null,null,null,null,null]";
+const ORDERS_CACHE_TAG = "orders:rows";
+const ORDERS_CACHE_TTL_SECONDS = 60;
+
+export function revalidateOrdersCache(): void {
+  // Next 16 requires a profile arg; { expire: 0 } means "expire immediately".
+  revalidateTag(ORDERS_CACHE_TAG, { expire: 0 });
+}
+
+// `maybeSeed` runs a SELECT COUNT(*) on every read to handle the first-boot
+// "table is empty, copy in the seed" case. Once the table is non-empty for
+// this process, that check is wasted work — cache the verdict.
+let seedChecked = false;
 
 function parseMonths(json: string | null | undefined): (number | null)[] {
   if (!json) return Array(12).fill(null);
@@ -59,9 +71,13 @@ function rowFromDb(r: {
 }
 
 async function maybeSeed(): Promise<void> {
+  if (seedChecked) return;
   const client = await ensureDb();
   const { rows } = await client.execute("SELECT COUNT(*) AS n FROM orders_portal_rows");
-  if ((rows[0]?.n as number) > 0) return;
+  if ((rows[0]?.n as number) > 0) {
+    seedChecked = true;
+    return;
+  }
   for (let i = 0; i < ORDERS_PORTAL_SEED.length; i++) {
     const r = ORDERS_PORTAL_SEED[i];
     await client.execute({
@@ -81,9 +97,10 @@ async function maybeSeed(): Promise<void> {
       ],
     });
   }
+  seedChecked = true;
 }
 
-export async function listOrdersRows(): Promise<DbOrdersRow[]> {
+async function _listOrdersRows(): Promise<DbOrdersRow[]> {
   await maybeSeed();
   const client = await ensureDb();
   const { rows } = await client.execute(
@@ -103,6 +120,17 @@ export async function listOrdersRows(): Promise<DbOrdersRow[]> {
     position: number;
   }>).map(rowFromDb);
 }
+
+// Short TTL — the orders portal is the most edit-heavy surface and admins
+// expect their save to show up on the next render. revalidateOrdersCache() is
+// called from every mutation path below to bust the cache immediately so the
+// TTL is only relevant for cross-user staleness, not the editing admin's own
+// view.
+export const listOrdersRows = unstable_cache(
+  _listOrdersRows,
+  ["orders:listOrdersRows"],
+  { tags: [ORDERS_CACHE_TAG], revalidate: ORDERS_CACHE_TTL_SECONDS },
+);
 
 export type CreateOrdersRowInput = {
   id?: string;
@@ -155,6 +183,7 @@ export async function createOrdersRow(
       updatedBy,
     ],
   });
+  revalidateOrdersCache();
   return {
     id,
     customer: input.customer ?? "",
@@ -237,6 +266,7 @@ export async function patchOrdersRow(
     sql: `UPDATE orders_portal_rows SET ${sets.join(", ")} WHERE id = ?`,
     args,
   });
+  revalidateOrdersCache();
 
   const { rows } = await client.execute({
     sql: `SELECT id, customer, rep, cs, tier, projection, months_json, forecasts_json, position
@@ -265,13 +295,17 @@ export async function deleteOrdersRow(id: string): Promise<void> {
     sql: "DELETE FROM orders_portal_rows WHERE id = ?",
     args: [id],
   });
+  revalidateOrdersCache();
 }
 
 /** Replace the table contents with ORDERS_PORTAL_SEED. */
 export async function resetOrdersRows(): Promise<DbOrdersRow[]> {
   const client = await ensureDb();
   await client.execute("DELETE FROM orders_portal_rows");
+  // Reset clears `seedChecked` so the next read repopulates from the seed.
+  seedChecked = false;
   await maybeSeed();
+  revalidateOrdersCache();
   return listOrdersRows();
 }
 

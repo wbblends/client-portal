@@ -40,21 +40,31 @@ export async function MarketingOverviewDashboard({
   const range = resolveRange(searchParams);
   const compare = getCompareRange(range);
 
-  // HubSpot calls run sequentially under a shared throttle (see searchFetch
-  // in lib/marketing/hubspot.ts) to stay under the CRM search API's per-second
-  // rate limit. Ad-spend fetchers are placeholder-only and run in parallel after.
-  const pipelines = await getPipelineSummary();
-  const leadCounts = await getTypeformLeadCountsForRange(range, compare);
-  const attribution = await getMarketingAttribution();
-  const history = await getPipelineHistory(range);
+  // HubSpot search calls share a process-wide throttle (lib/marketing/
+  // hubspot-throttle.ts), so the search-API ones still serialize at the
+  // network layer. Awaiting them in Promise.all is still strictly better:
+  // (a) non-HubSpot work (ad analytics) runs in parallel, and (b) cached
+  // results return instantly without waiting for one another.
+  const [
+    pipelines,
+    leadCounts,
+    attribution,
+    history,
+    adAnalytics,
+  ] = await Promise.all([
+    getPipelineSummary(),
+    getTypeformLeadCountsForRange(range, compare),
+    getMarketingAttribution(),
+    getPipelineHistory(range),
+    getAdAnalytics(
+      { from: range.from, to: range.to },
+      { from: compare.from, to: compare.to },
+    ),
+  ]);
   const influencedPOs = getMarketingInfluencedPOs(attribution.touchedCompanyNames, {
     isPlaceholder: attribution.source === "placeholder",
     range: { from: range.from, to: range.to },
   });
-  const adAnalytics = await getAdAnalytics(
-    { from: range.from, to: range.to },
-    { from: compare.from, to: compare.to },
-  );
 
   const leadDelta = pctChange(leadCounts.inRange, leadCounts.inCompareRange);
 

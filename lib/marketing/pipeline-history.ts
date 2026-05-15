@@ -16,39 +16,19 @@
  *      stages multiple times will be counted once, on its final close date.
  */
 
+import { unstable_cache } from "next/cache";
 import { PIPELINES, type PipelineKey } from "./hubspot";
+import { searchFetch } from "./hubspot-throttle";
 import { buildBuckets, pickBucketing, type Bucket } from "@/lib/data/aggregate";
 
 const HUBSPOT_API = "https://api.hubapi.com";
 
-// Re-uses the searchFetch throttle from hubspot.ts via the same module-level
-// queue — Node module caching means importing PIPELINES from there pulls in
-// the throttle state. To keep this file self-contained without a circular
-// import we duplicate the throttle pattern. Both queues serializing into the
-// same HubSpot account is still the right thing — they share rate budget.
-const SEARCH_GAP_MS = 280;
-let searchQueueTail: Promise<void> = Promise.resolve();
-
-async function searchFetch(url: string, init: RequestInit): Promise<Response> {
-  const prevTail = searchQueueTail;
-  let release: () => void = () => {};
-  searchQueueTail = new Promise<void>(r => {
-    release = r;
-  });
-  try {
-    await prevTail;
-    let res = await fetch(url, { ...init, signal: AbortSignal.timeout(12_000) });
-    if (res.status === 429) {
-      const retryAfter = Number(res.headers.get("retry-after") ?? 1);
-      const waitMs = Math.max(1000, retryAfter * 1000);
-      await new Promise(r => setTimeout(r, waitMs));
-      res = await fetch(url, { ...init, signal: AbortSignal.timeout(12_000) });
-    }
-    return res;
-  } finally {
-    setTimeout(release, SEARCH_GAP_MS);
-  }
-}
+// 5-minute TTL; mirrors the rest of the HubSpot data layer. The deal dataset
+// itself (every deal across both pipelines) is what's expensive — bucketing
+// is pure CPU and could happen outside the cache, but caching the bucketed
+// result keeps the call sites' shapes simple.
+const CACHE_TTL_SECONDS = 300;
+const TAG_PIPELINE = "hubspot:pipeline";
 
 type DealRecord = {
   id: string;
@@ -119,7 +99,7 @@ function token(): string | null {
   return process.env.HUBSPOT_PRIVATE_APP_TOKEN ?? null;
 }
 
-async function fetchAllDealsForHistory(): Promise<DealRecord[]> {
+async function _fetchAllDealsForHistory(): Promise<DealRecord[]> {
   const t = token();
   if (!t) throw new Error("Missing HUBSPOT_PRIVATE_APP_TOKEN");
   const out: DealRecord[] = [];
@@ -252,6 +232,16 @@ function bucketDeals(buckets: Bucket[], deals: DealRecord[]): PipelineHistoryBuc
     };
   });
 }
+
+// Cache only the HubSpot fetch — bucketing is pure CPU and depends on the
+// caller-supplied range, so caching that would multiply cache entries by
+// every distinct date picker selection. Sharing the deals across renders is
+// where the real win is: that's the 6-page paginated search.
+const fetchAllDealsForHistory = unstable_cache(
+  _fetchAllDealsForHistory,
+  ["pipeline-history:fetchAllDealsForHistory"],
+  { tags: [TAG_PIPELINE], revalidate: CACHE_TTL_SECONDS },
+);
 
 export async function getPipelineHistory(range: {
   from: Date;
