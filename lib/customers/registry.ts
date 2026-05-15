@@ -41,7 +41,7 @@ export type Customer = {
 };
 
 export const CUSTOMERS: readonly Customer[] = [
-  { id: "kilo-health", name: "Kilo Health", canonicalName: "Kilo Health", domain: "kilohealth.com", aliases: ["UAB ER Solutions (Kilo Health)", "UAB Bioma Health (Kilo Health)"] },
+  { id: "kilo-health", name: "Kilo Health", canonicalName: "Kilo Health", domain: "kilo.health", aliases: ["UAB ER Solutions (Kilo Health)", "UAB Bioma Health (Kilo Health)"] },
   { id: "designs-for-health", name: "Designs for Health", canonicalName: "Designs For Health", domain: "designsforhealth.com" },
   { id: "golden-hippo", name: "Golden Hippo", canonicalName: "Golden Hippo", domain: "goldenhippo.com" },
   { id: "native-path", name: "Native Path", canonicalName: "Native Path", domain: "nativepath.com", aliases: ["NativePath"] },

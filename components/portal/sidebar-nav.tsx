@@ -36,6 +36,7 @@ import {
 } from "@/lib/dashboards/registry";
 import type { Customer } from "@/lib/customers/registry";
 import { TICKET_TYPES, type TicketTypeIconName } from "@/lib/tickets/registry";
+import { CompanyLogo } from "@/components/dashboards/deal-card";
 
 const ICONS: Record<Dashboard["iconName"], LucideIcon> = {
   LayoutDashboard,
@@ -255,6 +256,13 @@ export function SidebarNav({
               key={c.id}
               id={`customer-${c.id}`}
               label={c.name}
+              leading={
+                c.domain ? (
+                  <CompanyLogo domain={c.domain} name={c.name} />
+                ) : (
+                  <div className="h-6 w-6 shrink-0 rounded border border-border bg-surface" />
+                )
+              }
               pathname={pathname}
               containsActivePath={
                 pathname === `/c/${c.id}` ||
@@ -347,6 +355,7 @@ function useOpenGroupState(groupId: string, defaultOpen: boolean) {
 function CollapsibleGroup({
   id,
   label,
+  leading,
   pathname,
   containsActivePath,
   defaultOpen = true,
@@ -354,6 +363,9 @@ function CollapsibleGroup({
 }: {
   id: string;
   label: string;
+  /** Optional node rendered to the left of the label in the header (e.g.
+   *  a customer logo). When omitted the header keeps its text-only layout. */
+  leading?: React.ReactNode;
   pathname: string;
   containsActivePath: boolean;
   /** Default open state, used only on first render before localStorage is
@@ -397,7 +409,14 @@ function CollapsibleGroup({
             : "text-foreground-soft hover:bg-accent hover:text-foreground",
         )}
       >
-        <span className="text-left">{label}</span>
+        {leading ? (
+          <span className="flex min-w-0 items-center gap-2 text-left">
+            {leading}
+            <span className="truncate">{label}</span>
+          </span>
+        ) : (
+          <span className="text-left">{label}</span>
+        )}
         <ChevronDown
           aria-hidden
           className={cn(
