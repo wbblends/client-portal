@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 import { getAccountPenetration, type AccountPenetration } from "@/lib/marketing/hubspot";
 
 /**
@@ -108,21 +108,37 @@ function AccountCard({ account }: { account: AccountPenetration }) {
 
       {hasProjection ? (
         <>
-          {/* Initial projection — the hero number, sits right above the bar. */}
-          <div className="mt-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+          {/* Header: captured % is the hero (left); the initial projection
+              anchors the right end of the bar — the reference it's measured
+              against. */}
+          <div className="mt-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
             <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                Captured
+              </p>
+              <p className="mt-1 font-display text-[36px] leading-none tabular-nums tracking-tight text-foreground">
+                {capturedPct}%
+              </p>
+              <p className="mt-1.5 text-xs tabular-nums text-muted">
+                {formatCurrency(account.captured, { compact: true })} ·{" "}
+                {formatNumber(account.capturedDealCount)} won
+              </p>
+            </div>
+            <div className="text-right">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
                 Initial projection
               </p>
               <p className="mt-1 font-display text-[36px] leading-none tabular-nums tracking-tight text-foreground">
                 {formatCurrency(projection, { compact: true })}
               </p>
+              {overflow > 0 && (
+                <div className="mt-1.5">
+                  <Badge tone="success">
+                    +{formatCurrency(overflow, { compact: true })} over projection
+                  </Badge>
+                </div>
+              )}
             </div>
-            {overflow > 0 && (
-              <Badge tone="success">
-                +{formatCurrency(overflow, { compact: true })} over projection
-              </Badge>
-            )}
           </div>
 
           <div
@@ -146,14 +162,6 @@ function AccountCard({ account }: { account: AccountPenetration }) {
 
           <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
             <PenetrationStat
-              dotClass="bg-primary"
-              label="Captured"
-              pct={capturedPct}
-              detail={`${formatCurrency(account.captured, { compact: true })} · ${formatNumber(
-                account.capturedDealCount,
-              )} won`}
-            />
-            <PenetrationStat
               dotClass="bg-primary/30"
               label="In progress"
               pct={inProgressPct}
@@ -168,6 +176,8 @@ function AccountCard({ account }: { account: AccountPenetration }) {
               detail={formatCurrency(untapped, { compact: true })}
             />
           </div>
+
+          {account.capturedDeals.length > 0 && <WonDealsTable account={account} />}
         </>
       ) : (
         <p className="mt-4 text-sm text-muted">
@@ -208,5 +218,60 @@ function PenetrationStat({
       </div>
       <div className="mt-1.5 text-xs tabular-nums text-muted">{detail}</div>
     </div>
+  );
+}
+
+function WonDealsTable({ account }: { account: AccountPenetration }) {
+  const largest = account.capturedDeals[0];
+  return (
+    <details className="group mt-4">
+      <summary className="flex cursor-pointer select-none list-none items-baseline gap-2 text-sm text-muted hover:text-foreground [&::-webkit-details-marker]:hidden">
+        <span
+          aria-hidden
+          className="inline-block text-xs leading-none transition-transform group-open:rotate-90"
+        >
+          ›
+        </span>
+        <span className="font-medium text-foreground">
+          Won deals · {formatNumber(account.capturedDealCount)}
+        </span>
+        <span className="hidden truncate sm:inline">
+          · Largest {largest.name} {formatCurrency(largest.amount, { compact: true })}
+        </span>
+      </summary>
+      <div className="mt-3 overflow-hidden rounded-md border border-border">
+        <table className="w-full text-sm">
+          <thead className="bg-accent/40 text-[11px] uppercase tracking-[0.06em] text-muted">
+            <tr>
+              <th className="px-3 py-2 text-left font-semibold">Deal</th>
+              <th className="px-3 py-2 text-right font-semibold">Amount</th>
+              <th className="px-3 py-2 text-right font-semibold">Closed</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {account.capturedDeals.map(deal => (
+              <tr key={deal.id} className="hover:bg-accent/30">
+                <td className="px-3 py-2">
+                  <a
+                    href={deal.hubspotUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-foreground hover:underline"
+                  >
+                    {deal.name}
+                  </a>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                  {formatCurrency(deal.amount)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted">
+                  {deal.closeDate ? formatDate(deal.closeDate) : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }

@@ -1396,6 +1396,15 @@ const PENETRATION_ACCOUNTS: { companyId: string; name: string }[] = [
   { companyId: "6970544160", name: "Codeage" },
 ];
 
+export type CapturedDeal = {
+  id: string;
+  name: string;
+  amount: number;
+  /** ISO YYYY-MM-DD; null if HubSpot didn't return a close date. */
+  closeDate: string | null;
+  hubspotUrl: string;
+};
+
 export type AccountPenetration = {
   companyId: string;
   name: string;
@@ -1404,6 +1413,9 @@ export type AccountPenetration = {
   /** Σ amount of the account's closed-won Wallet Share deals. */
   captured: number;
   capturedDealCount: number;
+  /** The individual closed-won Wallet Share deals making up `captured`,
+   *  sorted by amount descending. */
+  capturedDeals: CapturedDeal[];
   /** Σ amount of the account's open Wallet Share deals. */
   inProgress: number;
   inProgressDealCount: number;
@@ -1429,6 +1441,17 @@ const PLACEHOLDER_ACCOUNT_PENETRATION: AccountPenetrationData = {
       projection: 6_000_000,
       captured: 5_471_500,
       capturedDealCount: 9,
+      capturedDeals: [
+        { id: "59098326968", name: "VascuGlow",      amount: 3_160_000, closeDate: "2026-04-11", hubspotUrl: dealHubspotUrl("59098326968") },
+        { id: "59121261714", name: "AdaptoDrive",    amount:   915_000, closeDate: "2026-04-11", hubspotUrl: dealHubspotUrl("59121261714") },
+        { id: "59121289473", name: "ThyroBloom",     amount:   585_000, closeDate: "2026-04-11", hubspotUrl: dealHubspotUrl("59121289473") },
+        { id: "59108231195", name: "Breathe Rite",   amount:   199_600, closeDate: "2026-04-11", hubspotUrl: dealHubspotUrl("59108231195") },
+        { id: "59099871916", name: "Liver Fortress", amount:   172_500, closeDate: "2026-04-11", hubspotUrl: dealHubspotUrl("59099871916") },
+        { id: "59121289475", name: "MultiShroom",    amount:   142_800, closeDate: "2026-05-11", hubspotUrl: dealHubspotUrl("59121289475") },
+        { id: "59104598613", name: "PlantFlow",      amount:   129_200, closeDate: "2026-04-11", hubspotUrl: dealHubspotUrl("59104598613") },
+        { id: "59094143606", name: "OptiShine",      amount:    87_800, closeDate: "2026-04-11", hubspotUrl: dealHubspotUrl("59094143606") },
+        { id: "59121294451", name: "CelluGlow",      amount:    79_600, closeDate: "2026-04-11", hubspotUrl: dealHubspotUrl("59121294451") },
+      ],
       inProgress: 10_267_830,
       inProgressDealCount: 48,
       hubspotUrl: companyHubspotUrl("14801654147"),
@@ -1439,6 +1462,9 @@ const PLACEHOLDER_ACCOUNT_PENETRATION: AccountPenetrationData = {
       projection: 3_000_000,
       captured: 250_000,
       capturedDealCount: 1,
+      capturedDeals: [
+        { id: "59100000001", name: "ReviveBoost", amount: 250_000, closeDate: "2026-03-15", hubspotUrl: dealHubspotUrl("59100000001") },
+      ],
       inProgress: 1_600_000,
       inProgressDealCount: 10,
       hubspotUrl: companyHubspotUrl("7045543278"),
@@ -1449,6 +1475,7 @@ const PLACEHOLDER_ACCOUNT_PENETRATION: AccountPenetrationData = {
       projection: 3_000_000,
       captured: 0,
       capturedDealCount: 0,
+      capturedDeals: [],
       inProgress: 0,
       inProgressDealCount: 0,
       hubspotUrl: companyHubspotUrl("15494931750"),
@@ -1459,6 +1486,7 @@ const PLACEHOLDER_ACCOUNT_PENETRATION: AccountPenetrationData = {
       projection: 2_000_000,
       captured: 0,
       capturedDealCount: 0,
+      capturedDeals: [],
       inProgress: 0,
       inProgressDealCount: 0,
       hubspotUrl: companyHubspotUrl("6970544160"),
@@ -1504,7 +1532,7 @@ async function fetchDealsForCompany(companyId: string): Promise<RawDeal[]> {
           ],
         },
       ],
-      properties: ["amount", "pipeline", "dealstage"],
+      properties: ["amount", "pipeline", "dealstage", "dealname", "closedate"],
       limit: 100,
       ...(after ? { after } : {}),
     };
@@ -1560,6 +1588,7 @@ export async function getAccountPenetration(): Promise<AccountPenetrationData> {
         let capturedDealCount = 0;
         let inProgress = 0;
         let inProgressDealCount = 0;
+        const capturedDeals: CapturedDeal[] = [];
 
         for (const d of deals) {
           const amount = Number(d.properties.amount ?? 0) || 0;
@@ -1572,6 +1601,13 @@ export async function getAccountPenetration(): Promise<AccountPenetrationData> {
             if (outcome === "won") {
               captured += amount;
               capturedDealCount++;
+              capturedDeals.push({
+                id: d.id,
+                name: d.properties.dealname ?? "(unnamed deal)",
+                amount,
+                closeDate: d.properties.closedate ?? null,
+                hubspotUrl: dealHubspotUrl(d.id),
+              });
             } else if (outcome === "open") {
               inProgress += amount;
               inProgressDealCount++;
@@ -1580,12 +1616,15 @@ export async function getAccountPenetration(): Promise<AccountPenetrationData> {
           }
         }
 
+        capturedDeals.sort((a, b) => b.amount - a.amount);
+
         return {
           companyId,
           name,
           projection,
           captured,
           capturedDealCount,
+          capturedDeals,
           inProgress,
           inProgressDealCount,
           hubspotUrl: companyHubspotUrl(companyId),
