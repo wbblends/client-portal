@@ -31,7 +31,7 @@ export async function AccountPenetrationDashboard() {
 
       <Legend />
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {data.accounts.map(account => (
           <AccountCard key={account.companyId} account={account} />
         ))}
@@ -250,9 +250,8 @@ function WonDealsTable({ account }: { account: AccountPenetration }) {
         <table className="w-full text-sm">
           <thead className="bg-accent/40 text-[11px] font-bold uppercase tracking-[0.06em] text-muted">
             <tr>
-              <th className="px-3 py-2 text-left font-semibold">Deal</th>
+              <th className="px-3 py-2 text-left font-semibold">Product Won</th>
               <th className="px-3 py-2 text-right font-semibold">Amount</th>
-              <th className="px-3 py-2 text-right font-semibold">Closed</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -270,9 +269,6 @@ function WonDealsTable({ account }: { account: AccountPenetration }) {
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-foreground">
                   {formatCurrency(deal.amount)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-muted">
-                  {deal.closeDate ? formatDate(deal.closeDate) : "—"}
                 </td>
               </tr>
             ))}
