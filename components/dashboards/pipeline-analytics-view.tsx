@@ -33,11 +33,11 @@ const STALE_TOP_N = 15;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Curated palette for donut slices — chosen to remain legible on both the
-// light surface (#f6f4ff) and the dark card surface, with adjacent colors
+// light surface (#fafafa) and the dark card surface, with adjacent colors
 // kept distinguishable when more than five slices are visible. Slices beyond
 // the palette length cycle back to index 0.
 const SLICE_COLORS = [
-  "#6e5bfe", // primary purple
+  "#6540e3", // primary purple
   "#14854c", // success green
   "#b45309", // warning amber
   "#4338ca", // info indigo
@@ -242,7 +242,7 @@ function SummaryCell({ label, primary }: { label: string; primary: string }) {
   return (
     <div className="px-5 py-4">
       <div className="text-[11px] font-medium uppercase tracking-wide text-muted">{label}</div>
-      <div className="mt-1 text-[26px] font-semibold tabular-nums tracking-tight text-foreground">
+      <div className="mt-1 font-display text-[26px] tabular-nums tracking-tight text-foreground">
         {primary}
       </div>
     </div>

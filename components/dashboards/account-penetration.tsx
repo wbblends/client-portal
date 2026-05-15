@@ -114,7 +114,7 @@ function AccountCard({ account }: { account: AccountPenetration }) {
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
                 Initial projection
               </p>
-              <p className="mt-1 text-[36px] font-semibold leading-none tabular-nums tracking-tight text-foreground">
+              <p className="mt-1 font-display text-[36px] leading-none tabular-nums tracking-tight text-foreground">
                 {formatCurrency(projection, { compact: true })}
               </p>
             </div>
@@ -203,7 +203,7 @@ function PenetrationStat({
         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotClass}`} aria-hidden />
         {label}
       </div>
-      <div className="mt-1 text-[22px] font-semibold leading-none tabular-nums tracking-tight text-foreground">
+      <div className="mt-1 font-display text-[22px] leading-none tabular-nums tracking-tight text-foreground">
         {pct}%
       </div>
       <div className="mt-1.5 text-xs tabular-nums text-muted">{detail}</div>
