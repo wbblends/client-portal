@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { CompanyLogo } from "@/components/dashboards/deal-card";
 import { customerDomainFor } from "@/lib/customers/registry";
+import { effectiveColor } from "@/lib/tickets/status";
 
 type TicketColor = "red" | "white" | "gray" | null;
 
@@ -33,13 +34,6 @@ type Ticket = {
   lastSyncedAt: string;
   deletedAt: string | null;
 };
-
-const COLOR_CYCLE: TicketColor[] = [null, "red", "white", "gray"];
-
-function nextColor(c: TicketColor): TicketColor {
-  const i = COLOR_CYCLE.indexOf(c);
-  return COLOR_CYCLE[(i + 1) % COLOR_CYCLE.length];
-}
 
 // ── Sorting ──
 type SortKey =
@@ -180,10 +174,11 @@ export function TicketsBoard({
 
   // ── Sort state ──
   // Default view is due date ascending — most overdue first, blank due dates
-  // last. Rank-ascending is still the "natural" reorder view (the only
-  // ordering in which the rank input and drag-to-reorder are live), but it's
-  // no longer the default: click the Rank header to get there. Any non-rank
-  // sort is a read-only view of the same rows.
+  // last. Rank-ascending is still the "natural" reorder view: drag-to-reorder
+  // is only wired up there (with no filters) because it renumbers by visible
+  // position. In every other view the per-row ▲▼ buttons swap a ticket's
+  // rank with its rank-order neighbor, and the rank input is editable
+  // everywhere — so re-ranking always works.
   const [sortKey, setSortKey] = useState<SortKey>("dueDate");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
@@ -258,18 +253,42 @@ export function TicketsBoard({
     return [...r].sort((a, b) => compareTickets(a, b, sortKey, sortDir));
   }, [tabTickets, filters, sortKey, sortDir]);
 
-  // The rank input is live in any Rank view; drag-to-reorder additionally
-  // requires the natural Rank ↑ order with no field filters, because it
-  // renumbers rows by their visible position within a tab.
-  const inRankView = sortKey === "rank";
-  const canReorder = inRankView && sortDir === "asc" && !hasFieldFilters;
+  // Drag-to-reorder is only wired up in the natural Rank ↑ view with no field
+  // filters, because the drop handler renumbers rows by their visible position
+  // within a tab. Outside that view, the per-row ▲▼ buttons handle reordering
+  // (they swap ranks with the rank-order neighbor, so they're sort-agnostic).
+  const canReorder = sortKey === "rank" && sortDir === "asc" && !hasFieldFilters;
+
+  // For each ticket, do its rank neighbors exist? Used to enable/disable the
+  // per-row ▲▼ buttons. Rank-null tickets get `false`/`false` — they need a
+  // rank assigned (via the Rank input) before they can be nudged.
+  const rankNeighbors = useMemo(() => {
+    const byTab = new Map<string, Ticket[]>();
+    for (const t of tickets) {
+      if (t.rank == null) continue;
+      const list = byTab.get(t.tab);
+      if (list) list.push(t);
+      else byTab.set(t.tab, [t]);
+    }
+    const out = new Map<string, { up: boolean; down: boolean }>();
+    for (const list of byTab.values()) {
+      list.sort((a, b) => a.rank! - b.rank!);
+      for (let i = 0; i < list.length; i++) {
+        out.set(`${list[i].tab}:${list[i].id}`, {
+          up: i > 0,
+          down: i < list.length - 1,
+        });
+      }
+    }
+    return out;
+  }, [tickets]);
 
   // ── Optimistic patch ──
   const patchTicket = useCallback(
     async (
       tab: string,
       id: string,
-      patch: { color?: TicketColor; rank?: number | null },
+      patch: { rank: number | null },
     ) => {
       pendingWritesRef.current++;
       try {
@@ -297,16 +316,34 @@ export function TicketsBoard({
     [],
   );
 
-  const cycleColor = useCallback(
-    (tab: string, id: string) => {
-      const current = tickets.find(t => t.tab === tab && t.id === id);
-      const target = nextColor(current?.color ?? null);
+  // Swap a ticket's rank with the next rank-order neighbor in the same tab.
+  // Unlike drag-to-reorder (which renumbers by visible position and is only
+  // wired in Rank↑), this works under any sort/filter because it operates
+  // purely on rank values.
+  const moveRank = useCallback(
+    async (tab: string, id: string, dir: "up" | "down") => {
+      const ranked = tickets
+        .filter(t => t.tab === tab && t.rank != null)
+        .sort((a, b) => a.rank! - b.rank!);
+      const idx = ranked.findIndex(t => t.id === id);
+      if (idx === -1) return;
+      const neighbor = ranked[dir === "up" ? idx - 1 : idx + 1];
+      if (!neighbor) return;
+      const self = ranked[idx];
+      const selfRank = self.rank!;
+      const neighborRank = neighbor.rank!;
       setTickets(prev =>
-        prev.map(t =>
-          t.tab === tab && t.id === id ? { ...t, color: target } : t,
-        ),
+        prev.map(t => {
+          if (t.tab !== tab) return t;
+          if (t.id === self.id) return { ...t, rank: neighborRank };
+          if (t.id === neighbor.id) return { ...t, rank: selfRank };
+          return t;
+        }),
       );
-      void patchTicket(tab, id, { color: target });
+      await Promise.all([
+        patchTicket(tab, self.id, { rank: neighborRank }),
+        patchTicket(tab, neighbor.id, { rank: selfRank }),
+      ]);
     },
     [tickets, patchTicket],
   );
@@ -420,9 +457,6 @@ export function TicketsBoard({
                   onSort={onSort}
                   className="w-24"
                 />
-                <th scope="col" className="text-left font-medium px-2 py-2 w-10">
-                  <span className="sr-only">Color</span>
-                </th>
                 <SortableTh label="ID" columnKey="id" activeKey={sortKey} dir={sortDir} onSort={onSort} />
                 <SortableTh label="Ver" columnKey="version" activeKey={sortKey} dir={sortDir} onSort={onSort} />
                 <SortableTh label="Name" columnKey="name" activeKey={sortKey} dir={sortDir} onSort={onSort} />
@@ -432,8 +466,8 @@ export function TicketsBoard({
                 <SortableTh label="Status" columnKey="status" activeKey={sortKey} dir={sortDir} onSort={onSort} />
                 <SortableTh label="Open" columnKey="openDate" activeKey={sortKey} dir={sortDir} onSort={onSort} />
                 <SortableTh label="Due" columnKey="dueDate" activeKey={sortKey} dir={sortDir} onSort={onSort} />
-                <th scope="col" className="px-2 py-2 w-6">
-                  <span className="sr-only">Drag</span>
+                <th scope="col" className="px-2 py-2 w-8">
+                  <span className="sr-only">Reorder</span>
                 </th>
               </tr>
             </thead>
@@ -441,7 +475,7 @@ export function TicketsBoard({
               {rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={12}
+                    colSpan={11}
                     className="px-4 py-10 text-center text-sm text-muted"
                   >
                     {tickets.length === 0 ? (
@@ -462,14 +496,17 @@ export function TicketsBoard({
                 rows.map(t => {
                   const key = { tab: t.tab, id: t.id };
                   const rowKey = `${t.tab}:${t.id}`;
+                  const neighbors = rankNeighbors.get(rowKey);
                   return (
                     <TicketRow
                       key={rowKey}
                       ticket={t}
-                      inRankView={inRankView}
                       canReorder={canReorder}
-                      onCycleColor={() => cycleColor(t.tab, t.id)}
+                      canMoveUp={neighbors?.up ?? false}
+                      canMoveDown={neighbors?.down ?? false}
                       onRankChange={raw => setRank(t.tab, t.id, raw)}
+                      onMoveUp={() => void moveRank(t.tab, t.id, "up")}
+                      onMoveDown={() => void moveRank(t.tab, t.id, "down")}
                       onDragStart={onDragStart(key)}
                       onDragOver={onDragOver}
                       onDrop={onDrop(key)}
@@ -711,10 +748,12 @@ function TicketCustomerLogo({ customer }: { customer: string }) {
 
 function TicketRow({
   ticket,
-  inRankView,
   canReorder,
-  onCycleColor,
+  canMoveUp,
+  canMoveDown,
   onRankChange,
+  onMoveUp,
+  onMoveDown,
   onDragStart,
   onDragOver,
   onDrop,
@@ -722,10 +761,12 @@ function TicketRow({
   markDirty,
 }: {
   ticket: Ticket;
-  inRankView: boolean;
   canReorder: boolean;
-  onCycleColor: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   onRankChange: (raw: string) => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   onDragStart: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
@@ -753,51 +794,28 @@ function TicketRow({
       style={rowColorStyle(displayColor)}
     >
       <td className="px-3 py-2 align-middle">
-        {inRankView ? (
-          <input
-            type="text"
-            inputMode="numeric"
-            value={localRank}
-            onChange={e => {
-              setLocalRank(e.target.value);
-              markDirty();
-            }}
-            onBlur={e => onRankChange(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            }}
-            placeholder="—"
-            className={cn(
-              "w-14 rounded-md border border-border bg-transparent px-2 py-1",
-              "text-center font-bold tabular-nums",
-              // Rank cell is intentionally 2 steps larger and bolder than body
-              // copy (table is text-sm = 14px → rank is text-xl = 20px).
-              "text-xl",
-              "focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30",
-            )}
-            aria-label={`Rank for ${ticket.name || ticket.id}`}
-          />
-        ) : (
-          // Read-only while the table is sorted by another column — rank is
-          // only editable in a Rank view.
-          <span
-            className="inline-block w-14 text-center text-xl font-bold tabular-nums text-muted"
-            title="Switch to Rank sort to edit"
-          >
-            {ticket.rank == null ? "—" : ticket.rank}
-          </span>
-        )}
-      </td>
-      <td className="px-2 py-2 align-middle">
-        <button
-          type="button"
-          onClick={onCycleColor}
-          aria-label={`Color: ${ticket.color ?? "none"} — click to cycle`}
-          title={`Color: ${ticket.color ?? "none"}`}
+        <input
+          type="text"
+          inputMode="numeric"
+          value={localRank}
+          onChange={e => {
+            setLocalRank(e.target.value);
+            markDirty();
+          }}
+          onBlur={e => onRankChange(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          }}
+          placeholder="—"
           className={cn(
-            "h-5 w-5 rounded-full border transition-shadow hover:shadow-md",
-            colorSwatchClass(ticket.color),
+            "w-14 rounded-md border border-border bg-transparent px-2 py-1",
+            "text-center font-bold tabular-nums",
+            // Rank cell is intentionally 2 steps larger and bolder than body
+            // copy (table is text-sm = 14px → rank is text-xl = 20px).
+            "text-xl",
+            "focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30",
           )}
+          aria-label={`Rank for ${ticket.name || ticket.id}`}
         />
       </td>
       <td className="px-3 py-2 font-mono text-xs text-foreground">
@@ -834,92 +852,42 @@ function TicketRow({
             <GripVertical className="h-4 w-4" />
           </button>
         ) : (
-          <span
-            className="block h-4 w-4"
-            aria-hidden="true"
-            title="Switch to Rank ↑ with no filters to reorder"
-          />
+          <div className="flex flex-col items-center -my-1 leading-none">
+            <button
+              type="button"
+              onClick={onMoveUp}
+              disabled={!canMoveUp}
+              aria-label={`Move ${ticket.name || ticket.id} up in rank`}
+              title={canMoveUp ? "Bump rank up" : "Already at the top of the rank list"}
+              className={cn(
+                "rounded p-0.5 transition-colors",
+                canMoveUp
+                  ? "text-muted-soft hover:bg-accent hover:text-foreground"
+                  : "cursor-not-allowed text-muted-soft/30",
+              )}
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={!canMoveDown}
+              aria-label={`Move ${ticket.name || ticket.id} down in rank`}
+              title={canMoveDown ? "Bump rank down" : "Already at the bottom of the rank list"}
+              className={cn(
+                "rounded p-0.5 transition-colors",
+                canMoveDown
+                  ? "text-muted-soft hover:bg-accent hover:text-foreground"
+                  : "cursor-not-allowed text-muted-soft/30",
+              )}
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+          </div>
         )}
       </td>
     </tr>
   );
-}
-
-// ── Automatic row color ──
-// A ticket's `color` field is a manual override an admin sets with the row
-// swatch. When it's null, the row takes an automatic color instead:
-//   • gray — status is one of the "parked / waiting on someone else" states
-//   • red  — past its due date
-// Gray wins over red: a parked ticket stays gray even when overdue, because
-// it isn't actionable on our side until the status changes.
-const GRAY_STATUSES = new Set<string>([
-  "awaiting fps",
-  "documents gathered",
-  "hold",
-  "in process",
-  "in r&d",
-  "in requote",
-  "info needed",
-  "waiting for label proof",
-  "waiting on fps",
-  "waiting on sfp",
-]);
-
-// Status text arrives free-form from the source spreadsheet — fold case and
-// collapse whitespace so casing/spacing drift still matches.
-function normalizeStatus(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-/**
- * Parse a free-text due date to a local-midnight Date. The source spreadsheet
- * sends M/D/YY (its usual format); the sync API also documents ISO. Both are
- * built in local time so a day-granularity comparison doesn't drift a day
- * across timezones. Returns null for blank/unparseable values.
- */
-function parseDueDate(s: string | null): Date | null {
-  if (!s) return null;
-  const trimmed = s.trim();
-  if (!trimmed) return null;
-
-  const slash = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(trimmed);
-  if (slash) {
-    const month = Number(slash[1]);
-    const day = Number(slash[2]);
-    let year = Number(slash[3]);
-    if (year < 100) year += year < 50 ? 2000 : 1900;
-    return new Date(year, month - 1, day);
-  }
-
-  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
-  if (iso) {
-    return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-  }
-
-  const t = Date.parse(trimmed);
-  return Number.isFinite(t) ? new Date(t) : null;
-}
-
-/** True when the due date is strictly before today. Due today is not overdue. */
-function isOverdue(dueDate: string | null): boolean {
-  const due = parseDueDate(dueDate);
-  if (!due) return false;
-  const now = new Date();
-  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate()).getTime();
-  const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  return dueDay < todayDay;
-}
-
-/** The color a row shows when no manual override is set. */
-function autoColor(ticket: Ticket): TicketColor {
-  if (GRAY_STATUSES.has(normalizeStatus(ticket.status))) return "gray";
-  if (isOverdue(ticket.dueDate)) return "red";
-  return null;
-}
-
-/** Manual swatch color wins; otherwise fall back to the automatic color. */
-function effectiveColor(ticket: Ticket): TicketColor {
-  return ticket.color ?? autoColor(ticket);
 }
 
 /**
@@ -955,19 +923,6 @@ function rowColorStyle(c: TicketColor): React.CSSProperties | undefined {
       return { backgroundColor: "rgba(120, 120, 130, 0.18)" };
     default:
       return undefined;
-  }
-}
-
-function colorSwatchClass(c: TicketColor): string {
-  switch (c) {
-    case "red":
-      return "bg-red-500 border-red-600";
-    case "white":
-      return "bg-white border-zinc-400";
-    case "gray":
-      return "bg-zinc-400 border-zinc-500";
-    default:
-      return "bg-transparent border-border-strong border-dashed";
   }
 }
 
