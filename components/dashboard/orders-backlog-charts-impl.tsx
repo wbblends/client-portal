@@ -30,7 +30,7 @@ const BACKLOG_SNAPSHOTS: Array<{ label: string; value: number | null }> = [
   { label: "Feb-26", value: 28_800_000 },
   { label: "Mar-26", value: 30_300_000 },
   { label: "Apr-26", value: 30_376_233 },
-  { label: "May-26", value: 27_705_627 },
+  { label: "May-26", value: 33_925_675 },
 ];
 
 const WEEKLY_BACKLOG: Array<{ label: string; value: number }> = [
