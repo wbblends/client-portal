@@ -32,23 +32,24 @@ const STALE_AFTER_DAYS = 30;
 const STALE_TOP_N = 15;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Curated palette for donut slices — chosen to remain legible on both the
-// light surface (#fafafa) and the dark card surface, with adjacent colors
-// kept distinguishable when more than five slices are visible. Slices beyond
-// the palette length cycle back to index 0.
+// Curated palette for donut slices — eight shades of the WB Blends brand
+// purple, with lightness alternating on purpose so adjacent slices stay
+// distinguishable when many categories are visible. The two trailing
+// neutrals are reserved for "Unset/Unknown" buckets so a missing value
+// reads as "missing" rather than as another category. Sourced from the
+// --chart-purple-*/--chart-neutral-* tokens in globals.css so light and
+// dark mode get tonally appropriate variants.
 const SLICE_COLORS = [
-  "#6540e3", // primary purple
-  "#14854c", // success green
-  "#b45309", // warning amber
-  "#4338ca", // info indigo
-  "#db2777", // pink
-  "#0891b2", // cyan
-  "#65a30d", // lime
-  "#ea580c", // orange
-  "#7c3aed", // violet
-  "#0d9488", // teal
-  "#b91c1c", // danger red
-  "#475569", // slate (fallback for "Unset"/"Unknown")
+  "var(--chart-purple-1)",  // brand primary
+  "var(--chart-purple-2)",  // mid-light lavender
+  "var(--chart-purple-3)",  // deep purple
+  "var(--chart-purple-4)",  // light lavender
+  "var(--chart-purple-5)",  // mid-deep
+  "var(--chart-purple-6)",  // mid-light alt
+  "var(--chart-purple-7)",  // very deep
+  "var(--chart-purple-8)",  // palest lavender
+  "var(--chart-neutral-1)", // fallback for "Unset/Unknown"
+  "var(--chart-neutral-2)", // secondary fallback
 ];
 
 function flatten(data: KanbanData): FlatDeal[] {
@@ -415,15 +416,25 @@ function DonutCard({
     // Render the donut in value-descending order so the largest slice starts
     // at the top, regardless of how the table is sorted.
     const sorted = [...rows].sort((a, b) => valueOf(b) - valueOf(a));
-    return sorted.map((r, i) => ({
-      key: r.key,
-      value: valueOf(r),
-      pct: valueOf(r) / total,
-      color:
-        r.key === "Unset" || r.key === "Unassigned" || r.key === "Unknown"
-          ? SLICE_COLORS[SLICE_COLORS.length - 1]
-          : SLICE_COLORS[i % (SLICE_COLORS.length - 1)],
-    }));
+    // Palette shape: indices 0–7 are the purple ramp, 8–9 are neutral
+    // fallbacks for "missing data" buckets. Real categories rotate through
+    // the eight purples; Unset/Unassigned/Unknown drop into a neutral so
+    // they read visually as "no value" rather than as another category.
+    const PURPLE_COUNT = 8;
+    let neutralCursor = 0;
+    return sorted.map((r, i) => {
+      const isMissing =
+        r.key === "Unset" || r.key === "Unassigned" || r.key === "Unknown";
+      const color = isMissing
+        ? SLICE_COLORS[PURPLE_COUNT + (neutralCursor++ % 2)]
+        : SLICE_COLORS[i % PURPLE_COUNT];
+      return {
+        key: r.key,
+        value: valueOf(r),
+        pct: valueOf(r) / total,
+        color,
+      };
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, total, weight]);
 

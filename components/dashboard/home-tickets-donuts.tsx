@@ -13,17 +13,23 @@ import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 
 type Datum = { name: string; value: number };
 
+// Sections are categorical, not semantic — use the brand purple ramp from
+// globals.css so the donut reads as one family of related buckets rather
+// than a stoplight of unrelated meanings. Adjacent indices alternate
+// lightness so neighbouring slices stay distinguishable.
 const SECTION_PALETTE = [
-  "var(--color-primary)",
-  "var(--color-info)",
-  "var(--color-success)",
-  "var(--color-warning)",
-  "var(--color-danger)",
-  "#0a66c2",
-  "var(--color-muted)",
-  "var(--color-border-strong)",
+  "var(--chart-purple-1)",
+  "var(--chart-purple-2)",
+  "var(--chart-purple-3)",
+  "var(--chart-purple-4)",
+  "var(--chart-purple-5)",
+  "var(--chart-purple-6)",
+  "var(--chart-purple-7)",
+  "var(--chart-purple-8)",
 ];
 
+// Health is intentionally semantic — red/gray/green carry meaning that
+// shouldn't be flattened into the brand palette.
 const HEALTH_COLORS: Record<string, string> = {
   Overdue: "var(--color-danger)",
   Parked: "var(--color-muted)",

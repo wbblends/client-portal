@@ -94,7 +94,7 @@ export function SalesByDurationChart({
               />
               <Bar
                 dataKey="prior"
-                fill="var(--color-border-strong)"
+                fill="var(--chart-purple-8)"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={42}
                 isAnimationActive={!reducedMotion}
@@ -103,7 +103,7 @@ export function SalesByDurationChart({
               />
               <Bar
                 dataKey="current"
-                fill="var(--color-primary)"
+                fill="var(--chart-purple-1)"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={42}
                 isAnimationActive={!reducedMotion}
@@ -119,13 +119,16 @@ export function SalesByDurationChart({
       </div>
       <div className="mt-3 flex items-center gap-5 text-xs">
         <div className="flex items-center gap-2">
-          <span className="block h-2.5 w-2.5 rounded-sm bg-primary" />
+          <span
+            className="block h-2.5 w-2.5 rounded-sm"
+            style={{ background: "var(--chart-purple-1)" }}
+          />
           <span className="text-foreground-soft">Selected period</span>
         </div>
         <div className="flex items-center gap-2">
           <span
             className="block h-2.5 w-2.5 rounded-sm"
-            style={{ background: "var(--color-border-strong)" }}
+            style={{ background: "var(--chart-purple-8)" }}
           />
           <span className="text-foreground-soft">{compareLabel}</span>
         </div>

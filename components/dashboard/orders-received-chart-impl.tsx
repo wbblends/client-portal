@@ -89,8 +89,8 @@ function MonthlyPosTooltip({
               height: 8,
               borderRadius: 2,
               background: point.isYear2026
-                ? "var(--color-success)"
-                : "var(--color-primary)",
+                ? "var(--chart-purple-1)"
+                : "var(--chart-purple-4)",
               display: "inline-block",
             }}
           />
@@ -201,7 +201,11 @@ export function MonthlyPosReceivedChart({
               {points.map((d, i) => (
                 <Cell
                   key={i}
-                  fill={d.isYear2026 ? "var(--color-success)" : "var(--color-primary)"}
+                  fill={
+                    d.isYear2026
+                      ? "var(--chart-purple-1)"
+                      : "var(--chart-purple-4)"
+                  }
                 />
               ))}
               <LabelList

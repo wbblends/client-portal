@@ -1,21 +1,22 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand palette — neutral surfaces with #6540e3 purple reserved for accents,
-     per the WB Blends brand kit. Surfaces, text, and borders are true
-     neutrals; purple appears only on primary actions, active states, dot
-     bullets, links, and italic display emphasis. Dark-mode overrides land
-     in the [data-theme="dark"] block below. */
+  /* Brand palette — surfaces lean very subtly toward lavender so the brand
+     #6540e3 purple has a warm neutral to sit on. Purple appears as the
+     primary accent (actions, active states, dot bullets, links, italic
+     display emphasis) and now also drives the categorical chart palette
+     via the --chart-purple-* ramp below. Dark-mode overrides land in the
+     [data-theme="dark"] block below. */
   --color-background: #ffffff;
-  --color-surface: #fafafa;          /* near-white page bg */
+  --color-surface: #faf8ff;          /* near-white page bg with lavender wash */
   --color-surface-tint: #f2f0ff;     /* lavender tint — active nav, brand washes */
   --color-foreground: #111111;       /* primary text */
   --color-foreground-soft: #1f1f1f;
   --color-muted: #535353;            /* secondary body */
   --color-muted-soft: #898a96;       /* tertiary / meta */
-  --color-border: #e6e6eb;
-  --color-border-strong: #d8d8df;
-  --color-grid-line: rgba(17, 11, 41, 0.025);
+  --color-border: #e8e6f0;           /* lavender-toned neutral border */
+  --color-border-strong: #d8d6e2;
+  --color-grid-line: rgba(101, 64, 227, 0.035);  /* brand purple at low opacity */
   --color-card: #ffffff;
 
   --color-primary: #6540e3;          /* WB Blends purple */
@@ -34,6 +35,23 @@
   --color-danger-soft: #ffeff6;
   --color-info: #6540e3;
   --color-info-soft: #ebe8ff;
+
+  /* Categorical chart ramp — eight purple shades curated so adjacent slices
+     stay distinguishable on the white card surface. Lightness alternates on
+     purpose: brand mid → light → deep → mid-light → very deep → light-mid →
+     pale → mid-deep. Two muted neutrals at the end act as fallbacks for
+     "Unset/Unknown" buckets so they read as "missing data" rather than
+     another category. Use via var(--chart-purple-1) through -8. */
+  --chart-purple-1: #6540e3;   /* brand primary — anchor */
+  --chart-purple-2: #a194ff;   /* mid-light lavender */
+  --chart-purple-3: #3b1d99;   /* deep purple */
+  --chart-purple-4: #c4b5fd;   /* light lavender */
+  --chart-purple-5: #5b39d1;   /* mid-deep */
+  --chart-purple-6: #8a6dff;   /* mid-light alt */
+  --chart-purple-7: #2a1772;   /* very deep */
+  --chart-purple-8: #d6c9ff;   /* palest lavender that still reads on white */
+  --chart-neutral-1: #898a96;  /* fallback — Unset / Unknown */
+  --chart-neutral-2: #b6b3c4;  /* fallback — secondary "missing" bucket */
 
   --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: var(--font-display), ui-serif, Georgia, "Times New Roman", serif;
@@ -94,6 +112,21 @@
   --color-danger-soft: #3d0f0f;
   --color-info: #a194ff;
   --color-info-soft: #1e1b4b;
+
+  /* Categorical chart ramp — flipped lighter for dark surfaces. Same
+     "alternate lightness for adjacency" idea, but the deep shades drop out
+     since they'd disappear against #15102e. Neutrals shift cooler so the
+     "missing data" tone still reads. */
+  --chart-purple-1: #a194ff;
+  --chart-purple-2: #7c5cf3;
+  --chart-purple-3: #dbd2ff;
+  --chart-purple-4: #5b39d1;
+  --chart-purple-5: #ebe8ff;
+  --chart-purple-6: #8a6dff;
+  --chart-purple-7: #c4b5fd;
+  --chart-purple-8: #6540e3;
+  --chart-neutral-1: #807a9c;
+  --chart-neutral-2: #5e577a;
 
   --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
   --shadow-card-hover: 0 4px 14px -2px rgba(134, 117, 255, 0.20), 0 0 0 1px rgba(255, 255, 255, 0.06);

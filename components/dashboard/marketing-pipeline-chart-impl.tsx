@@ -19,9 +19,13 @@ const fmt = (v: number) => formatCurrency(v, { compact: true });
 
 // The two HubSpot pipelines, in stacking order (bottom → top). Labels are the
 // internal names Devin uses; kept in sync with lib/marketing/hubspot.ts.
+// Both series live on the brand purple ramp — the deeper shade anchors the
+// stack and the lighter mid-lavender sits above it. Two purples instead of
+// purple-vs-green so the chart reads as one brand family rather than a
+// semantic split.
 const PIPELINE_SERIES = [
-  { key: "sales", label: "New Logo Pipeline", color: "var(--color-primary)" },
-  { key: "expansion", label: "Wallet Share Pipeline", color: "var(--color-success)" },
+  { key: "sales", label: "New Logo Pipeline", color: "var(--chart-purple-1)" },
+  { key: "expansion", label: "Wallet Share Pipeline", color: "var(--chart-purple-2)" },
 ] as const;
 
 type TooltipPayloadItem = {
