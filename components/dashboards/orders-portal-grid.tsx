@@ -437,6 +437,46 @@ export function OrdersPortalGrid({
     [monthTotals],
   );
 
+  /**
+   * Aggregate YTD (sum of all 12 months) and MTD (current month only) by rep
+   * and by tier. Rep order follows REP_SUGGESTIONS so the canonical 5 stay
+   * stacked in their usual sequence; any extra reps fall in after them
+   * alphabetically. Tier order follows TIERS (AA → A → B → C); rows with no
+   * tier set are grouped under "—" at the bottom.
+   */
+  const repBreakdown = useMemo(() => {
+    const map = new Map<string, { ytd: number; mtd: number }>();
+    for (const r of rows) {
+      const k = r.rep || "—";
+      const bucket = map.get(k) ?? { ytd: 0, mtd: 0 };
+      for (let i = 0; i < 12; i++) bucket.ytd += r.months[i] ?? 0;
+      bucket.mtd += r.months[currentMonthIdx] ?? 0;
+      map.set(k, bucket);
+    }
+    const order = [...REP_SUGGESTIONS];
+    const seen = new Set<string>(order);
+    for (const k of Array.from(map.keys()).sort()) {
+      if (!seen.has(k)) {
+        order.push(k);
+        seen.add(k);
+      }
+    }
+    return order.filter(k => map.has(k)).map(rep => ({ rep, ...map.get(rep)! }));
+  }, [rows, currentMonthIdx]);
+
+  const tierBreakdown = useMemo(() => {
+    const map = new Map<string, { ytd: number; mtd: number }>();
+    for (const r of rows) {
+      const k = r.tier || "—";
+      const bucket = map.get(k) ?? { ytd: 0, mtd: 0 };
+      for (let i = 0; i < 12; i++) bucket.ytd += r.months[i] ?? 0;
+      bucket.mtd += r.months[currentMonthIdx] ?? 0;
+      map.set(k, bucket);
+    }
+    const order: string[] = [...TIERS, "—"];
+    return order.filter(k => map.has(k)).map(tier => ({ tier, ...map.get(tier)! }));
+  }, [rows, currentMonthIdx]);
+
   const downloadCsv = () => {
     const forecastHeaders = forecastWindow.map(i => `${MONTH_LABELS[i]} Forecast`);
     const header = [
@@ -615,6 +655,41 @@ export function OrdersPortalGrid({
           <MonthlyPosReceivedChart points={posReceivedPoints} />
         </div>
       </section>
+
+      {/* ── Breakdowns: by Rep / by Tier ──────────────────────────────── */}
+      {/* Side-by-side panels showing YTD and current-month booked revenue
+          aggregated by rep and tier. Percent column is each row's share of
+          its column total, so the columns read as a horizontal stack. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <BreakdownPanel
+          title="By Rep"
+          monthLabel={MONTH_SHORT[currentMonthIdx]}
+          totalYtd={ytdGrand}
+          totalMtd={monthActual}
+          rows={repBreakdown.map(b => ({
+            key: b.rep,
+            label: b.rep || "—",
+            dotClass: getRepColor(b.rep).dot,
+            ytd: b.ytd,
+            mtd: b.mtd,
+          }))}
+          firstColHeader="Rep"
+        />
+        <BreakdownPanel
+          title="By Tier"
+          monthLabel={MONTH_SHORT[currentMonthIdx]}
+          totalYtd={ytdGrand}
+          totalMtd={monthActual}
+          rows={tierBreakdown.map(b => ({
+            key: b.tier,
+            label: b.tier || "—",
+            dotClass: tierDotClass(b.tier),
+            ytd: b.ytd,
+            mtd: b.mtd,
+          }))}
+          firstColHeader="Tier"
+        />
+      </div>
 
       {/* ── Toolbar ───────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
@@ -1279,6 +1354,115 @@ function Td({
       {children}
     </td>
   );
+}
+
+/**
+ * Two-column ($ + % of total) breakdown for a single dimension. Used twice
+ * on the dashboard: by Rep, by Tier. The bar in the % column visually echoes
+ * each row's share so the eye can rank dominant buckets without doing math.
+ */
+function BreakdownPanel({
+  title,
+  monthLabel,
+  firstColHeader,
+  rows,
+  totalYtd,
+  totalMtd,
+}: {
+  title: string;
+  monthLabel: string;
+  firstColHeader: string;
+  rows: { key: string; label: string; dotClass: string; ytd: number; mtd: number }[];
+  totalYtd: number;
+  totalMtd: number;
+}) {
+  return (
+    <section className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+      <header className="px-5 pt-4 pb-3 flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        <span className="text-[11px] uppercase tracking-wide text-muted">
+          YTD · MTD {monthLabel}
+        </span>
+      </header>
+      <table className="w-full text-[13px] tabular-nums">
+        <thead>
+          <tr className="bg-accent/40 text-[10px] font-bold uppercase tracking-wide text-muted">
+            <th className="px-5 py-2 text-left">{firstColHeader}</th>
+            <th className="px-3 py-2 text-right">YTD</th>
+            <th className="px-3 py-2 text-right w-[22%]">% of YTD</th>
+            <th className="px-3 py-2 text-right">MTD ({monthLabel})</th>
+            <th className="pl-3 pr-5 py-2 text-right w-[22%]">% of MTD</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(r => {
+            const ytdPct = totalYtd > 0 ? r.ytd / totalYtd : 0;
+            const mtdPct = totalMtd > 0 ? r.mtd / totalMtd : 0;
+            return (
+              <tr key={r.key} className="border-t border-border/50">
+                <td className="px-5 py-2">
+                  <span className="inline-flex items-center gap-2 text-foreground font-medium">
+                    <span className={cn("h-2 w-2 rounded-full shrink-0", r.dotClass)} />
+                    {r.label}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {r.ytd === 0 ? <span className="text-muted-soft">—</span> : fmtCurrency(r.ytd)}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  <PctBar value={ytdPct} dotClass={r.dotClass} />
+                </td>
+                <td className="px-3 py-2 text-right text-foreground">
+                  {r.mtd === 0 ? <span className="text-muted-soft">—</span> : fmtCurrency(r.mtd)}
+                </td>
+                <td className="pl-3 pr-5 py-2 text-right">
+                  <PctBar value={mtdPct} dotClass={r.dotClass} />
+                </td>
+              </tr>
+            );
+          })}
+          <tr className="border-t border-border bg-accent/25 font-semibold text-foreground">
+            <td className="px-5 py-2.5">Total</td>
+            <td className="px-3 py-2.5 text-right">{fmtCurrency(totalYtd)}</td>
+            <td className="px-3 py-2.5 text-right text-muted text-[12px]">100%</td>
+            <td className="px-3 py-2.5 text-right">{fmtCurrency(totalMtd)}</td>
+            <td className="pl-3 pr-5 py-2.5 text-right text-muted text-[12px]">100%</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function PctBar({ value, dotClass }: { value: number; dotClass: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 justify-end w-full">
+      <span className="text-[12px] text-muted tabular-nums w-10 text-right">
+        {(value * 100).toFixed(0)}%
+      </span>
+      <span className="h-1.5 w-14 rounded-full bg-accent overflow-hidden shrink-0">
+        <span
+          className={cn("block h-full rounded-full", dotClass)}
+          style={{ width: `${Math.min(100, value * 100)}%` }}
+        />
+      </span>
+    </span>
+  );
+}
+
+function tierDotClass(tier: string) {
+  switch (tier) {
+    case "AA":
+      return "bg-emerald-600";
+    case "A":
+      return "bg-blue-600";
+    case "B":
+      return "bg-amber-400";
+    case "C":
+      return "bg-rose-600";
+    default:
+      return "bg-muted-soft";
+  }
 }
 
 function fmtCurrency(n: number) {
