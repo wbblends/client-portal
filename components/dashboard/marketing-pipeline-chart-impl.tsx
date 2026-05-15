@@ -5,7 +5,9 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  ComposedChart,
   Legend,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -47,7 +49,11 @@ function CumulativeTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
-  const total = payload.reduce((s, p) => s + (Number(p.value) || 0), 0);
+  // Exclude the trendline from the stacked-pipeline total — it's a derived
+  // line, not an actual pipeline bucket.
+  const bars = payload.filter(p => p.dataKey !== "trend");
+  const trend = payload.find(p => p.dataKey === "trend");
+  const total = bars.reduce((s, p) => s + (Number(p.value) || 0), 0);
   return (
     <div
       style={{
@@ -63,7 +69,7 @@ function CumulativeTooltip({
       <div style={{ color: "var(--color-foreground)", fontWeight: 600, marginBottom: 6 }}>
         {label}
       </div>
-      {payload.map(p => (
+      {bars.map(p => (
         <div
           key={String(p.dataKey)}
           style={{
@@ -106,6 +112,21 @@ function CumulativeTooltip({
         <span>Total open</span>
         <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmt(total)}</span>
       </div>
+      {trend ? (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 16,
+            marginTop: 4,
+            color: "var(--color-foreground-soft)",
+            fontSize: 11,
+          }}
+        >
+          <span>Trend</span>
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmt(Number(trend.value))}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -121,17 +142,39 @@ export function CumulativePipelineChart({ buckets }: { buckets: PipelineHistoryB
   useEffect(() => setMounted(true), []);
   const reducedMotion = usePrefersReducedMotion();
 
-  const data = buckets.map(b => ({
+  const base = buckets.map(b => ({
     label: b.label,
     sales: b.openUnweightedByPipeline.sales,
     expansion: b.openUnweightedByPipeline.expansion,
+    total: b.openUnweightedByPipeline.sales + b.openUnweightedByPipeline.expansion,
   }));
+
+  // Linear-regression best-fit line over the bucket totals — shows whether
+  // collective open pipeline is trending up or down across the window.
+  const n = base.length;
+  let slope = 0;
+  let intercept = 0;
+  if (n > 1) {
+    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    for (let i = 0; i < n; i++) {
+      sumX += i;
+      sumY += base[i].total;
+      sumXY += i * base[i].total;
+      sumXX += i * i;
+    }
+    const denom = n * sumXX - sumX * sumX;
+    slope = denom === 0 ? 0 : (n * sumXY - sumX * sumY) / denom;
+    intercept = (sumY - slope * sumX) / n;
+  } else if (n === 1) {
+    intercept = base[0].total;
+  }
+  const data = base.map((d, i) => ({ ...d, trend: Math.max(0, intercept + slope * i) }));
 
   return (
     <div className="h-[260px] w-full">
       {mounted ? (
         <ResponsiveContainer>
-          <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="label"
@@ -162,13 +205,27 @@ export function CumulativePipelineChart({ buckets }: { buckets: PipelineHistoryB
                 animationBegin={i * 80}
               />
             ))}
+            <Line
+              type="linear"
+              dataKey="trend"
+              name="Trend"
+              stroke="var(--color-foreground)"
+              strokeWidth={2}
+              strokeDasharray="5 4"
+              dot={false}
+              activeDot={{ r: 3 }}
+              isAnimationActive={!reducedMotion}
+              animationDuration={550}
+              animationEasing="ease-out"
+              animationBegin={PIPELINE_SERIES.length * 80}
+            />
             <Legend
               verticalAlign="top"
               height={28}
               iconType="square"
               wrapperStyle={{ fontSize: 12, color: "var(--color-foreground-soft)" }}
             />
-          </BarChart>
+          </ComposedChart>
         </ResponsiveContainer>
       ) : (
         <div className="h-full w-full rounded-lg bg-accent/30" />
