@@ -28,6 +28,19 @@ const SCOPE_LABEL: Record<Scope, string> = {
 
 const TIER_ORDER = ["AA", "A", "B", "C", "Unset"] as const;
 const FORMAT_ORDER = ["Liquid", "Capsule", "Powder", "Unset"] as const;
+// Union of stage labels across both pipelines in their natural progression
+// order. Each pipeline only uses a subset; the orderHint logic pushes any
+// unexpected labels to the end alphabetically, so this stays correct if HubSpot
+// adds a stage we haven't listed.
+const STAGE_ORDER = [
+  "Target",
+  "In Contact",
+  "Opportunity",
+  "Formulation",
+  "Quoting",
+  "R&D",
+  "Onboarding",
+] as const;
 const STALE_AFTER_DAYS = 30;
 const STALE_TOP_N = 15;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -116,6 +129,14 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
 
       <div className="grid grid-cols-1 gap-5 sm:gap-7 xl:grid-cols-2">
         <DonutCard
+          title="Deals by stage"
+          deals={deals}
+          weight={chartWeight}
+          onWeightChange={setChartWeight}
+          groupBy={d => d.stageLabel}
+          orderHint={STAGE_ORDER}
+        />
+        <DonutCard
           title="Deals by rep"
           deals={deals}
           weight={chartWeight}
@@ -149,6 +170,12 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
         />
       </div>
 
+      <BreakdownTable
+        title="By stage"
+        deals={deals}
+        groupBy={d => d.stageLabel}
+        orderHint={STAGE_ORDER}
+      />
       <BreakdownTable
         title="By rep"
         deals={deals}
