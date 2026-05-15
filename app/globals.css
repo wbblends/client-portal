@@ -15,6 +15,7 @@
   --color-muted-soft: #898a96;       /* tertiary / meta */
   --color-border: #e6e6eb;
   --color-border-strong: #d8d8df;
+  --color-grid-line: rgba(17, 11, 41, 0.025);
   --color-card: #ffffff;
 
   --color-primary: #6540e3;          /* WB Blends purple */
@@ -74,6 +75,7 @@
   --color-muted-soft: #807a9c;
   --color-border: #251f44;
   --color-border-strong: #2e2752;
+  --color-grid-line: rgba(255, 255, 255, 0.03);
   --color-card: #15102e;
 
   --color-primary: #8a6dff;
@@ -110,14 +112,18 @@ html.theme-switching *[data-theme-transition] {
 
 @layer base {
   html {
-    background: var(--color-surface);
+    background-color: var(--color-surface);
+    background-image:
+      linear-gradient(to right, var(--color-grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-grid-line) 1px, transparent 1px);
+    background-size: 32px 32px;
     /* Prevent text autosizing on iOS landscape rotate. */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
 
   body {
-    background: var(--color-surface);
+    background-color: transparent;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-weight: 500; /* Sequel Sans Display VF — 500 is the brand body weight. */

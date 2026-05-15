@@ -100,7 +100,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
-      <body className="min-h-full bg-surface text-foreground">
+      <body className="min-h-full text-foreground">
         {children}
         <ServiceWorkerRegister />
       </body>
