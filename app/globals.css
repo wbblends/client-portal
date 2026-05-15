@@ -133,6 +133,16 @@
   --shadow-popover: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
+/* WB Blends lockup/mark PNGs are dark on transparency. In dark mode we knock
+   them to pure white: `brightness(0)` flattens every visible pixel to black,
+   then `invert(1)` flips that to white while alpha passes through unchanged.
+   The mark variant uses `mix-blend-multiply` for the light theme — that mode
+   would erase a white silhouette on a dark surface, so we reset it. */
+[data-theme="dark"] .wb-logo {
+  filter: brightness(0) invert(1);
+  mix-blend-mode: normal;
+}
+
 /* Smooth color transitions when toggling. Scoped to a transient class the
    theme toggle adds for ~250ms so we don't keep paying for transitions on
    every interaction (hover, focus, etc.) — only during the actual switch. */

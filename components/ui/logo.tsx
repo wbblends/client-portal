@@ -26,7 +26,7 @@ export function Logo({
         width={px}
         height={px}
         priority
-        className={cn("object-contain mix-blend-multiply", className)}
+        className={cn("wb-logo object-contain mix-blend-multiply", className)}
       />
     );
   }
@@ -39,7 +39,7 @@ export function Logo({
       width={w}
       height={h}
       priority
-      className={cn("object-contain", className)}
+      className={cn("wb-logo object-contain", className)}
     />
   );
 }
