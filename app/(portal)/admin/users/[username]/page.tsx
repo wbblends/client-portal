@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getUser } from "@/lib/users/store";
 import { listDashboards } from "@/lib/dashboards/registry";
 import { listCustomers } from "@/lib/customers/registry";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { UserForm } from "@/components/admin/user-form";
 
 export const metadata = { title: "Edit user — WB Blends Admin" };
@@ -46,9 +46,6 @@ export default async function EditUserPage(props: PageProps<"/admin/users/[usern
       <Card>
         <CardHeader>
           <CardTitle>User details</CardTitle>
-          <CardDescription>
-            Username is fixed once a user is created; everything else is editable.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <UserForm

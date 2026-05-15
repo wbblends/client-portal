@@ -1,5 +1,5 @@
 import { ExternalLink, Flame } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { DealCard, StageColumn, PipelineKanban, PipelineKey } from "@/lib/marketing/hubspot";
 import { formatCurrency } from "@/lib/utils";
@@ -95,28 +95,15 @@ export function scoreDealsForPipeline(pipeline: PipelineKanban): ScoredDeal[] {
     .sort((a, b) => b.score - a.score);
 }
 
-function fmtRelative(iso: string | null): string {
-  if (!iso) return "—";
-  const ms = Date.parse(iso);
-  if (!Number.isFinite(ms)) return "—";
-  const days = Math.floor((Date.now() - ms) / 86_400_000);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 7) return `${days}d ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-  return `${Math.floor(days / 365)}y ago`;
-}
-
 function ScoreBar({ value, label }: { value: number; label: string }) {
   const pct = Math.round(value * 100);
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="w-12 text-[10px] uppercase tracking-wide text-muted">
+    <div className="flex items-center gap-2">
+      <span className="w-14 text-[10px] uppercase tracking-wide text-muted">
         {label}
       </span>
       <div
-        className="h-1 flex-1 overflow-hidden rounded-full bg-accent"
+        className="h-1.5 flex-1 overflow-hidden rounded-full bg-accent"
         aria-label={`${label} ${pct}%`}
       >
         <div
@@ -130,12 +117,10 @@ function ScoreBar({ value, label }: { value: number; label: string }) {
 
 export function TopDealsCard({
   title,
-  description,
   deals,
-  limit = 5,
+  limit = 4,
 }: {
   title: string;
-  description: string;
   deals: ScoredDeal[];
   limit?: number;
 }) {
@@ -144,9 +129,8 @@ export function TopDealsCard({
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {top.length === 0 ? (
           <p className="text-sm text-muted py-6 text-center">No open deals.</p>
         ) : (
@@ -156,7 +140,7 @@ export function TopDealsCard({
               href={d.hubspotUrl}
               target="_blank"
               rel="noreferrer"
-              className="block rounded-lg border border-border bg-surface/30 px-3 py-2.5 transition hover:border-primary/40 hover:bg-surface/60"
+              className="block rounded-lg border border-border bg-surface/30 px-4 py-3.5 transition hover:border-primary/40 hover:bg-surface/60"
             >
               <div className="flex items-baseline justify-between gap-3">
                 <div className="min-w-0">
@@ -182,16 +166,12 @@ export function TopDealsCard({
                   <div className="text-[10px] text-muted">weighted</div>
                 </div>
               </div>
-              <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted">
+              <div className="mt-3">
                 <Badge tone="neutral" className="font-medium">
                   {d.stageLabel}
                 </Badge>
-                <span className="tabular-nums">
-                  note {fmtRelative(d.lastNoteDate)} ·{" "}
-                  {Math.round(d.stageProbability * 100)}% prob
-                </span>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
+              <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
                 <ScoreBar value={d.parts.activity} label="active" />
                 <ScoreBar value={d.parts.value} label="value" />
                 <ScoreBar value={d.parts.velocity} label="velocity" />

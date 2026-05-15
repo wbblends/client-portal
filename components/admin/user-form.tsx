@@ -195,12 +195,8 @@ export function UserForm({
               </Button>
             )}
           </div>
-          {avatarError ? (
+          {avatarError && (
             <p className="text-[11px] text-danger">{avatarError}</p>
-          ) : (
-            <p className="text-[11px] text-muted">
-              Square works best. We resize to 256×256 before saving.
-            </p>
           )}
         </div>
       </div>
@@ -260,12 +256,7 @@ export function UserForm({
       </Field>
 
       <div>
-        <div className="text-sm font-medium text-foreground mb-1">Customers</div>
-        <p className="text-xs text-muted mb-3">
-          {role === "customer"
-            ? "Check every customer this user can see, then pick their permission for the Documents area. Viewers can browse files; editors can also add folders and documents. (Invoices, Quality, and Contact are read-only for everyone.)"
-            : "Internal, admin, and super admin users see all customers automatically — these picks are ignored. They are always treated as editors in every customer's Documents area."}
-        </p>
+        <div className="text-sm font-medium text-foreground mb-3">Customers</div>
         <div className="rounded-lg border border-border bg-card divide-y divide-border">
           {customers.map(c => {
             const checked = pickedCustomers.has(c.id);
@@ -297,16 +288,11 @@ export function UserForm({
       </div>
 
       <div>
-        <div className="text-sm font-medium text-foreground mb-1">Dashboards</div>
-        <p className="text-xs text-muted mb-3">
-          {role === "super_admin"
-            ? "Super admins see every dashboard automatically — these picks are ignored. Future dashboards added to the registry will appear for them without any change here."
-            : "Pick every cross-customer dashboard this user can see. New dashboards added to the registry will appear here automatically."}
-        </p>
+        <div className="text-sm font-medium text-foreground mb-3">Dashboards</div>
         <div className="space-y-4 rounded-lg border border-border p-4 bg-card">
           {groupedDashboards.map(([category, items]) => (
             <div key={category}>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-soft mb-1.5">
+              <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-soft mb-1.5">
                 {category}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5">
@@ -349,11 +335,6 @@ export function UserForm({
         </Button>
       </div>
 
-      {!editing && (
-        <p className="text-xs text-muted -mt-3 text-right">
-          The user will get an email with a link to set their password.
-        </p>
-      )}
 
       {editing && <SetPasswordSection username={editing.username} />}
     </form>
@@ -407,10 +388,6 @@ function SetPasswordSection({ username }: { username: string }) {
     <div className="rounded-lg border border-border bg-card p-4 space-y-3">
       <div>
         <div className="text-sm font-medium text-foreground">Set password</div>
-        <p className="text-[11px] text-muted">
-          Sets the user's password directly — no email. Use only when needed; the invite /
-          reset email flow is the usual path.
-        </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="New password">
@@ -434,7 +411,7 @@ function SetPasswordSection({ username }: { username: string }) {
       {tooShort && (
         <p className="text-[11px] text-danger">Password must be at least 10 characters.</p>
       )}
-      {mismatch && <p className="text-[11px] text-danger">Passwords don't match.</p>}
+      {mismatch && <p className="text-[11px] text-danger">Passwords don&apos;t match.</p>}
       {msg && (
         <p
           role="alert"

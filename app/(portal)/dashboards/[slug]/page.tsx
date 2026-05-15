@@ -38,7 +38,7 @@ export default async function DashboardSlugPage(props: PageProps<"/dashboards/[s
   switch (dashboard.id) {
     case "marketing-overview":
       return (
-        <MarketingOverviewDashboard viewerName={user.name} searchParams={searchParams} />
+        <MarketingOverviewDashboard searchParams={searchParams} />
       );
     case "orders-portal":
       return <OrdersPortalDashboard dashboard={dashboard} />;

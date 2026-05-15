@@ -3,7 +3,7 @@ import { ChevronLeft } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { listDashboards } from "@/lib/dashboards/registry";
 import { listCustomers } from "@/lib/customers/registry";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { UserForm } from "@/components/admin/user-form";
 
 export const metadata = { title: "New user — WB Blends Admin" };
@@ -40,9 +40,6 @@ export default async function NewUserPage() {
       <Card>
         <CardHeader>
           <CardTitle>User details</CardTitle>
-          <CardDescription>
-            Permissions take effect immediately and can be changed any time.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <UserForm dashboards={dashboards} customers={customers} />

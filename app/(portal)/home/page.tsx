@@ -28,6 +28,7 @@ import { listTickets, type Ticket } from "@/lib/tickets/store";
 import { isLate, isParked } from "@/lib/tickets/status";
 import { MONTHLY_TARGETS, MONTH_SHORT } from "@/lib/data/orders-portal";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { MagicalSearchBar } from "@/components/ai-bot/MagicalSearchBar";
 
 // Greeting templates rotate on every refresh. The page is already dynamic
 // (requireSession reads cookies), so Math.random() runs per request.
@@ -127,10 +128,13 @@ export default async function HomePage() {
 
   if (!isAdminRole(user.role)) {
     return (
-      <div className="page-container page-pad-x page-pad-y">
+      <div className="page-container page-pad-x page-pad-y space-y-7">
         <h1 className="font-display text-3xl tracking-tight text-foreground">
           {greeting}
         </h1>
+        <div className="max-w-3xl">
+          <MagicalSearchBar />
+        </div>
       </div>
     );
   }
@@ -186,16 +190,16 @@ export default async function HomePage() {
         <h1 className="font-display text-3xl tracking-tight text-foreground">
           {greeting}
         </h1>
-        <p className="mt-1 text-sm text-muted">
-          At-a-glance snapshot across orders, pipeline, and project tickets.
-        </p>
+      </div>
+
+      <div className="max-w-3xl">
+        <MagicalSearchBar />
       </div>
 
       {/* Orders + forecast */}
       <section className="space-y-3">
         <SectionHeader
           title="Orders & forecast"
-          description={`${monthLabel} actuals plus rolling forecasts for the next two months. Targets sourced from the 2026 Sales Metrics workbook.`}
           href="/dashboards/orders-portal"
         />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -226,7 +230,6 @@ export default async function HomePage() {
       <section className="space-y-3">
         <SectionHeader
           title="Open pipeline"
-          description="Live snapshot across both HubSpot pipelines. Weighted = amount × stage probability."
           href="/dashboards/pipeline-analytics"
           source={pipelines.source}
         />
@@ -254,9 +257,6 @@ export default async function HomePage() {
         <Card>
           <CardHeader>
             <CardTitle>Open POs · last 12 weeks</CardTitle>
-            <CardDescription>
-              Weekly backlog snapshots from the cash-flow report.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <BacklogWeeklyChart />
@@ -267,9 +267,6 @@ export default async function HomePage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <CardTitle>Cumulative open pipeline</CardTitle>
-                <CardDescription>
-                  Open unweighted value at each month end, split by pipeline.
-                </CardDescription>
               </div>
               {history.source === "placeholder" && (
                 <Badge tone="warning" className="shrink-0">Demo data</Badge>
@@ -286,18 +283,15 @@ export default async function HomePage() {
       <section className="space-y-3">
         <SectionHeader
           title="Top deals"
-          description="Composite ranking blending recent comments, weighted value, stage progress, and progress per day open."
           source={kanban.source}
         />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <TopDealsCard
             title="New Logo Pipeline"
-            description={`Top ${Math.min(5, newLogoTop.length)} open deals by composite score.`}
             deals={newLogoTop}
           />
           <TopDealsCard
             title="Wallet Share Pipeline"
-            description={`Top ${Math.min(5, expansionTop.length)} open deals by composite score.`}
             deals={expansionTop}
           />
         </div>
@@ -307,7 +301,6 @@ export default async function HomePage() {
       <section className="space-y-3">
         <SectionHeader
           title="Project tickets"
-          description="In-flight PM tickets from the 7 AM coworker sync."
           href="/admin/tickets"
         />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -341,9 +334,6 @@ export default async function HomePage() {
         <Card>
           <CardHeader>
             <CardTitle>Tickets by section & health</CardTitle>
-            <CardDescription>
-              Left: open tickets grouped by PM workflow. Right: overdue / parked / on-track split.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <HomeTicketsDonuts bySection={ticketsBySection} health={healthData} />
@@ -356,12 +346,10 @@ export default async function HomePage() {
 
 function SectionHeader({
   title,
-  description,
   href,
   source,
 }: {
   title: string;
-  description: string;
   href?: string;
   source?: "live" | "placeholder";
 }) {
@@ -371,7 +359,6 @@ function SectionHeader({
         <h2 className="font-display text-[22px] leading-tight tracking-tight text-foreground">
           {title}
         </h2>
-        <p className="mt-1 max-w-[760px] text-sm text-muted">{description}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {source === "placeholder" && (

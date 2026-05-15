@@ -17,7 +17,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -194,7 +193,7 @@ function StatCard({
 }) {
   return (
     <Card className="px-5 py-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted">
+      <p className="text-xs font-bold uppercase tracking-wide text-muted">
         {label}
       </p>
       <p className="mt-1 font-display text-3xl tabular-nums tracking-tight text-foreground">
@@ -207,18 +206,15 @@ function StatCard({
 
 function ChartCard({
   title,
-  description,
   children,
 }: {
   title: string;
-  description?: string;
   children: ReactNode;
 }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
@@ -288,7 +284,7 @@ function DonutChart({
         <div className="font-display text-[26px] tabular-nums tracking-tight text-foreground">
           {formatNumber(total)}
         </div>
-        <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
+        <div className="text-[11px] font-bold uppercase tracking-wide text-muted">
           {centerLabel}
         </div>
       </div>
@@ -548,14 +544,11 @@ export function TicketsAnalytics({
       </div>
 
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-muted">
           By section
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
-          <ChartCard
-            title="Open tickets by section"
-            description="Every in-flight ticket, grouped by PM workflow."
-          >
+          <ChartCard title="Open tickets by section">
             <DonutChart
               data={charts.openBySection}
               colors={PALETTE}
@@ -563,10 +556,7 @@ export function TicketsAnalytics({
               reducedMotion={reducedMotion}
             />
           </ChartCard>
-          <ChartCard
-            title="Ticket health"
-            description="Overdue takes precedence over parked, so slices sum to the open total."
-          >
+          <ChartCard title="Ticket health">
             <DonutChart
               data={charts.health}
               colors={charts.health.map(
@@ -576,10 +566,7 @@ export function TicketsAnalytics({
               reducedMotion={reducedMotion}
             />
           </ChartCard>
-          <ChartCard
-            title="Overdue tickets by section"
-            description="Tickets past their due date."
-          >
+          <ChartCard title="Overdue tickets by section">
             <BarsChart
               data={charts.overdueBySection}
               color="var(--color-danger)"
@@ -588,10 +575,7 @@ export function TicketsAnalytics({
               reducedMotion={reducedMotion}
             />
           </ChartCard>
-          <ChartCard
-            title="Average days open by section"
-            description="Mean age of open tickets, from open date to today."
-          >
+          <ChartCard title="Average days open by section">
             <BarsChart
               data={charts.ageBySection}
               color="var(--color-primary)"
@@ -605,14 +589,11 @@ export function TicketsAnalytics({
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-muted">
           By product type
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
-          <ChartCard
-            title="Open tickets by product type"
-            description="Top 8 product types; the rest grouped as Other."
-          >
+          <ChartCard title="Open tickets by product type">
             <DonutChart
               data={charts.openByProduct}
               colors={PALETTE}
@@ -620,10 +601,7 @@ export function TicketsAnalytics({
               reducedMotion={reducedMotion}
             />
           </ChartCard>
-          <ChartCard
-            title="Overdue tickets by product type"
-            description="Tickets past their due date."
-          >
+          <ChartCard title="Overdue tickets by product type">
             <BarsChart
               data={charts.overdueByProduct}
               color="var(--color-danger)"
@@ -633,10 +611,7 @@ export function TicketsAnalytics({
             />
           </ChartCard>
         </div>
-        <ChartCard
-          title="Average days open by product type"
-          description="Mean age of open tickets in each product category."
-        >
+        <ChartCard title="Average days open by product type">
           <BarsChart
             data={charts.ageByProduct}
             color="var(--color-primary)"
@@ -649,14 +624,11 @@ export function TicketsAnalytics({
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-muted">
           Workload &amp; aging
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
-          <ChartCard
-            title="Open tickets by salesperson"
-            description="Current workload across all sections."
-          >
+          <ChartCard title="Open tickets by salesperson">
             <BarsChart
               data={charts.bySalesperson}
               color="var(--color-info)"
@@ -665,10 +637,7 @@ export function TicketsAnalytics({
               reducedMotion={reducedMotion}
             />
           </ChartCard>
-          <ChartCard
-            title="Top 10 customers by open tickets"
-            description="Customers with the most tickets in flight."
-          >
+          <ChartCard title="Top 10 customers by open tickets">
             <BarsChart
               data={charts.topCustomers}
               color="var(--color-primary)"
@@ -678,10 +647,7 @@ export function TicketsAnalytics({
             />
           </ChartCard>
         </div>
-        <ChartCard
-          title="Ticket aging"
-          description="How long open tickets have been in flight."
-        >
+        <ChartCard title="Ticket aging">
           <BarsChart
             data={charts.aging}
             color="var(--color-primary)"

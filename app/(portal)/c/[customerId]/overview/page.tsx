@@ -8,12 +8,11 @@ export async function generateMetadata(props: PageProps<"/c/[customerId]/overvie
 
 export default async function CustomerOverviewPage(props: PageProps<"/c/[customerId]/overview">) {
   const { customerId } = await props.params;
-  const { user, customer } = await requireCustomerAccess(customerId);
+  const { customer } = await requireCustomerAccess(customerId);
   const searchParams = await props.searchParams;
   return (
     <CustomerOverviewDashboard
       customer={customer}
-      viewerName={user.name}
       searchParams={searchParams}
     />
   );

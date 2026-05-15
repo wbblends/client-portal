@@ -12,7 +12,7 @@ import {
 import { getOpenOrders } from "@/lib/data/open-orders";
 import { getOnboardingProducts } from "@/lib/data/onboarding";
 import { buildSalesByProduct } from "@/lib/data/sales-products";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/dashboard/date-range-picker";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
 import { SalesByDurationChart } from "@/components/dashboard/yoy-chart";
@@ -24,16 +24,12 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 
 /**
  * Renderer for the per-customer overview dashboard. Server component.
- * The `customer` is the URL-scoped customer being viewed; `viewerName` is
- * the logged-in user's display name (used for the greeting only).
  */
 export async function CustomerOverviewDashboard({
   customer,
-  viewerName,
   searchParams,
 }: {
   customer: Customer;
-  viewerName: string;
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const range = resolveRange(searchParams);
@@ -83,7 +79,6 @@ export async function CustomerOverviewDashboard({
     <div className="page-container page-pad-x page-pad-y space-y-6 sm:space-y-7">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
-          <p className="text-sm text-muted">Welcome back, {viewerName.split(" ")[0]}.</p>
           <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground break-words">
             {profile.name}
           </h1>
@@ -122,10 +117,6 @@ export async function CustomerOverviewDashboard({
       <Card>
         <CardHeader>
           <CardTitle>Sales By Duration</CardTitle>
-          <CardDescription>
-            Your selected window vs. {compare.label.toLowerCase()}. Toggle between dollars and
-            units.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <SalesByDurationChart
@@ -141,10 +132,6 @@ export async function CustomerOverviewDashboard({
           <h2 className="font-display text-[clamp(20px,2.6vw,24px)] leading-tight tracking-tight text-foreground">
             Sales By Product
           </h2>
-          <p className="text-sm text-muted mt-0.5">
-            Your top five products by trailing-12-month volume. Selected and compare windows
-            adjust as you change the date picker.
-          </p>
         </div>
         <SalesByProduct
           rows={productRows}
@@ -158,10 +145,6 @@ export async function CustomerOverviewDashboard({
           <h2 className="font-display text-[clamp(20px,2.6vw,24px)] leading-tight tracking-tight text-foreground">
             Onboarding Statuses
           </h2>
-          <p className="text-sm text-muted mt-0.5">
-            Every SKU we&apos;re commercializing with you — quoting, R&amp;D, pilot, and FPS review.
-            Once a product hits production, it rolls into Open Orders below.
-          </p>
         </div>
         <OnboardingReport
           products={onboarding}
@@ -175,10 +158,6 @@ export async function CustomerOverviewDashboard({
           <h2 className="font-display text-[clamp(20px,2.6vw,24px)] leading-tight tracking-tight text-foreground">
             Open Orders
           </h2>
-          <p className="text-sm text-muted mt-0.5">
-            Your standing weekly Friday status — promise dates, current production stage, and any
-            flags. No black boxes.
-          </p>
         </div>
         <OpenOrdersReport
           orders={openOrders}
@@ -192,11 +171,6 @@ export async function CustomerOverviewDashboard({
       <Card>
         <CardHeader>
           <CardTitle>Historical Orders</CardTitle>
-          <CardDescription>
-            Your top 7 SKUs by value in the selected window. Units and value adjust with the date
-            picker; the cadence and order window on the right are estimates from your account
-            team.
-          </CardDescription>
         </CardHeader>
         <CardContent className="px-0">
           <SkuGrid orders={currentOrders} topN={7} />

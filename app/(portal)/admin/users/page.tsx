@@ -2,9 +2,9 @@
 import { Plus, Mail, KeyRound, ShieldCheck } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { listUsers } from "@/lib/users/store";
-import { listDashboards, getDashboardById } from "@/lib/dashboards/registry";
-import { listCustomers, getCustomer } from "@/lib/customers/registry";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { getDashboardById } from "@/lib/dashboards/registry";
+import { getCustomer } from "@/lib/customers/registry";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { UserRowActions } from "@/components/admin/user-row-actions";
@@ -15,8 +15,6 @@ export const metadata = { title: "Users — WB Blends Admin" };
 export default async function AdminUsersPage() {
   const me = await requireAdmin();
   const users = await listUsers();
-  const dashboardsRegistry = listDashboards();
-  const customersRegistry = listCustomers();
 
   return (
     <div
@@ -39,16 +37,11 @@ export default async function AdminUsersPage() {
       <Card>
         <CardHeader>
           <CardTitle>Current users ({users.length})</CardTitle>
-          <CardDescription>
-            {dashboardsRegistry.length} cross-customer dashboards · {customersRegistry.length}{" "}
-            customers in the registry. Permissions update immediately on save — no redeploy
-            needed.
-          </CardDescription>
         </CardHeader>
         <CardContent className="px-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-y border-border bg-accent/30 text-xs uppercase tracking-wide text-muted">
+              <thead className="border-y border-border bg-accent/30 text-xs font-bold uppercase tracking-wide text-muted">
                 <tr>
                   <th scope="col" className="text-left font-medium px-6 py-2 w-12">
                     <span className="sr-only">Avatar</span>

@@ -487,7 +487,7 @@ export function OrdersPortalGrid({
           return (
             <div className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted">
+                <div className="text-xs font-bold uppercase tracking-wide text-muted">
                   {currentMonthLabel}
                 </div>
                 <div
@@ -574,7 +574,7 @@ export function OrdersPortalGrid({
               className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]"
             >
               <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted">
+                <div className="text-xs font-bold uppercase tracking-wide text-muted">
                   {q.label}
                 </div>
                 <div
@@ -610,9 +610,6 @@ export function OrdersPortalGrid({
       <section className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
         <header className="px-5 pt-4 pb-2">
           <h2 className="text-sm font-semibold text-foreground">Monthly POs Received</h2>
-          <p className="mt-0.5 text-xs text-muted">
-            Monthly PO revenue — 2025 actuals plus 2026 actuals to date, with 2026 monthly target overlay.
-          </p>
         </header>
         <div className="px-3 pb-4">
           <MonthlyPosReceivedChart points={posReceivedPoints} />
@@ -688,7 +685,7 @@ export function OrdersPortalGrid({
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
         <table className="w-full border-separate border-spacing-0 text-[13px] tabular-nums">
           <thead>
-            <tr className="bg-accent/40 text-[11px] uppercase tracking-wide text-muted">
+            <tr className="bg-accent/40 text-[11px] font-bold uppercase tracking-wide text-muted">
               <Th sticky="left-0" className="w-10" />
               <Th sticky="left-10" className="min-w-[220px] border-l border-border">
                 Customer
@@ -733,7 +730,7 @@ export function OrdersPortalGrid({
               <Th sticky="left-0" className="w-10 text-muted" />
               <Th
                 sticky="left-10"
-                className="min-w-[220px] border-l border-border text-[10px] uppercase tracking-wide text-muted"
+                className="min-w-[220px] border-l border-border text-[10px] font-bold uppercase tracking-wide text-muted"
               >
                 Σ totals
               </Th>

@@ -1,7 +1,7 @@
 import { Mail, Phone, ArrowUpRight } from "lucide-react";
 import { requireCustomerAccess } from "@/lib/auth";
 import { getContacts } from "@/lib/data/contacts";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { TeamAvatar } from "@/components/portal/team-avatar";
 
 export const metadata = { title: "Contact — WB Blends" };
@@ -67,10 +67,6 @@ export default async function ContactPage(props: PageProps<"/c/[customerId]/cont
       <Card>
         <CardHeader>
           <CardTitle>Shared Resources</CardTitle>
-          <CardDescription>
-            For anything that doesn&apos;t map cleanly to a single person — we triage shared
-            inboxes within one business day.
-          </CardDescription>
         </CardHeader>
         <CardContent className="px-0">
           <ul className="divide-y divide-border">

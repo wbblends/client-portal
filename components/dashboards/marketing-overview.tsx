@@ -1,4 +1,4 @@
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
 import { DateRangePicker } from "@/components/dashboard/date-range-picker";
@@ -33,10 +33,8 @@ import { pctChange } from "@/lib/data/aggregate";
  * snapshot since it mirrors the top section.
  */
 export async function MarketingOverviewDashboard({
-  viewerName,
   searchParams,
 }: {
-  viewerName: string;
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const range = resolveRange(searchParams);
@@ -64,7 +62,6 @@ export async function MarketingOverviewDashboard({
     <div className="page-container page-pad-x page-pad-y space-y-6 sm:space-y-7">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
-          <p className="text-sm text-muted">Welcome back, {viewerName.split(" ")[0]}.</p>
           <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
             Marketing Overview
           </h1>
@@ -76,7 +73,6 @@ export async function MarketingOverviewDashboard({
       <section className="space-y-3">
         <SectionHeader
           title="HubSpot pipeline value"
-          description="Open deals as of right now. Weighted = amount × stage probability (HubSpot's hs_projected_amount)."
           source={pipelines.source}
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -96,15 +92,11 @@ export async function MarketingOverviewDashboard({
       <section className="space-y-3">
         <SectionHeader
           title="Pipeline flow"
-          description="Reconstructed from current deals + their create / close dates. Deals added vs closed-won / closed-lost during each bucket."
           source={history.source}
         />
         <Card>
           <CardHeader>
             <CardTitle>Pipeline flow</CardTitle>
-            <CardDescription>
-              Deals added (above zero) vs closed-won + closed-lost (below zero) per bucket.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <PipelineFlowChart buckets={history.buckets} />
@@ -116,7 +108,6 @@ export async function MarketingOverviewDashboard({
       <section className="space-y-3">
         <SectionHeader
           title="Inbound leads"
-          description="Typeform submissions counted from HubSpot contacts (typeform_response_type)."
           source={leadCounts.source}
         />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -141,7 +132,6 @@ export async function MarketingOverviewDashboard({
       <section className="space-y-3">
         <SectionHeader
           title="Marketing attribution"
-          description="Open deals + POs in range, from companies whose contacts came in via Typeform. Pipeline counts every open deal on a company that has at least one Typeform-tagged contact in HubSpot."
           source={
             attribution.source === "placeholder" || influencedPOs.source === "placeholder"
               ? "placeholder"
@@ -177,15 +167,11 @@ export async function MarketingOverviewDashboard({
           <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle>Matched customers</CardTitle>
-              <CardDescription>
-                HubSpot companies (with Typeform-touched contacts) that also appear in the orders
-                portal. Sorted by PO value in the selected range.
-              </CardDescription>
             </CardHeader>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-muted border-y border-border bg-surface/60">
+                  <tr className="text-left text-[10px] font-bold uppercase tracking-[0.08em] text-muted border-y border-border bg-surface/60">
                     <th className="px-5 py-2.5 font-semibold">Customer</th>
                     <th className="px-3 py-2.5 font-semibold">HubSpot match</th>
                     <th className="px-5 py-2.5 text-right font-semibold">POs in range</th>
@@ -228,7 +214,6 @@ export async function MarketingOverviewDashboard({
       <section className="space-y-3">
         <SectionHeader
           title="Paid traffic & engagement"
-          description="Post-click analytics from HubSpot's traffic-sources report. Visits = ad clicks that landed on the site (Google = paid search, LinkedIn = paid social). Impressions / CTR / ad spend aren't exposed by HubSpot's public API — those live in Google Ads & LinkedIn Campaign Manager."
           source={adAnalytics.source}
         />
         <AdAnalyticsKpis analytics={adAnalytics} compareLabel={compare.shortLabel} />
@@ -239,10 +224,6 @@ export async function MarketingOverviewDashboard({
         <Card>
           <CardHeader>
             <CardTitle>Daily paid visits</CardTitle>
-            <CardDescription>
-              Stacked daily series — Google Ads (paid search) and LinkedIn Ads (paid social) over
-              the selected range.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <PaidVisitsTrendChart points={adAnalytics.daily} />
@@ -252,9 +233,6 @@ export async function MarketingOverviewDashboard({
           <Card>
             <CardHeader>
               <CardTitle>Traffic source share</CardTitle>
-              <CardDescription>
-                Every traffic source in the range. Paid slices highlighted.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <TrafficShareChart slices={adAnalytics.trafficShare} />
@@ -263,9 +241,6 @@ export async function MarketingOverviewDashboard({
           <Card>
             <CardHeader>
               <CardTitle>Engagement quality by network</CardTitle>
-              <CardDescription>
-                Lower bounce + higher pages/session = better post-click experience.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <EngagementCompareChart networks={adAnalytics.byNetwork} />
@@ -382,7 +357,7 @@ function NetworkCard({
 function NetworkStat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[10px] font-medium uppercase tracking-wide text-muted">{label}</div>
+      <div className="text-[10px] font-bold uppercase tracking-wide text-muted">{label}</div>
       <div className="mt-0.5 font-display text-[18px] tabular-nums tracking-tight text-foreground">
         {value}
       </div>
@@ -392,11 +367,9 @@ function NetworkStat({ label, value }: { label: string; value: string }) {
 
 function SectionHeader({
   title,
-  description,
   source,
 }: {
   title: string;
-  description: string;
   source?: "live" | "placeholder";
 }) {
   return (
@@ -405,7 +378,6 @@ function SectionHeader({
         <h2 className="font-display text-[24px] leading-tight tracking-tight text-foreground">
           {title}
         </h2>
-        <p className="text-sm text-muted mt-1 max-w-[820px]">{description}</p>
       </div>
       {source === "placeholder" && (
         <Badge tone="warning" className="shrink-0 mt-1">
@@ -446,7 +418,7 @@ function PipelineCard({
       <CardContent className="pt-1">
         <dl className="grid grid-cols-2 gap-4">
           <div>
-            <dt className="text-[11px] font-medium uppercase tracking-wide text-muted">
+            <dt className="text-[11px] font-bold uppercase tracking-wide text-muted">
               Unweighted
             </dt>
             <dd className="mt-1 font-display text-[24px] tabular-nums tracking-tight text-foreground">
@@ -454,7 +426,7 @@ function PipelineCard({
             </dd>
           </div>
           <div>
-            <dt className="text-[11px] font-medium uppercase tracking-wide text-muted">
+            <dt className="text-[11px] font-bold uppercase tracking-wide text-muted">
               Weighted
             </dt>
             <dd className="mt-1 font-display text-[24px] tabular-nums tracking-tight text-foreground-soft">

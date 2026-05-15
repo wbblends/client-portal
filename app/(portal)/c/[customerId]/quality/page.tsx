@@ -1,6 +1,6 @@
 ﻿import { requireCustomerAccess } from "@/lib/auth";
 import { getQualityTickets, QUALITY_STATUS_META } from "@/lib/data/quality";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata = { title: "Quality — WB Blends" };
@@ -31,10 +31,6 @@ export default async function QualityPage(props: PageProps<"/c/[customerId]/qual
       <Card>
         <CardHeader>
           <CardTitle>All Tickets</CardTitle>
-          <CardDescription>
-            Most recent first. Closed tickets retain the resolution decision so you have a
-            written record of the call.
-          </CardDescription>
         </CardHeader>
         <CardContent className="px-0">
           {tickets.length === 0 ? (

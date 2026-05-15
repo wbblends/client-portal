@@ -3,7 +3,6 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent,
 } from "@/components/ui/card";
 import {
@@ -67,10 +66,6 @@ export async function PipelineAnalyticsDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Cumulative open pipeline</CardTitle>
-          <CardDescription>
-            Total open pipeline value at each month-end over the last 12 months, stacked by
-            pipeline — New Logo + Wallet Share.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <CumulativePipelineChart buckets={history.buckets} />

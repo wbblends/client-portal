@@ -1,7 +1,7 @@
 import { Download } from "lucide-react";
 import { requireCustomerAccess } from "@/lib/auth";
 import { getInvoices, INVOICE_STATUS_META } from "@/lib/data/invoices";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -35,7 +35,6 @@ export default async function InvoicesPage(props: PageProps<"/c/[customerId]/inv
       <Card>
         <CardHeader>
           <CardTitle>All Invoices</CardTitle>
-          <CardDescription>Most recent first.</CardDescription>
         </CardHeader>
         <CardContent className="px-0">
           {/* Desktop table — header sticks to the page so long invoice lists
@@ -44,7 +43,7 @@ export default async function InvoicesPage(props: PageProps<"/c/[customerId]/inv
               page (or the lg sidebar's `top-0`) rather than the wrapper. */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10 bg-card text-left text-[11px] font-semibold uppercase tracking-wide text-muted shadow-[0_1px_0_0_var(--color-border)]">
+              <thead className="sticky top-0 z-10 bg-card text-left text-[11px] font-bold uppercase tracking-wide text-muted shadow-[0_1px_0_0_var(--color-border)]">
                 <tr>
                   <th className="px-5 py-2.5 font-semibold">Invoice</th>
                   <th className="px-3 py-2.5 font-semibold">PO</th>
@@ -123,19 +122,19 @@ export default async function InvoicesPage(props: PageProps<"/c/[customerId]/inv
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px]">
                     <div>
-                      <div className="text-[10px] uppercase tracking-wide text-muted">Issued</div>
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-muted">Issued</div>
                       <div className="text-foreground-soft tabular-nums">{formatDate(inv.issueDate, "short")}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wide text-muted">Due</div>
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-muted">Due</div>
                       <div className="text-foreground-soft tabular-nums">{formatDate(inv.dueDate, "short")}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wide text-muted">Amount</div>
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-muted">Amount</div>
                       <div className="tabular-nums font-medium text-foreground">{formatCurrency(inv.amount)}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wide text-muted">Paid</div>
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-muted">Paid</div>
                       <div className="tabular-nums text-foreground-soft">{formatCurrency(inv.paidAmount)}</div>
                     </div>
                   </div>

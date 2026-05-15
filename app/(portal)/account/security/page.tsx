@@ -1,6 +1,6 @@
 import { ShieldCheck, ShieldAlert } from "lucide-react";
 import { requireSession } from "@/lib/auth";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MfaPanel } from "@/components/account/mfa-panel";
 
@@ -25,9 +25,6 @@ export default async function SecurityPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <CardTitle>Two-factor authentication</CardTitle>
-              <CardDescription>
-                Adds a code from your authenticator app on every sign-in. Strongly recommended.
-              </CardDescription>
             </div>
             {me.mfaEnabled ? (
               <Badge tone="success">

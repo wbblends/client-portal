@@ -27,9 +27,6 @@ export default function RootError({
       <body className="min-h-dvh bg-surface text-foreground">
         <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6 text-center">
           <h1 className="font-display text-2xl tracking-tight">Something went wrong</h1>
-          <p className="mt-2 text-sm text-muted">
-            The portal hit an unexpected error. We&apos;ve logged it and the team will take a look.
-          </p>
           {error.digest && (
             <p className="mt-3 font-mono text-[11px] text-muted-soft">
               Error ID: {error.digest}
@@ -43,6 +40,11 @@ export default function RootError({
             >
               Try again
             </button>
+            {/* Native <a> on purpose: this is the root error boundary, so
+                the router may itself be in a broken state. A hard navigation
+                guarantees the app resets, where `<Link>` would soft-navigate
+                and risk getting stuck. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/"
               className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground-soft hover:bg-accent"

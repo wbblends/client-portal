@@ -61,9 +61,6 @@ export default async function LoginPage(props: PageProps<"/login">) {
                 <h1 className="font-display text-[28px] leading-tight tracking-normal text-foreground">
                   Sign in
                 </h1>
-                <p className="mt-1.5 text-sm text-muted">
-                  Welcome back. Use the credentials from your account manager.
-                </p>
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-7 ring-1 ring-primary/[0.04] shadow-[0_1px_2px_rgba(17,11,41,0.04),0_20px_45px_-22px_rgba(101,64,227,0.22)]">

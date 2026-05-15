@@ -151,28 +151,24 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
 
       <BreakdownTable
         title="By rep"
-        description="Open deals, pipeline value, and weighted value per HubSpot owner."
         deals={deals}
         groupBy={d => d.owner?.name ?? "Unassigned"}
         orderHint={null}
       />
       <BreakdownTable
         title="By tier"
-        description="Deal volume and value grouped by customer tier."
         deals={deals}
         groupBy={d => d.tier ?? "Unset"}
         orderHint={TIER_ORDER}
       />
       <BreakdownTable
         title="By format"
-        description="Deal volume and value grouped by product format."
         deals={deals}
         groupBy={d => d.format ?? "Unset"}
         orderHint={FORMAT_ORDER}
       />
       <BreakdownTable
         title="By source"
-        description="Open deal volume and value by first-touch HubSpot analytics source."
         deals={deals}
         groupBy={d => humanizeSource(d.source)}
         orderHint={null}
@@ -242,7 +238,7 @@ function SummaryStrip({
 function SummaryCell({ label, primary }: { label: string; primary: string }) {
   return (
     <div className="px-5 py-4">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-muted">{label}</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-muted">{label}</div>
       <div className="mt-1 font-display text-[26px] tabular-nums tracking-tight text-foreground">
         {primary}
       </div>
@@ -294,13 +290,11 @@ function buildBuckets(
 
 function BreakdownTable({
   title,
-  description,
   deals,
   groupBy,
   orderHint,
 }: {
   title: string;
-  description: string;
   deals: FlatDeal[];
   groupBy: (d: FlatDeal) => string;
   orderHint: readonly string[] | null;
@@ -333,13 +327,12 @@ function BreakdownTable({
     <Card className="overflow-hidden">
       <div className="px-5 pt-5 pb-3">
         <h3 className="text-base font-semibold tracking-tight text-foreground">{title}</h3>
-        <p className="text-sm text-muted mt-0.5">{description}</p>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted border-y border-border bg-surface/60">
+            <tr className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted border-y border-border bg-surface/60">
               <th className="px-5 py-2.5 text-left font-semibold">{title.replace(/^By\s/, "")}</th>
               <th className="px-3 py-2.5 text-right font-semibold">Open</th>
               <th className="px-3 py-2.5 text-right font-semibold">Unweighted</th>
@@ -481,11 +474,14 @@ function Donut({
   total: number;
 }) {
   // SVG donut built with stroke-dasharray on a single circle path. r=42 gives
-  // a circumference of ~263.9px which makes the math intuitive; sliceLen =
-  // pct × C, gap accumulates per slice via stroke-dashoffset.
+  // a circumference of ~263.9px which makes the math intuitive; each slice
+  // starts at the prefix sum of preceding lengths, precomputed once below so
+  // the render stays a pure map (no closure mutation across iterations).
   const r = 42;
   const C = 2 * Math.PI * r;
-  let offset = 0;
+  const offsets = slices.map((_, i) =>
+    slices.slice(0, i).reduce((sum, prev) => sum + prev.pct * C, 0),
+  );
 
   return (
     <div className="relative shrink-0">
@@ -502,10 +498,9 @@ function Donut({
           stroke="var(--color-border)"
           strokeWidth="12"
         />
-        {slices.map(s => {
+        {slices.map((s, i) => {
           const len = s.pct * C;
-          const dash = `${len} ${C - len}`;
-          const el = (
+          return (
             <circle
               key={s.key}
               cx="50"
@@ -514,16 +509,14 @@ function Donut({
               fill="none"
               stroke={s.color}
               strokeWidth="12"
-              strokeDasharray={dash}
-              strokeDashoffset={-offset}
+              strokeDasharray={`${len} ${C - len}`}
+              strokeDashoffset={-offsets[i]}
             />
           );
-          offset += len;
-          return el;
         })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <div className="text-[10px] uppercase tracking-wide text-muted">Total</div>
+        <div className="text-[10px] font-bold uppercase tracking-wide text-muted">Total</div>
         <div className="text-sm font-semibold tabular-nums text-foreground">{fmtMoney(total)}</div>
       </div>
     </div>
@@ -591,9 +584,6 @@ function AgingCard({ deals }: { deals: FlatDeal[] }) {
             {fmtMoney(totalStaleValue)}
           </span>
         </div>
-        <p className="text-sm text-muted mt-0.5">
-          Open deals whose HubSpot record hasn&apos;t been modified in over {STALE_AFTER_DAYS} days. Click any row to add a note. Top {STALE_TOP_N} shown.
-        </p>
       </div>
 
       {shown.length === 0 ? (
@@ -602,7 +592,7 @@ function AgingCard({ deals }: { deals: FlatDeal[] }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted border-y border-border bg-surface/60">
+              <tr className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted border-y border-border bg-surface/60">
                 <th className="px-5 py-2.5 text-left font-semibold">Deal</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Rep</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Stage</th>

@@ -203,20 +203,13 @@ export function NewOrderForm({
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-3 border-b border-border">
           <div>
-            <p className="text-xs uppercase tracking-wide text-muted">New order intake</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">New order intake</p>
             <h2
               id={titleId}
               className="mt-1 font-display text-[24px] leading-tight tracking-tight text-foreground"
             >
               {submitted ? "Order draft saved" : "Enter New Order"}
             </h2>
-            {!submitted && (
-              <p className="mt-1 text-xs text-muted">
-                Mirrors the structure of emails sent to{" "}
-                <span className="font-mono text-foreground-soft">orders@wbblends.com</span>.
-                Saves to your browser; ERP push wires up later.
-              </p>
-            )}
           </div>
           <button
             type="button"
@@ -263,7 +256,7 @@ export function NewOrderForm({
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
               {/* Subject preview */}
               <div className="rounded-lg border border-dashed border-border bg-accent/30 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wide text-muted">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-muted">
                   Email subject
                 </div>
                 <div className="mt-0.5 text-sm font-medium text-foreground truncate">
@@ -418,7 +411,7 @@ export function NewOrderForm({
                 <div className="rounded-lg border border-border overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-accent/40 text-[11px] uppercase tracking-wide text-muted">
+                      <tr className="bg-accent/40 text-[11px] font-bold uppercase tracking-wide text-muted">
                         <th className="text-left px-3 py-2 font-semibold">Week of</th>
                         <th className="text-right px-3 py-2 font-semibold">Units</th>
                         <th className="w-10" />
@@ -499,7 +492,7 @@ export function NewOrderForm({
                     Drop PO + quote PDFs, or click to browse
                   </div>
                   <div className="text-xs text-muted">
-                    Anything you'd normally attach to the order intake email
+                    Anything you&apos;d normally attach to the order intake email
                   </div>
                 </FileDrop>
 

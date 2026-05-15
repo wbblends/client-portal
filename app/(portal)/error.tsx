@@ -24,9 +24,6 @@ export default function PortalError({
         <h1 className="font-display text-2xl tracking-tight text-foreground">
           Something went wrong
         </h1>
-        <p className="mt-2 text-sm text-muted">
-          We hit an unexpected error loading this page. The portal team has been notified.
-        </p>
         {error.digest && (
           <p className="mt-3 font-mono text-[11px] text-muted-soft">
             Error ID: {error.digest}
@@ -40,6 +37,11 @@ export default function PortalError({
           >
             Try again
           </button>
+          {/* Native <a> on purpose: this is the error-boundary fallback, so
+              the router may itself be in a broken state. A hard navigation
+              guarantees the app resets, where `<Link>` would soft-navigate
+              and risk getting stuck. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/"
             className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground-soft hover:bg-accent"

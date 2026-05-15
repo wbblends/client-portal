@@ -1,6 +1,6 @@
 import type { Dashboard } from "@/lib/dashboards/registry";
 import { requireSession } from "@/lib/auth";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   BacklogSnapshotsChart,
   BacklogWeeklyChart,
@@ -17,31 +17,18 @@ export async function OrdersBacklogDashboard({ dashboard }: { dashboard: Dashboa
         </h1>
       </div>
 
-      <div className="space-y-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Open POs (Backlog)</CardTitle>
-            <CardDescription>
-              Open PO backlog snapshots — quarterly through 2025, then monthly. Apr-26 and May-26
-              values pending.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <BacklogSnapshotsChart />
-          </CardContent>
-        </Card>
-        <p className="text-xs text-muted">
-          As revenue projections increase, we need a growing backlog of open POs to continue to hit
-          revenue targets.
-        </p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Open POs (Backlog)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BacklogSnapshotsChart />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Open POs — last 12 weeks</CardTitle>
-          <CardDescription>
-            Weekly open-orders snapshots from the cash-flow report, Feb 16 through May 8.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <BacklogWeeklyChart />
