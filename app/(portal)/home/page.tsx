@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { requireSession } from "@/lib/auth";
@@ -6,7 +7,6 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,16 +18,22 @@ import {
   TopDealsCard,
   scoreDealsForPipeline,
 } from "@/components/dashboard/home-top-deals";
+import { MonthlyPosReceivedChart } from "@/components/dashboard/orders-received-chart";
+import type { MonthlyPosReceivedPoint } from "@/components/dashboard/orders-received-chart-impl";
 import {
-  getPipelineSummary,
   getPipelineKanban,
+  summarizeKanban,
+  type KanbanData,
 } from "@/lib/marketing/hubspot";
-import { getPipelineHistory } from "@/lib/marketing/pipeline-history";
+import {
+  getPipelineHistory,
+  type PipelineHistory,
+} from "@/lib/marketing/pipeline-history";
 import { listOrdersRows, type DbOrdersRow } from "@/lib/orders/store";
 import { listTickets, type Ticket } from "@/lib/tickets/store";
 import { isLate, isParked } from "@/lib/tickets/status";
-import { MONTHLY_TARGETS, MONTH_SHORT } from "@/lib/data/orders-portal";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { ACTUALS_2025, MONTHLY_TARGETS, MONTH_SHORT } from "@/lib/data/orders-portal";
+import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 
 // Greeting templates rotate on every refresh. The page is already dynamic
 // (requireSession reads cookies), so Math.random() runs per request.
@@ -120,6 +126,28 @@ function lastTwelveMonthsRange(): { from: Date; to: Date } {
   return { from, to };
 }
 
+const pctOf = (v: number, target: number) =>
+  target > 0
+    ? `${Math.round((v / target) * 100)}% of ${formatCurrency(target, { compact: true })} target`
+    : "no target set";
+
+/**
+ * Homepage.
+ *
+ * The shell (greeting + section scaffolding) paints immediately. Each section
+ * awaits its own data inside an independent <Suspense> boundary, so a slow
+ * HubSpot round-trip can no longer block the whole page from rendering:
+ *
+ *  - Orders / forecast + Monthly POs   → local DB (`listOrdersRows`), fast
+ *  - Project tickets                   → local DB (`listTickets`), fast
+ *  - Open pipeline + Top deals         → HubSpot kanban, can be slow on a cold
+ *                                        cache — streamed in independently
+ *  - Cumulative open pipeline          → HubSpot history, likewise streamed
+ *
+ * Each fetch is kicked off (not awaited) before render and the promise is
+ * passed down. The HubSpot fetchers are wrapped in `unstable_cache`, so the
+ * kanban promise shared between two sections is still a single round-trip.
+ */
 export default async function HomePage() {
   const user = await requireSession();
   const firstName = user.name.split(" ")[0];
@@ -135,50 +163,13 @@ export default async function HomePage() {
     );
   }
 
-  const now = new Date();
-  const currentMonthIdx = now.getMonth();
-  const nextMonthIdx = (currentMonthIdx + 1) % 12;
-  const monthAfterIdx = (currentMonthIdx + 2) % 12;
-
-  // Each fetcher has its own fallback so a single upstream failure doesn't
-  // take down the whole homepage.
+  // Start every fetch now, but don't await — each section resolves its own
+  // promise inside a <Suspense> boundary below.
   const range = lastTwelveMonthsRange();
-  const [pipelines, kanban, history, ordersRows, tickets] = await Promise.all([
-    getPipelineSummary(),
-    getPipelineKanban(),
-    getPipelineHistory(range),
-    listOrdersRows(),
-    listTickets(),
-  ]);
-
-  const currentMonthActual = sumMonthly(ordersRows, currentMonthIdx, "months");
-  const currentMonthForecast = sumMonthly(ordersRows, currentMonthIdx, "forecasts");
-  const nextMonthForecast = sumMonthly(ordersRows, nextMonthIdx, "forecasts");
-  const monthAfterForecast = sumMonthly(ordersRows, monthAfterIdx, "forecasts");
-
-  const currentTarget = MONTHLY_TARGETS[currentMonthIdx];
-  const nextTarget = MONTHLY_TARGETS[nextMonthIdx];
-  const monthAfterTarget = MONTHLY_TARGETS[monthAfterIdx];
-
-  const pctOf = (v: number, target: number) =>
-    target > 0
-      ? `${Math.round((v / target) * 100)}% of ${formatCurrency(target, { compact: true })} target`
-      : "no target set";
-
-  const salesPipeline = kanban.pipelines.find(p => p.key === "sales");
-  const expansionPipeline = kanban.pipelines.find(p => p.key === "expansion");
-  const newLogoTop = salesPipeline ? scoreDealsForPipeline(salesPipeline) : [];
-  const expansionTop = expansionPipeline ? scoreDealsForPipeline(expansionPipeline) : [];
-
-  const openTickets = tickets.filter(t => t.deletedAt === null);
-  const ticketsBySection = countBy(openTickets, t => t.tab);
-  const healthData = ticketHealth(openTickets);
-  const overdueCount = openTickets.filter(t => isLate(t)).length;
-  const parkedCount = openTickets.filter(t => isParked(t.status)).length;
-
-  const monthLabel = MONTH_SHORT[currentMonthIdx];
-  const nextLabel = MONTH_SHORT[nextMonthIdx];
-  const afterLabel = MONTH_SHORT[monthAfterIdx];
+  const kanbanPromise = getPipelineKanban();
+  const historyPromise = getPipelineHistory(range);
+  const ordersPromise = listOrdersRows();
+  const ticketsPromise = listTickets();
 
   return (
     <div className="page-container page-pad-x page-pad-y space-y-7">
@@ -189,63 +180,30 @@ export default async function HomePage() {
       </div>
 
       {/* Orders + forecast */}
-      <section className="space-y-3">
-        <SectionHeader
-          title="Orders & forecast"
-          href="/dashboards/orders-portal"
-        />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiTile
-            label={`${monthLabel} actuals`}
-            value={formatCurrency(currentMonthActual)}
-            hint={pctOf(currentMonthActual, currentTarget)}
+      <Suspense
+        fallback={
+          <SectionSkeleton
+            title="Orders & forecast"
+            href="/dashboards/orders-portal"
+            tiles={4}
           />
-          <KpiTile
-            label={`${monthLabel} forecast`}
-            value={formatCurrency(currentMonthForecast)}
-            hint={pctOf(currentMonthForecast, currentTarget)}
-            tone="warning"
-          />
-          <KpiTile
-            label={`${nextLabel} forecast`}
-            value={formatCurrency(nextMonthForecast)}
-            hint={pctOf(nextMonthForecast, nextTarget)}
-            tone="warning"
-          />
-          <KpiTile
-            label={`${afterLabel} forecast`}
-            value={formatCurrency(monthAfterForecast)}
-            hint={pctOf(monthAfterForecast, monthAfterTarget)}
-            tone="warning"
-          />
-        </div>
-      </section>
+        }
+      >
+        <OrdersForecastSection ordersPromise={ordersPromise} />
+      </Suspense>
 
       {/* Pipeline KPI strip */}
-      <section className="space-y-3">
-        <SectionHeader
-          title="Open pipeline"
-          href="/dashboards/pipeline-analytics"
-          source={pipelines.source}
-        />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <KpiTile
-            label="Open deals"
-            value={formatNumber(pipelines.combined.dealCount)}
-            hint={`${formatNumber(pipelines.perPipeline.sales.dealCount)} new logo · ${formatNumber(pipelines.perPipeline.expansion.dealCount)} wallet share`}
+      <Suspense
+        fallback={
+          <SectionSkeleton
+            title="Open pipeline"
+            href="/dashboards/pipeline-analytics"
+            tiles={3}
           />
-          <KpiTile
-            label="Unweighted pipeline"
-            value={formatCurrency(pipelines.combined.unweighted, { compact: true })}
-            hint="Sum of open deal amounts"
-          />
-          <KpiTile
-            label="Weighted pipeline"
-            value={formatCurrency(pipelines.combined.weighted, { compact: true })}
-            hint="Amount × stage probability"
-          />
-        </div>
-      </section>
+        }
+      >
+        <PipelineKpiSection kanbanPromise={kanbanPromise} />
+      </Suspense>
 
       {/* Charts */}
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -257,87 +215,287 @@ export default async function HomePage() {
             <BacklogWeeklyChart />
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <CardTitle>Cumulative open pipeline</CardTitle>
-              </div>
-              {history.source === "placeholder" && (
-                <Badge tone="warning" className="shrink-0">Demo data</Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <CumulativePipelineChart buckets={history.buckets} />
-          </CardContent>
-        </Card>
+        <Suspense
+          fallback={<ChartCardSkeleton title="Cumulative open pipeline" height={260} />}
+        >
+          <CumulativePipelineSection historyPromise={historyPromise} />
+        </Suspense>
       </section>
+
+      {/* Monthly POs received */}
+      <Suspense
+        fallback={<ChartCardSkeleton title="Monthly POs received" height={280} />}
+      >
+        <MonthlyPosSection ordersPromise={ordersPromise} />
+      </Suspense>
 
       {/* Top deals */}
-      <section className="space-y-3">
-        <SectionHeader
-          title="Top deals"
-          source={kanban.source}
-        />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <TopDealsCard
-            title="New Logo Pipeline"
-            deals={newLogoTop}
-          />
-          <TopDealsCard
-            title="Wallet Share Pipeline"
-            deals={expansionTop}
-          />
-        </div>
-      </section>
+      <Suspense fallback={<TopDealsSkeleton />}>
+        <TopDealsSection kanbanPromise={kanbanPromise} />
+      </Suspense>
 
       {/* Tickets */}
-      <section className="space-y-3">
-        <SectionHeader
-          title="Project tickets"
-          href="/admin/tickets"
-        />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiTile
-            label="Open tickets"
-            value={formatNumber(openTickets.length)}
-            hint="across all sections"
-          />
-          <KpiTile
-            label="Overdue"
-            value={formatNumber(overdueCount)}
-            hint={
-              openTickets.length > 0
-                ? `${Math.round((overdueCount / openTickets.length) * 100)}% of open`
-                : "past due date"
-            }
-            preferDirection="down"
-          />
-          <KpiTile
-            label="Parked"
-            value={formatNumber(parkedCount)}
-            hint="waiting on someone else"
-            preferDirection="down"
-          />
-          <KpiTile
-            label="Sections in flight"
-            value={formatNumber(ticketsBySection.length)}
-            hint="distinct workflows"
-          />
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Tickets by section & health</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <HomeTicketsDonuts bySection={ticketsBySection} health={healthData} />
-          </CardContent>
-        </Card>
-      </section>
+      <Suspense fallback={<TicketsSkeleton />}>
+        <TicketsSection ticketsPromise={ticketsPromise} />
+      </Suspense>
     </div>
   );
 }
+
+// ─── Sections ───────────────────────────────────────────────────────────────
+
+async function OrdersForecastSection({
+  ordersPromise,
+}: {
+  ordersPromise: Promise<DbOrdersRow[]>;
+}) {
+  const ordersRows = await ordersPromise;
+
+  const now = new Date();
+  const currentMonthIdx = now.getMonth();
+  const nextMonthIdx = (currentMonthIdx + 1) % 12;
+  const monthAfterIdx = (currentMonthIdx + 2) % 12;
+
+  const currentMonthActual = sumMonthly(ordersRows, currentMonthIdx, "months");
+  const currentMonthForecast = sumMonthly(ordersRows, currentMonthIdx, "forecasts");
+  const nextMonthForecast = sumMonthly(ordersRows, nextMonthIdx, "forecasts");
+  const monthAfterForecast = sumMonthly(ordersRows, monthAfterIdx, "forecasts");
+
+  const currentTarget = MONTHLY_TARGETS[currentMonthIdx];
+  const nextTarget = MONTHLY_TARGETS[nextMonthIdx];
+  const monthAfterTarget = MONTHLY_TARGETS[monthAfterIdx];
+
+  const monthLabel = MONTH_SHORT[currentMonthIdx];
+  const nextLabel = MONTH_SHORT[nextMonthIdx];
+  const afterLabel = MONTH_SHORT[monthAfterIdx];
+
+  return (
+    <section className="space-y-3">
+      <SectionHeader title="Orders & forecast" href="/dashboards/orders-portal" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiTile
+          label={`${monthLabel} actuals`}
+          value={formatCurrency(currentMonthActual)}
+          hint={pctOf(currentMonthActual, currentTarget)}
+        />
+        <KpiTile
+          label={`${monthLabel} forecast`}
+          value={formatCurrency(currentMonthForecast)}
+          hint={pctOf(currentMonthForecast, currentTarget)}
+          tone="warning"
+        />
+        <KpiTile
+          label={`${nextLabel} forecast`}
+          value={formatCurrency(nextMonthForecast)}
+          hint={pctOf(nextMonthForecast, nextTarget)}
+          tone="warning"
+        />
+        <KpiTile
+          label={`${afterLabel} forecast`}
+          value={formatCurrency(monthAfterForecast)}
+          hint={pctOf(monthAfterForecast, monthAfterTarget)}
+          tone="warning"
+        />
+      </div>
+    </section>
+  );
+}
+
+async function PipelineKpiSection({
+  kanbanPromise,
+}: {
+  kanbanPromise: Promise<KanbanData>;
+}) {
+  const kanban = await kanbanPromise;
+  const pipelines = summarizeKanban(kanban);
+
+  return (
+    <section className="space-y-3">
+      <SectionHeader
+        title="Open pipeline"
+        href="/dashboards/pipeline-analytics"
+        source={pipelines.source}
+      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <KpiTile
+          label="Open deals"
+          value={formatNumber(pipelines.combined.dealCount)}
+          hint={`${formatNumber(pipelines.perPipeline.sales.dealCount)} new logo · ${formatNumber(pipelines.perPipeline.expansion.dealCount)} wallet share`}
+        />
+        <KpiTile
+          label="Unweighted pipeline"
+          value={formatCurrency(pipelines.combined.unweighted, { compact: true })}
+          hint="Sum of open deal amounts"
+        />
+        <KpiTile
+          label="Weighted pipeline"
+          value={formatCurrency(pipelines.combined.weighted, { compact: true })}
+          hint="Amount × stage probability"
+        />
+      </div>
+    </section>
+  );
+}
+
+async function CumulativePipelineSection({
+  historyPromise,
+}: {
+  historyPromise: Promise<PipelineHistory>;
+}) {
+  const history = await historyPromise;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle>Cumulative open pipeline</CardTitle>
+          </div>
+          {history.source === "placeholder" && (
+            <Badge tone="warning" className="shrink-0">Demo data</Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <CumulativePipelineChart buckets={history.buckets} />
+      </CardContent>
+    </Card>
+  );
+}
+
+async function MonthlyPosSection({
+  ordersPromise,
+}: {
+  ordersPromise: Promise<DbOrdersRow[]>;
+}) {
+  const ordersRows = await ordersPromise;
+
+  // 2025 actuals + 2026 actuals to date, trimmed at the last month with booked
+  // revenue so future zero months don't render as empty bars.
+  const monthTotals2026 = Array.from({ length: 12 }, (_, i) =>
+    sumMonthly(ordersRows, i, "months"),
+  );
+  let lastWithData = -1;
+  for (let i = 11; i >= 0; i--) {
+    if (monthTotals2026[i] > 0) {
+      lastWithData = i;
+      break;
+    }
+  }
+  const actuals2026 = lastWithData === -1 ? [] : monthTotals2026.slice(0, lastWithData + 1);
+  const posReceivedPoints: MonthlyPosReceivedPoint[] = [
+    ...ACTUALS_2025.map(({ month, value }) => ({
+      label: `${month}-25`,
+      actual: value,
+      target: null,
+      isYear2026: false,
+    })),
+    ...actuals2026.map((value, i) => ({
+      label: `${MONTH_SHORT[i]}-26`,
+      actual: value,
+      target: MONTHLY_TARGETS[i],
+      isYear2026: true,
+    })),
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle>Monthly POs received</CardTitle>
+          <Link
+            href="/dashboards/orders-portal"
+            className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"
+          >
+            Open <ExternalLink className="h-3 w-3" />
+          </Link>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <MonthlyPosReceivedChart points={posReceivedPoints} />
+      </CardContent>
+    </Card>
+  );
+}
+
+async function TopDealsSection({
+  kanbanPromise,
+}: {
+  kanbanPromise: Promise<KanbanData>;
+}) {
+  const kanban = await kanbanPromise;
+  const salesPipeline = kanban.pipelines.find(p => p.key === "sales");
+  const expansionPipeline = kanban.pipelines.find(p => p.key === "expansion");
+  const newLogoTop = salesPipeline ? scoreDealsForPipeline(salesPipeline) : [];
+  const expansionTop = expansionPipeline ? scoreDealsForPipeline(expansionPipeline) : [];
+
+  return (
+    <section className="space-y-3">
+      <SectionHeader title="Top deals" source={kanban.source} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <TopDealsCard title="New Logo Pipeline" deals={newLogoTop} />
+        <TopDealsCard title="Wallet Share Pipeline" deals={expansionTop} />
+      </div>
+    </section>
+  );
+}
+
+async function TicketsSection({
+  ticketsPromise,
+}: {
+  ticketsPromise: Promise<Ticket[]>;
+}) {
+  const tickets = await ticketsPromise;
+  const openTickets = tickets.filter(t => t.deletedAt === null);
+  const ticketsBySection = countBy(openTickets, t => t.tab);
+  const healthData = ticketHealth(openTickets);
+  const overdueCount = openTickets.filter(t => isLate(t)).length;
+  const parkedCount = openTickets.filter(t => isParked(t.status)).length;
+
+  return (
+    <section className="space-y-3">
+      <SectionHeader title="Project tickets" href="/admin/tickets" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiTile
+          label="Open tickets"
+          value={formatNumber(openTickets.length)}
+          hint="across all sections"
+        />
+        <KpiTile
+          label="Overdue"
+          value={formatNumber(overdueCount)}
+          hint={
+            openTickets.length > 0
+              ? `${Math.round((overdueCount / openTickets.length) * 100)}% of open`
+              : "past due date"
+          }
+          preferDirection="down"
+        />
+        <KpiTile
+          label="Parked"
+          value={formatNumber(parkedCount)}
+          hint="waiting on someone else"
+          preferDirection="down"
+        />
+        <KpiTile
+          label="Sections in flight"
+          value={formatNumber(ticketsBySection.length)}
+          hint="distinct workflows"
+        />
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Tickets by section & health</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <HomeTicketsDonuts bySection={ticketsBySection} health={healthData} />
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ─── Shared header ──────────────────────────────────────────────────────────
 
 function SectionHeader({
   title,
@@ -369,5 +527,94 @@ function SectionHeader({
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Skeleton fallbacks ─────────────────────────────────────────────────────
+//
+// Each skeleton mirrors the dimensions of the section it stands in for, so
+// streamed content swaps in without shifting the layout (CLS).
+
+function KpiTileSkeleton() {
+  return <div className="h-[100px] rounded-xl border border-border bg-accent/30" />;
+}
+
+function SectionSkeleton({
+  title,
+  href,
+  tiles,
+}: {
+  title: string;
+  href?: string;
+  tiles: 3 | 4;
+}) {
+  return (
+    <section className="space-y-3">
+      <SectionHeader title={title} href={href} />
+      <div
+        className={cn(
+          "grid gap-4",
+          tiles === 4
+            ? "grid-cols-2 lg:grid-cols-4"
+            : "grid-cols-1 sm:grid-cols-3",
+        )}
+      >
+        {Array.from({ length: tiles }).map((_, i) => (
+          <KpiTileSkeleton key={i} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ChartCardSkeleton({ title, height }: { title: string; height: number }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div
+          className="w-full rounded-lg bg-accent/30"
+          style={{ height }}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function TopDealsSkeleton() {
+  return (
+    <section className="space-y-3">
+      <SectionHeader title="Top deals" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="h-[420px] rounded-xl border border-border bg-accent/30" />
+        <div className="h-[420px] rounded-xl border border-border bg-accent/30" />
+      </div>
+    </section>
+  );
+}
+
+function TicketsSkeleton() {
+  return (
+    <section className="space-y-3">
+      <SectionHeader title="Project tickets" href="/admin/tickets" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <KpiTileSkeleton key={i} />
+        ))}
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Tickets by section & health</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="h-[220px] w-full rounded-lg bg-accent/30" />
+            <div className="h-[220px] w-full rounded-lg bg-accent/30" />
+          </div>
+        </CardContent>
+      </Card>
+    </section>
   );
 }
