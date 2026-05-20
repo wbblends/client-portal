@@ -36,6 +36,25 @@ export const MONTHLY_TARGETS: number[] = [
   9_635_000, 9_635_000, 9_685_000, 9_685_000, 9_685_000, 9_685_000,
 ];
 
+/**
+ * 2025 monthly PO revenue actuals — historical, used as the prior-year
+ * baseline in the Monthly POs Received chart on the home and orders pages.
+ */
+export const ACTUALS_2025: { month: string; value: number }[] = [
+  { month: "Jan", value: 4_662_705 },
+  { month: "Feb", value: 5_038_802 },
+  { month: "Mar", value: 6_618_716 },
+  { month: "Apr", value: 7_109_174 },
+  { month: "May", value: 7_068_753 },
+  { month: "Jun", value: 5_725_431 },
+  { month: "Jul", value: 9_589_585 },
+  { month: "Aug", value: 7_111_473 },
+  { month: "Sep", value: 6_037_133 },
+  { month: "Oct", value: 8_733_145 },
+  { month: "Nov", value: 6_998_905 },
+  { month: "Dec", value: 8_376_343 },
+];
+
 export const MONTH_LABELS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
