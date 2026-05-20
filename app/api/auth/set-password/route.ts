@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
         dashboards: user.dashboards,
         avatarUrl: user.avatarUrl,
         mfaEnabled: user.mfaEnabled,
-        homeUrl: user.homeUrl,
       },
       true,
     );

@@ -60,7 +60,6 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < state.recoveryHashes.length; i++) {
       // Recovery codes are stored as bcrypt hashes; comparing every code is
       // O(n*bcrypt) but n is small (8) and this only runs on sign-in.
-      // eslint-disable-next-line no-await-in-loop
       const match = await bcrypt.compare(code, state.recoveryHashes[i]);
       if (match) {
         const remaining = state.recoveryHashes.filter((_, idx) => idx !== i);
@@ -87,7 +86,6 @@ export async function POST(request: NextRequest) {
       dashboards: user.dashboards,
       avatarUrl: user.avatarUrl,
       mfaEnabled: user.mfaEnabled,
-      homeUrl: user.homeUrl,
     },
     challenge.remember,
   );

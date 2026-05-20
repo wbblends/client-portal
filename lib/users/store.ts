@@ -54,9 +54,6 @@ export type StoredUser = {
   hasPassword: boolean;
   active: boolean;
   mfaEnabled: boolean;
-  /** Per-user "set as homepage" — when set, `/` redirects here after login.
-   *  Always a relative path starting with `/`. */
-  homeUrl: string | null;
   createdAt: string;
 };
 
@@ -73,7 +70,7 @@ export async function listUsers(): Promise<StoredUser[]> {
   const client = await ensureDb();
   const { rows } = await client.execute(
     `SELECT username, email, name, company, role, password_hash, avatar_url,
-            active, mfa_enabled, home_url, created_at
+            active, mfa_enabled, created_at
        FROM users
        ORDER BY created_at DESC`,
   );
@@ -94,7 +91,7 @@ export async function getUser(username: string): Promise<StoredUser | null> {
   const client = await ensureDb();
   const { rows } = await client.execute({
     sql: `SELECT username, email, name, company, role, password_hash, avatar_url,
-                 active, mfa_enabled, home_url, created_at
+                 active, mfa_enabled, created_at
             FROM users
            WHERE LOWER(username) = ?`,
     args: [key],
@@ -259,16 +256,6 @@ export async function deleteUser(username: string): Promise<void> {
   await client.execute({
     sql: `DELETE FROM users WHERE username = ?`,
     args: [username],
-  });
-}
-
-/** Save (or clear, with `null`) the user's "set as homepage" URL.
- *  Callers must validate that `url` is a same-origin relative path. */
-export async function setHomeUrl(username: string, url: string | null): Promise<void> {
-  const client = await ensureDb();
-  await client.execute({
-    sql: `UPDATE users SET home_url = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ?`,
-    args: [url, username],
   });
 }
 
@@ -440,7 +427,6 @@ function rowToUser(
     hasPassword: row.password_hash !== null,
     active: (row.active as number) === 1,
     mfaEnabled: (row.mfa_enabled as number) === 1,
-    homeUrl: (row.home_url as string | null) ?? null,
     createdAt: row.created_at as string,
   };
 }
