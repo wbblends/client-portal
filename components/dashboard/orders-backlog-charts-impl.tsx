@@ -33,7 +33,6 @@ const BACKLOG_SNAPSHOTS: Array<{ label: string; value: number | null }> = [
 ];
 
 const WEEKLY_BACKLOG: Array<{ label: string; value: number }> = [
-  { label: "Feb 16", value: 29_194_804 },
   { label: "Feb 23", value: 29_170_124 },
   { label: "Mar 2",  value: 26_423_867 },
   { label: "Mar 9",  value: 27_271_565 },
@@ -45,6 +44,7 @@ const WEEKLY_BACKLOG: Array<{ label: string; value: number }> = [
   { label: "Apr 24", value: 30_376_233 },
   { label: "May 1",  value: 27_705_627 },
   { label: "May 8",  value: 33_925_675 },
+  { label: "May 15", value: 33_900_000 },
 ];
 
 type TooltipPayloadItem = {

@@ -5,6 +5,7 @@ import {
   BacklogSnapshotsChart,
   BacklogWeeklyChart,
 } from "@/components/dashboard/orders-backlog-charts";
+import { OpenPoEntryCard } from "@/components/dashboard/open-po-entry";
 
 export async function OrdersBacklogDashboard({ dashboard }: { dashboard: Dashboard }) {
   await requireSession();
@@ -34,6 +35,8 @@ export async function OrdersBacklogDashboard({ dashboard }: { dashboard: Dashboa
           <BacklogWeeklyChart />
         </CardContent>
       </Card>
+
+      <OpenPoEntryCard />
     </div>
   );
 }

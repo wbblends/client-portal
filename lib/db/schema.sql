@@ -139,3 +139,13 @@ CREATE TABLE IF NOT EXISTS orders_portal_rows (
 
 CREATE INDEX IF NOT EXISTS idx_orders_portal_rows_position
   ON orders_portal_rows(position);
+
+-- Manually-entered daily open-PO backlog totals. One row per calendar date
+-- (re-saving a date overwrites it). The Orders Backlog dashboard shows the
+-- most recent entry as the current "as of today" open-PO figure.
+CREATE TABLE IF NOT EXISTS open_po_daily (
+  entry_date  TEXT PRIMARY KEY,
+  amount      REAL NOT NULL,
+  updated_by  TEXT REFERENCES users(username) ON DELETE SET NULL,
+  updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
