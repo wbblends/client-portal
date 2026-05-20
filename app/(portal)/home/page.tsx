@@ -34,6 +34,7 @@ import { listTickets, type Ticket } from "@/lib/tickets/store";
 import { isLate, isParked } from "@/lib/tickets/status";
 import { ACTUALS_2025, MONTHLY_TARGETS, MONTH_SHORT } from "@/lib/data/orders-portal";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
+import { MagicalSearchBar } from "@/components/ai-bot/MagicalSearchBar";
 
 // Greeting templates rotate on every refresh. The page is already dynamic
 // (requireSession reads cookies), so Math.random() runs per request.
@@ -155,10 +156,13 @@ export default async function HomePage() {
 
   if (!isAdminRole(user.role)) {
     return (
-      <div className="page-container page-pad-x page-pad-y">
+      <div className="page-container page-pad-x page-pad-y space-y-7">
         <h1 className="font-display text-3xl tracking-tight text-foreground">
           {greeting}
         </h1>
+        <div className="max-w-3xl">
+          <MagicalSearchBar />
+        </div>
       </div>
     );
   }
@@ -177,6 +181,10 @@ export default async function HomePage() {
         <h1 className="font-display text-3xl tracking-tight text-foreground">
           {greeting}
         </h1>
+      </div>
+
+      <div className="max-w-3xl">
+        <MagicalSearchBar />
       </div>
 
       {/* Orders + forecast */}
