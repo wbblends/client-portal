@@ -224,13 +224,16 @@ export function SidebarNav({
         </CollapsibleGroup>
       ))}
 
-      {/* Project Management — admin only, a peer of Sales and Marketing.
+      {/* Projects — admin only, a peer of Sales and Marketing.
            An Analytics roll-up pinned to the top, then one sub-item per PM
            ticket type; each links to its own page. */}
       {isAdmin && (
         <CollapsibleGroup
           id="project-management"
-          label="Project Management"
+          label="Projects"
+          suffix="work in progress"
+          dim
+          wip
           pathname={pathname}
           containsActivePath={projectManagementActive}
         >
@@ -261,8 +264,9 @@ export function SidebarNav({
         <CollapsibleGroup
           id="customers"
           label="Customers"
-          suffix="in progress"
+          suffix="work in progress"
           dim
+          wip
           pathname={pathname}
           containsActivePath={!!activeCustomerId}
         >
@@ -373,6 +377,7 @@ function CollapsibleGroup({
   suffix,
   leading,
   dim,
+  wip,
   pathname,
   containsActivePath,
   defaultOpen = true,
@@ -390,6 +395,9 @@ function CollapsibleGroup({
   /** Render the header in a softer tint than the default. Used to de-
    *  emphasize sections that aren't fully wired up yet. */
   dim?: boolean;
+  /** Give the header a light-yellow wash to flag a section as not yet
+   *  developed. Pairs with `suffix="work in progress"`. */
+  wip?: boolean;
   pathname: string;
   containsActivePath: boolean;
   /** Default open state, used only on first render before localStorage is
@@ -441,6 +449,10 @@ function CollapsibleGroup({
             : dim
               ? "text-muted hover:bg-accent hover:text-foreground-soft"
               : "text-foreground-soft hover:bg-accent hover:text-foreground",
+          // WIP sections get a light-yellow wash so users can tell at a
+          // glance the area isn't built out yet. Kept after the color
+          // branches so it overrides their hover background.
+          wip && "bg-amber-100/70 hover:bg-amber-100",
         )}
       >
         {leading ? (
