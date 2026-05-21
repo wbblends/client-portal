@@ -45,12 +45,16 @@ export function DealCardView({
   deal,
   draggable,
   isDragging,
+  overlay,
   onDragStart,
   onDragEnd,
 }: {
   deal: DealCard;
   draggable?: boolean;
   isDragging?: boolean;
+  /** When set, the card belongs to a closed stage and gets a colored wash:
+   *  light green for won, grayscale + gray for lost. */
+  overlay?: "won" | "lost";
   onDragStart?: (e: React.DragEvent<HTMLButtonElement>) => void;
   onDragEnd?: (e: React.DragEvent<HTMLButtonElement>) => void;
 }) {
@@ -69,9 +73,15 @@ export function DealCardView({
         draggable={draggable}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
-        className={`text-left w-full block rounded-lg bg-card border border-border px-3.5 py-3 shadow-[var(--shadow-card)] hover:border-primary/40 hover:shadow-[var(--shadow-card-hover)] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-          draggable ? "cursor-grab active:cursor-grabbing" : ""
-        } ${isDragging ? "opacity-40" : ""}`}
+        className={`relative overflow-hidden text-left w-full block rounded-lg bg-card border px-3.5 py-3 shadow-[var(--shadow-card)] hover:border-primary/40 hover:shadow-[var(--shadow-card-hover)] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+          overlay === "won"
+            ? "border-success/40"
+            : overlay === "lost"
+              ? "border-border grayscale opacity-80"
+              : "border-border"
+        } ${draggable ? "cursor-grab active:cursor-grabbing" : ""} ${
+          isDragging ? "opacity-40" : ""
+        }`}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -101,12 +111,9 @@ export function DealCardView({
           )}
         </div>
 
-        <div className="mt-2.5 flex items-center justify-between gap-2">
+        <div className="mt-2.5">
           <span className="font-semibold text-foreground tabular-nums text-[14px]">
             {fmtMoneyCompact(amount)}
-          </span>
-          <span className="text-[11px] text-muted truncate" title={deal.owner?.name ?? ""}>
-            {firstName(deal.owner?.name)}
           </span>
         </div>
 
@@ -134,6 +141,15 @@ export function DealCardView({
         <div className="mt-2 flex justify-end text-[10px] text-muted tabular-nums">
           Last Note: {formatLastNoteDate(deal.lastNoteDate)}
         </div>
+
+        {overlay && (
+          <span
+            aria-hidden
+            className={`pointer-events-none absolute inset-0 ${
+              overlay === "won" ? "bg-success/15" : "bg-foreground/10"
+            }`}
+          />
+        )}
       </button>
 
       {open && (
@@ -313,7 +329,7 @@ export function DealNotesModal({
       >
         <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-border">
           <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted">
               Recent notes
             </p>
             <h2 className="mt-0.5 text-base font-semibold text-foreground tracking-tight truncate">
@@ -335,7 +351,7 @@ export function DealNotesModal({
 
         <div className="px-5 py-3 border-b border-border bg-surface/40">
           <div className="grid grid-cols-3 gap-3">
-            <label className="flex flex-col gap-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+            <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wide text-muted">
               Tier
               <select
                 value={tier ?? ""}
@@ -350,7 +366,7 @@ export function DealNotesModal({
                 <option value="C">C</option>
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+            <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wide text-muted">
               Format
               <select
                 value={format ?? ""}
@@ -364,7 +380,7 @@ export function DealNotesModal({
                 <option value="Powder">Powder</option>
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+            <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wide text-muted">
               Deal value
               <div className="relative">
                 <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted text-sm">
@@ -522,12 +538,6 @@ function fmtMoneyCompact(n: number): string {
   if (n >= 10_000) return `$${Math.round(n / 1_000)}k`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
   return `$${n.toFixed(0)}`;
-}
-
-function firstName(name: string | null | undefined): string {
-  if (!name) return "—";
-  const first = name.trim().split(/\s+/)[0];
-  return first || "—";
 }
 
 function formatLastNoteDate(iso: string | null): string {

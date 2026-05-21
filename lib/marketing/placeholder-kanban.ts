@@ -30,6 +30,7 @@ export const PLACEHOLDER_KANBAN: KanbanData = {
           label: "Appointment Scheduled",
           probability: 0.2,
           isClosed: false,
+          outcome: "open",
           totalAmount: 425_000,
           dealCount: 4,
           deals: [
@@ -44,6 +45,7 @@ export const PLACEHOLDER_KANBAN: KanbanData = {
           label: "Qualified to Buy",
           probability: 0.4,
           isClosed: false,
+          outcome: "open",
           totalAmount: 880_000,
           dealCount: 5,
           deals: [
@@ -59,6 +61,7 @@ export const PLACEHOLDER_KANBAN: KanbanData = {
           label: "Presentation Scheduled",
           probability: 0.6,
           isClosed: false,
+          outcome: "open",
           totalAmount: 1_265_000,
           dealCount: 4,
           deals: [
@@ -73,6 +76,7 @@ export const PLACEHOLDER_KANBAN: KanbanData = {
           label: "Decision Maker Bought-In",
           probability: 0.8,
           isClosed: false,
+          outcome: "open",
           totalAmount: 1_125_000,
           dealCount: 3,
           deals: [
@@ -86,11 +90,37 @@ export const PLACEHOLDER_KANBAN: KanbanData = {
           label: "Contract Sent",
           probability: 0.9,
           isClosed: false,
+          outcome: "open",
           totalAmount: 555_000,
           dealCount: 2,
           deals: [
             { id: "d17", name: "Vital Proteins — Collagen Tincture", amount: 295_000, weighted: 265_500, closeDate: "2026-05-20", companyName: null, companyDomain: null, monthExpected: null, tier: null, format: null, productCategory: null, owner: PLACEHOLDER_OWNER, hubspotUrl: HS_PLACEHOLDER_URL, lastModified: null, createDate: null, source: null, lastNoteDate: null },
             { id: "d18", name: "Onnit — Energy Blend", amount: 260_000, weighted: 234_000, closeDate: "2026-05-28", companyName: null, companyDomain: null, monthExpected: null, tier: null, format: null, productCategory: null, owner: PLACEHOLDER_OWNER, hubspotUrl: HS_PLACEHOLDER_URL, lastModified: null, createDate: null, source: null, lastNoteDate: null },
+          ],
+        },
+        {
+          id: "sales-closed-won",
+          label: "Closed Won",
+          probability: 1,
+          isClosed: true,
+          outcome: "won",
+          totalAmount: 480_000,
+          dealCount: 2,
+          deals: [
+            { id: "dw1", name: "Pure Planet — Greens Capsule Launch", amount: 280_000, weighted: 280_000, closeDate: "2026-04-18", companyName: null, companyDomain: null, monthExpected: null, tier: null, format: null, productCategory: null, owner: PLACEHOLDER_OWNER, hubspotUrl: HS_PLACEHOLDER_URL, lastModified: null, createDate: null, source: null, lastNoteDate: null },
+            { id: "dw2", name: "Wellness Collective — Immunity Tincture", amount: 200_000, weighted: 200_000, closeDate: "2026-03-30", companyName: null, companyDomain: null, monthExpected: null, tier: null, format: null, productCategory: null, owner: PLACEHOLDER_OWNER, hubspotUrl: HS_PLACEHOLDER_URL, lastModified: null, createDate: null, source: null, lastNoteDate: null },
+          ],
+        },
+        {
+          id: "sales-closed-lost",
+          label: "Closed Lost",
+          probability: 0,
+          isClosed: true,
+          outcome: "lost",
+          totalAmount: 150_000,
+          dealCount: 1,
+          deals: [
+            { id: "dl1", name: "Generic Labs — Powder Bid", amount: 150_000, weighted: 0, closeDate: "2026-04-02", companyName: null, companyDomain: null, monthExpected: null, tier: null, format: null, productCategory: null, owner: PLACEHOLDER_OWNER, hubspotUrl: HS_PLACEHOLDER_URL, lastModified: null, createDate: null, source: null, lastNoteDate: null },
           ],
         },
       ],
@@ -104,6 +134,7 @@ export const PLACEHOLDER_KANBAN: KanbanData = {
           label: "Opportunity Identified",
           probability: 0.15,
           isClosed: false,
+          outcome: "open",
           totalAmount: 295_000,
           dealCount: 6,
           deals: [
@@ -120,6 +151,7 @@ export const PLACEHOLDER_KANBAN: KanbanData = {
           label: "Discovery Call",
           probability: 0.35,
           isClosed: false,
+          outcome: "open",
           totalAmount: 410_000,
           dealCount: 7,
           deals: [
@@ -137,6 +169,7 @@ export const PLACEHOLDER_KANBAN: KanbanData = {
           label: "Proposal Sent",
           probability: 0.6,
           isClosed: false,
+          outcome: "open",
           totalAmount: 540_000,
           dealCount: 6,
           deals: [
@@ -153,6 +186,7 @@ export const PLACEHOLDER_KANBAN: KanbanData = {
           label: "Negotiation",
           probability: 0.85,
           isClosed: false,
+          outcome: "open",
           totalAmount: 360_000,
           dealCount: 5,
           deals: [
@@ -161,6 +195,31 @@ export const PLACEHOLDER_KANBAN: KanbanData = {
             { id: "e22", name: "Ritual — Stress Gummy Volume", amount: 75_000, weighted: 63_750, closeDate: "2026-06-03", companyName: null, companyDomain: null, monthExpected: null, tier: null, format: null, productCategory: null, owner: PLACEHOLDER_OWNER, hubspotUrl: HS_PLACEHOLDER_URL, lastModified: null, createDate: null, source: null, lastNoteDate: null },
             { id: "e23", name: "Solgar — Annual Renewal", amount: 70_000, weighted: 59_500, closeDate: "2026-06-10", companyName: null, companyDomain: null, monthExpected: null, tier: null, format: null, productCategory: null, owner: PLACEHOLDER_OWNER, hubspotUrl: HS_PLACEHOLDER_URL, lastModified: null, createDate: null, source: null, lastNoteDate: null },
             { id: "e24", name: "Olly — Capsule Conversion", amount: 65_000, weighted: 55_250, closeDate: "2026-06-17", companyName: null, companyDomain: null, monthExpected: null, tier: null, format: null, productCategory: null, owner: PLACEHOLDER_OWNER, hubspotUrl: HS_PLACEHOLDER_URL, lastModified: null, createDate: null, source: null, lastNoteDate: null },
+          ],
+        },
+        {
+          id: "exp-closed-won",
+          label: "Closed Won",
+          probability: 1,
+          isClosed: true,
+          outcome: "won",
+          totalAmount: 138_000,
+          dealCount: 2,
+          deals: [
+            { id: "ew1", name: "Garden of Life — Reorder Volume Bump", amount: 82_000, weighted: 82_000, closeDate: "2026-04-12", companyName: null, companyDomain: null, monthExpected: null, tier: null, format: null, productCategory: null, owner: PLACEHOLDER_OWNER, hubspotUrl: HS_PLACEHOLDER_URL, lastModified: null, createDate: null, source: null, lastNoteDate: null },
+            { id: "ew2", name: "Solgar — Added Capsule SKU", amount: 56_000, weighted: 56_000, closeDate: "2026-03-22", companyName: null, companyDomain: null, monthExpected: null, tier: null, format: null, productCategory: null, owner: PLACEHOLDER_OWNER, hubspotUrl: HS_PLACEHOLDER_URL, lastModified: null, createDate: null, source: null, lastNoteDate: null },
+          ],
+        },
+        {
+          id: "exp-closed-lost",
+          label: "Closed Lost",
+          probability: 0,
+          isClosed: true,
+          outcome: "lost",
+          totalAmount: 40_000,
+          dealCount: 1,
+          deals: [
+            { id: "el1", name: "Onnit — Format Switch (declined)", amount: 40_000, weighted: 0, closeDate: "2026-03-15", companyName: null, companyDomain: null, monthExpected: null, tier: null, format: null, productCategory: null, owner: PLACEHOLDER_OWNER, hubspotUrl: HS_PLACEHOLDER_URL, lastModified: null, createDate: null, source: null, lastNoteDate: null },
           ],
         },
       ],

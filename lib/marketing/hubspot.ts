@@ -118,11 +118,18 @@ export type DealCard = {
   lastNoteDate: string | null;
 };
 
+/** Won / lost / open — derived from stage metadata. Open stages are always
+ *  "open"; closed stages resolve to "won" or "lost". */
+export type StageOutcome = "won" | "lost" | "open";
+
 export type StageColumn = {
   id: string;
   label: string;
   probability: number;
   isClosed: boolean;
+  /** Outcome of the stage. The pipeline board renders "won"/"lost" stages with
+   *  a colored overlay and excludes their deals from pipeline-value totals. */
+  outcome: StageOutcome;
   totalAmount: number;
   dealCount: number;
   deals: DealCard[];
@@ -276,9 +283,8 @@ export function summarizeKanban(kanban: KanbanData): PipelineSummary {
     let weighted = 0;
     let dealCount = 0;
     for (const stage of p.stages) {
-      // Closed stages aren't included in the open-pipeline view; the kanban
-      // only loads `hs_is_closed = false` deals, but we filter defensively in
-      // case that ever changes.
+      // The kanban now also loads recently-closed deals so the board can show
+      // them with an overlay; their value must not count toward open pipeline.
       if (stage.isClosed) continue;
       for (const d of stage.deals) {
         unweighted += d.amount;
@@ -504,12 +510,20 @@ type RawDeal = {
   properties: Record<string, string | null>;
 };
 
-async function fetchOpenDeals(pipelineId: string): Promise<RawDeal[]> {
+/**
+ * Fetch deals for a pipeline's kanban. `closed = false` pulls open deals;
+ * `closed = true` pulls deals that have been closed (won or lost) within the
+ * last `CLOSED_WINDOW_DAYS` so the board can render them under their closed
+ * stages with a colored overlay. The window keeps the board from accumulating
+ * years of historical closed deals.
+ */
+async function fetchKanbanDeals(pipelineId: string, closed: boolean): Promise<RawDeal[]> {
   const t = token();
   if (!t) throw new Error("Missing HUBSPOT_PRIVATE_APP_TOKEN");
 
   const all: RawDeal[] = [];
   let after: string | undefined;
+  const sinceMs = Date.now() - CLOSED_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
   do {
     const body = {
@@ -517,7 +531,10 @@ async function fetchOpenDeals(pipelineId: string): Promise<RawDeal[]> {
         {
           filters: [
             { propertyName: "pipeline", operator: "EQ", value: pipelineId },
-            { propertyName: "hs_is_closed", operator: "EQ", value: "false" },
+            { propertyName: "hs_is_closed", operator: "EQ", value: closed ? "true" : "false" },
+            ...(closed
+              ? [{ propertyName: "closedate", operator: "GTE", value: String(sinceMs) }]
+              : []),
           ],
         },
       ],
@@ -672,6 +689,17 @@ function asFormat(v: string | null | undefined): DealFormat | null {
   return v === "Liquid" || v === "Capsule" || v === "Powder" ? v : null;
 }
 
+/** Classify a single pipeline stage as won / lost / open from its metadata.
+ *  A closed stage is "won" when its probability is 1 (HubSpot's convention for
+ *  a won stage) or its label says so — the per-deal `hs_is_closed_won` flag
+ *  isn't trustworthy in this account. */
+function classifyStage(s: RawStage): StageOutcome {
+  if (s.metadata?.isClosed !== "true") return "open";
+  const probability = Number(s.metadata?.probability ?? 0);
+  const won = (Number.isFinite(probability) && probability >= 1) || /won/i.test(s.label);
+  return won ? "won" : "lost";
+}
+
 function buildPipelineFromRaw(
   key: PipelineKey,
   stages: RawStage[],
@@ -718,6 +746,7 @@ function buildPipelineFromRaw(
         label: s.label,
         probability: Number(s.metadata?.probability ?? 0) || 0,
         isClosed: s.metadata?.isClosed === "true",
+        outcome: classifyStage(s),
         totalAmount: stageDeals.reduce((sum, d) => sum + d.amount, 0),
         dealCount: stageDeals.length,
         deals: stageDeals,
@@ -774,13 +803,26 @@ async function _getPipelineKanban(): Promise<KanbanData> {
   if (!token()) return PLACEHOLDER_KANBAN;
 
   try {
-    const [salesStages, expansionStages, salesDeals, expansionDeals, owners] = await Promise.all([
+    const [
+      salesStages,
+      expansionStages,
+      salesOpen,
+      expansionOpen,
+      salesClosed,
+      expansionClosed,
+      owners,
+    ] = await Promise.all([
       fetchPipelineStages(PIPELINES.sales.id),
       fetchPipelineStages(PIPELINES.expansion.id),
-      fetchOpenDeals(PIPELINES.sales.id),
-      fetchOpenDeals(PIPELINES.expansion.id),
+      fetchKanbanDeals(PIPELINES.sales.id, false),
+      fetchKanbanDeals(PIPELINES.expansion.id, false),
+      fetchKanbanDeals(PIPELINES.sales.id, true),
+      fetchKanbanDeals(PIPELINES.expansion.id, true),
       fetchAllOwners(),
     ]);
+
+    const salesDeals = [...salesOpen, ...salesClosed];
+    const expansionDeals = [...expansionOpen, ...expansionClosed];
 
     const allDealIds = [...salesDeals, ...expansionDeals].map(d => d.id);
     const [dealCompany] = await Promise.all([
@@ -1573,23 +1615,10 @@ const PLACEHOLDER_ACCOUNT_PENETRATION: AccountPenetrationData = {
   ],
 };
 
-type StageOutcome = "won" | "lost" | "open";
-
-/** Classify each stage of a pipeline as won / lost / open from its metadata.
- *  A closed stage is "won" when its probability is 1 (HubSpot's convention for
- *  a won stage) or its label says so — the per-deal `hs_is_closed_won` flag
- *  isn't trustworthy in this account. */
+/** Classify every stage of a pipeline as won / lost / open from its metadata. */
 function classifyStages(stages: RawStage[]): Map<string, StageOutcome> {
   const out = new Map<string, StageOutcome>();
-  for (const s of stages) {
-    if (s.metadata?.isClosed !== "true") {
-      out.set(s.id, "open");
-      continue;
-    }
-    const probability = Number(s.metadata?.probability ?? 0);
-    const won = (Number.isFinite(probability) && probability >= 1) || /won/i.test(s.label);
-    out.set(s.id, won ? "won" : "lost");
-  }
+  for (const s of stages) out.set(s.id, classifyStage(s));
   return out;
 }
 

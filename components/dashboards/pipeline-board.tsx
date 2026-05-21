@@ -267,7 +267,7 @@ export function PipelineBoard({
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted">
+      <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
         {label}
       </span>
       {children}
@@ -282,6 +282,9 @@ function computeTotals(pipeline: PipelineKanban): Totals {
   let weighted = 0;
   let dealCount = 0;
   for (const stage of pipeline.stages) {
+    // Closed-won / closed-lost stages render on the board with an overlay,
+    // but their value must not count toward open pipeline totals.
+    if (stage.isClosed) continue;
     for (const deal of stage.deals) {
       unweighted += deal.amount;
       weighted += deal.weighted;
@@ -307,7 +310,7 @@ function KpiStrip({ totals, filtered }: { totals: Totals; filtered: boolean }) {
 function KpiCell({ label, primary, hint }: { label: string; primary: string; hint: string }) {
   return (
     <div className="px-5 py-4">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-muted">{label}</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-muted">{label}</div>
       <div className="mt-1 font-display text-[26px] tabular-nums tracking-tight text-foreground">
         {primary}
       </div>
@@ -431,9 +434,27 @@ function StageColumnView({
   onDropOnStage: (dealId: string, fromStageId: string, toStageId: string) => void;
 }) {
   const probabilityPct = Math.round(stage.probability * 100);
-  const barColor = pipelineKey === "sales" ? "bg-primary" : "bg-info";
+  // Closed stages get a colored wash — light green for won, gray for lost —
+  // so they read as "settled" and visually separate from open pipeline.
+  const closedTone: "won" | "lost" | null =
+    stage.outcome === "won" ? "won" : stage.outcome === "lost" ? "lost" : null;
+  const barColor =
+    closedTone === "won"
+      ? "bg-success"
+      : closedTone === "lost"
+        ? "bg-muted"
+        : pipelineKey === "sales"
+          ? "bg-primary"
+          : "bg-info";
   const isDragTarget = draggingDealId !== null && dragOverStageId === stage.id;
   const isAnyDragging = draggingDealId !== null;
+  const columnTone = isDragTarget
+    ? "bg-primary/5 border-primary/50 ring-2 ring-primary/20"
+    : closedTone === "won"
+      ? "bg-success-soft/60 border-success/30"
+      : closedTone === "lost"
+        ? "bg-muted/10 border-border"
+        : "bg-surface/60 border-border";
 
   function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
     if (!isAnyDragging) return;
@@ -462,11 +483,9 @@ function StageColumnView({
 
   return (
     <div
-      className={`w-[320px] shrink-0 rounded-xl border flex flex-col transition-colors ${
-        isDragTarget
-          ? "bg-primary/5 border-primary/50 ring-2 ring-primary/20"
-          : "bg-surface/60 border-border"
-      } ${fillHeight ? "h-full min-h-[480px]" : "max-h-[720px]"}`}
+      className={`w-[320px] shrink-0 rounded-xl border flex flex-col transition-colors ${columnTone} ${
+        fillHeight ? "h-full min-h-[480px]" : "max-h-[720px]"
+      }`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -514,6 +533,7 @@ function StageColumnView({
             <DealCardView
               key={deal.id}
               deal={deal}
+              overlay={closedTone ?? undefined}
               draggable
               isDragging={draggingDealId === deal.id}
               onDragStart={(e) => {
