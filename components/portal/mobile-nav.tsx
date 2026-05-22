@@ -26,6 +26,7 @@ export function MobileNav({
   customers,
   ownCustomerId,
   isAdmin,
+  isSuperAdmin,
   canSwitchCustomers,
   user,
   initialUnread = 0,
@@ -34,6 +35,7 @@ export function MobileNav({
   customers: Customer[];
   ownCustomerId: string | null;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   canSwitchCustomers: boolean;
   user: {
     name: string;
@@ -154,6 +156,7 @@ export function MobileNav({
                 customers={customers}
                 ownCustomerId={ownCustomerId}
                 isAdmin={isAdmin}
+                isSuperAdmin={isSuperAdmin}
                 canSwitchCustomers={canSwitchCustomers}
               />
             </div>

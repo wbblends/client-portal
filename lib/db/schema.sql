@@ -151,3 +151,25 @@ CREATE TABLE IF NOT EXISTS open_po_daily (
   updated_by  TEXT REFERENCES users(username) ON DELETE SET NULL,
   updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Customer Experience Survey submissions — see lib/db/schema.ts (the bundled
+-- string is the runtime source of truth; this file is mirrored for reading).
+-- Filled out anonymously via the public link; ratings_json / comments_json
+-- are keyed by question id. The question text lives in code, not the DB.
+CREATE TABLE IF NOT EXISTS survey_responses (
+  id            TEXT PRIMARY KEY,
+  survey_key    TEXT NOT NULL DEFAULT 'q2-2026',
+  respondent_id TEXT NOT NULL DEFAULT '',
+  first_name    TEXT NOT NULL DEFAULT '',
+  last_name     TEXT NOT NULL DEFAULT '',
+  email         TEXT NOT NULL DEFAULT '',
+  customer_id   TEXT,
+  ratings_json  TEXT NOT NULL DEFAULT '{}',
+  comments_json TEXT NOT NULL DEFAULT '{}',
+  change_one    TEXT NOT NULL DEFAULT '',
+  upcoming      TEXT NOT NULL DEFAULT '',
+  submitted_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_survey_responses_wave
+  ON survey_responses(survey_key, submitted_at DESC);

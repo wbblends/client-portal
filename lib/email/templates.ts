@@ -3,6 +3,14 @@
  * Inline styles only so they render in every client; no images yet.
  */
 
+import {
+  QUESTIONS,
+  SCALES,
+  responseAverage,
+  npsCategory,
+  type SurveyResponse,
+} from "@/lib/survey/questions";
+
 export type InviteVars = {
   name: string;
   inviteUrl: string;
@@ -100,6 +108,98 @@ The link is good for 1 hour. If you didn't request this, you can safely ignore t
     <p style="color:#5f6473;font-size:13px;">The link is good for 1 hour.</p>
     <p style="color:#5f6473;font-size:13px;">If you didn't request this, you can safely ignore this email — your password won't change.</p>
     <p style="color:#888;font-size:12px;">Or paste this into your browser:<br><span style="word-break:break-all;">${escapeHtml(v.resetUrl)}</span></p>
+  `);
+  return { subject, html, text };
+}
+
+/**
+ * Notification sent to the WB Blends team every time a customer submits the
+ * Customer Experience Survey. Carries the full response — every rating, every
+ * comment, both open-ended answers — so it's actionable straight from the
+ * inbox without opening the portal.
+ */
+export function surveyNotificationEmail(
+  response: SurveyResponse,
+): { subject: string; html: string; text: string } {
+  const name = `${response.firstName} ${response.lastName}`.trim() || "Anonymous";
+  const avg = responseAverage(response);
+  const nps = response.ratings.q22;
+  const npsLine =
+    typeof nps === "number"
+      ? `${nps}/10 (${npsCategory(nps)})`
+      : "—";
+  const subject = `Survey response — ${name} · ${avg.toFixed(1)}/5 avg`;
+
+  const ratingLines = QUESTIONS.map(q => {
+    const value = response.ratings[q.id];
+    const scale = SCALES[q.scale];
+    const opt = scale.options.find(o => o.value === value);
+    const shown =
+      typeof value === "number"
+        ? `${value}/${scale.max}${opt ? ` — ${opt.label}` : ""}`
+        : "—";
+    const comment = response.comments[q.id];
+    return { q, shown, comment: comment ?? "" };
+  });
+
+  // ── plain text ──
+  const textRatings = ratingLines
+    .map(r => {
+      const base = `  Q${r.q.number}. ${r.q.text}\n      ${r.shown}`;
+      return r.comment ? `${base}\n      Comment: ${r.comment}` : base;
+    })
+    .join("\n");
+  const text = `New Customer Experience Survey response.
+
+Respondent: ${name}
+Email:      ${response.email}
+${response.customerId ? `Customer:   ${response.customerId}\n` : ""}Submitted:  ${response.submittedAt}
+
+Overall average (1-5 questions): ${avg.toFixed(2)}
+Likelihood to recommend: ${npsLine}
+
+Ratings
+${textRatings}
+
+If you could change one thing:
+${response.changeOne || "(no answer)"}
+
+Upcoming projects we can support:
+${response.upcoming || "(no answer)"}
+
+— WB Blends Portal`;
+
+  // ── html ──
+  const htmlRatings = ratingLines
+    .map(r => {
+      const commentRow = r.comment
+        ? `<div style="margin-top:4px;font-size:13px;color:#5f6473;border-left:2px solid #6540e3;padding-left:8px;">${escapeHtml(r.comment)}</div>`
+        : "";
+      return `<tr>
+        <td style="padding:8px 8px 8px 0;font-size:13px;color:#1f1f1f;vertical-align:top;width:62%;">
+          <strong>Q${r.q.number}.</strong> ${escapeHtml(r.q.text)}${commentRow}
+        </td>
+        <td style="padding:8px 0;font-size:13px;color:#111;text-align:right;white-space:nowrap;vertical-align:top;">${escapeHtml(r.shown)}</td>
+      </tr>`;
+    })
+    .join("");
+  const html = wrap(`
+    <p style="margin-top:0;">New <strong>Customer Experience Survey</strong> response.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;color:#1f1f1f;margin-bottom:18px;">
+      <tr><td style="padding:3px 0;color:#888;width:96px;">Respondent</td><td style="padding:3px 0;font-weight:600;">${escapeHtml(name)}</td></tr>
+      <tr><td style="padding:3px 0;color:#888;">Email</td><td style="padding:3px 0;">${escapeHtml(response.email)}</td></tr>
+      ${response.customerId ? `<tr><td style="padding:3px 0;color:#888;">Customer</td><td style="padding:3px 0;">${escapeHtml(response.customerId)}</td></tr>` : ""}
+      <tr><td style="padding:3px 0;color:#888;">Overall</td><td style="padding:3px 0;font-weight:600;">${avg.toFixed(2)} / 5 avg · recommend ${escapeHtml(npsLine)}</td></tr>
+    </table>
+    <table style="width:100%;border-collapse:collapse;border-top:1px solid #ececf2;">${htmlRatings}</table>
+    <div style="margin-top:20px;">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#888;">If you could change one thing</div>
+      <p style="margin:4px 0 0;font-size:14px;">${escapeHtml(response.changeOne) || "<span style='color:#aaa;'>(no answer)</span>"}</p>
+    </div>
+    <div style="margin-top:16px;">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Upcoming projects we can support</div>
+      <p style="margin:4px 0 0;font-size:14px;">${escapeHtml(response.upcoming) || "<span style='color:#aaa;'>(no answer)</span>"}</p>
+    </div>
   `);
   return { subject, html, text };
 }

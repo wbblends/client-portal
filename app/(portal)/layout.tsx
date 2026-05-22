@@ -17,6 +17,7 @@ export default async function PortalLayout({ children }: { children: React.React
   const dashboards = getDashboardsForUser(user.dashboards, user.role);
   const customers = [...listCustomers()];
   const isAdmin = isAdminRole(user.role);
+  const isSuperAdmin = user.role === "super_admin";
   const canSwitchCustomers = isAdminRole(user.role) || user.role === "internal";
   const ownCustomerId = user.customerIds[0] ?? null;
   // Seed the bell badge so it doesn't flash 0 before the first client poll.
@@ -57,6 +58,7 @@ export default async function PortalLayout({ children }: { children: React.React
               customers={customers}
               ownCustomerId={ownCustomerId}
               isAdmin={isAdmin}
+              isSuperAdmin={isSuperAdmin}
               canSwitchCustomers={canSwitchCustomers}
             />
           </div>
@@ -77,6 +79,7 @@ export default async function PortalLayout({ children }: { children: React.React
           customers={customers}
           ownCustomerId={ownCustomerId}
           isAdmin={isAdmin}
+          isSuperAdmin={isSuperAdmin}
           canSwitchCustomers={canSwitchCustomers}
           user={{
             name: user.name,

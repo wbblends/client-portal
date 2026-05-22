@@ -188,4 +188,30 @@ CREATE TABLE IF NOT EXISTS tickets (
 
 CREATE INDEX IF NOT EXISTS idx_tickets_tab ON tickets(tab);
 CREATE INDEX IF NOT EXISTS idx_tickets_rank ON tickets(tab, rank);
+
+-- Customer Experience Survey submissions. Filled out anonymously via the
+-- public link (/q2-2026-survey) — there is no logged-in user behind a row,
+-- so respondent identity is whatever the form collected (first/last/email).
+-- ratings_json + comments_json are keyed by question id ("q1".."q22"); the
+-- question text itself lives in lib/survey/questions.ts, not the DB, so a
+-- copy fix never needs a migration. survey_key scopes a row to its quarterly
+-- wave so future surveys reuse this table. respondent_id is a client UUID
+-- used to dedupe a double-submit from the same browser.
+CREATE TABLE IF NOT EXISTS survey_responses (
+  id            TEXT PRIMARY KEY,
+  survey_key    TEXT NOT NULL DEFAULT 'q2-2026',
+  respondent_id TEXT NOT NULL DEFAULT '',
+  first_name    TEXT NOT NULL DEFAULT '',
+  last_name     TEXT NOT NULL DEFAULT '',
+  email         TEXT NOT NULL DEFAULT '',
+  customer_id   TEXT,
+  ratings_json  TEXT NOT NULL DEFAULT '{}',
+  comments_json TEXT NOT NULL DEFAULT '{}',
+  change_one    TEXT NOT NULL DEFAULT '',
+  upcoming      TEXT NOT NULL DEFAULT '',
+  submitted_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_survey_responses_wave
+  ON survey_responses(survey_key, submitted_at DESC);
 `;

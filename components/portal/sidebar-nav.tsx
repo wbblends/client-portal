@@ -27,6 +27,7 @@ import {
   Tag,
   BadgeCheck,
   ChevronDown,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,7 @@ export function SidebarNav({
   customers,
   ownCustomerId,
   isAdmin,
+  isSuperAdmin,
   canSwitchCustomers,
 }: {
   dashboards: Dashboard[];
@@ -115,6 +117,9 @@ export function SidebarNav({
    *  active customer is in the URL. */
   ownCustomerId: string | null;
   isAdmin: boolean;
+  /** Super admins additionally see the Customer Feedback survey results
+   *  pinned inside the Customers section. */
+  isSuperAdmin: boolean;
   canSwitchCustomers: boolean;
 }) {
   const pathname = usePathname();
@@ -268,8 +273,21 @@ export function SidebarNav({
           dim
           wip
           pathname={pathname}
-          containsActivePath={!!activeCustomerId}
+          containsActivePath={
+            !!activeCustomerId ||
+            pathname.startsWith("/admin/customer-feedback")
+          }
         >
+          {/* Customer Feedback — super-admin-only survey results. Pinned
+               above the per-customer list. */}
+          {isSuperAdmin && (
+            <NavLink
+              href="/admin/customer-feedback"
+              label="Customer Feedback"
+              icon={MessageSquare}
+              pathname={pathname}
+            />
+          )}
           {customers.map(c => (
             <CollapsibleGroup
               key={c.id}
