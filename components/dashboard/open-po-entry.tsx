@@ -86,6 +86,8 @@ export function OpenPoEntryCard() {
           b.date.localeCompare(a.date),
         ),
       );
+      // Let the "last 12 weeks" chart pick up the new figure without a reload.
+      window.dispatchEvent(new CustomEvent("open-po:updated"));
       setMillions("");
     } catch {
       setError("Could not save — check your connection and try again.");

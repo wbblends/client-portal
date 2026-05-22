@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -32,20 +33,82 @@ const BACKLOG_SNAPSHOTS: Array<{ label: string; value: number | null }> = [
   { label: "May-26", value: 27_705_627 },
 ];
 
-const WEEKLY_BACKLOG: Array<{ label: string; value: number }> = [
-  { label: "Feb 23", value: 29_170_124 },
-  { label: "Mar 2",  value: 26_423_867 },
-  { label: "Mar 9",  value: 27_271_565 },
-  { label: "Mar 16", value: 29_306_520 },
-  { label: "Mar 23", value: 30_435_495 },
-  { label: "Apr 3",  value: 27_286_570 },
-  { label: "Apr 9",  value: 27_489_483 },
-  { label: "Apr 16", value: 28_796_650 },
-  { label: "Apr 24", value: 30_376_233 },
-  { label: "May 1",  value: 27_705_627 },
-  { label: "May 8",  value: 33_925_675 },
-  { label: "May 15", value: 33_900_000 },
+/**
+ * Historical weekly snapshots — the fixed baseline of the 12-week trend.
+ * `date` is the ISO snapshot date; the operator's manually-entered daily
+ * figures from the open-PO store are merged on top of this by date so the
+ * line reflects the latest hand-entered totals (see buildSeries).
+ */
+const WEEKLY_BACKLOG: Array<{ date: string; value: number }> = [
+  { date: "2026-02-23", value: 29_170_124 },
+  { date: "2026-03-02", value: 26_423_867 },
+  { date: "2026-03-09", value: 27_271_565 },
+  { date: "2026-03-16", value: 29_306_520 },
+  { date: "2026-03-23", value: 30_435_495 },
+  { date: "2026-04-03", value: 27_286_570 },
+  { date: "2026-04-09", value: 27_489_483 },
+  { date: "2026-04-16", value: 28_796_650 },
+  { date: "2026-04-24", value: 30_376_233 },
+  { date: "2026-05-01", value: 27_705_627 },
+  { date: "2026-05-08", value: 33_925_675 },
+  { date: "2026-05-15", value: 33_900_000 },
 ];
+
+const MONTH_ABBR = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** "2026-05-21" → "May 21" (parsed without Date to avoid timezone drift). */
+function labelForDate(iso: string): string {
+  const [, m, d] = iso.split("-").map(Number);
+  if (!m || !d) return iso;
+  return `${MONTH_ABBR[m - 1]} ${d}`;
+}
+
+type WeeklyPoint = { date: string; label: string; value: number };
+
+/**
+ * Merge the static weekly baseline with the operator's manually-entered
+ * daily figures. An entry overrides the baseline on a same-date match and
+ * extends the line forward for any newer date.
+ */
+function buildSeries(
+  entries: Array<{ date: string; amount: number }>,
+): WeeklyPoint[] {
+  const byDate = new Map<string, number>();
+  for (const p of WEEKLY_BACKLOG) byDate.set(p.date, p.value);
+  for (const e of entries) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(e.date) && Number.isFinite(e.amount)) {
+      byDate.set(e.date, e.amount);
+    }
+  }
+  return [...byDate.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, value]) => ({ date, label: labelForDate(date), value }));
+}
+
+const Y_STEP = 4_000_000;
+
+/**
+ * Pick a clean y-axis band hugging the data — zoomed in (never from $0) so
+ * week-to-week movement is visible, and wide enough to never clip a value.
+ */
+function yAxisFor(points: WeeklyPoint[]): {
+  domain: [number, number];
+  ticks: number[];
+} {
+  const values = points.map(p => p.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  let lo = Math.floor(min / Y_STEP) * Y_STEP;
+  let hi = Math.ceil(max / Y_STEP) * Y_STEP;
+  if (min - lo < Y_STEP / 2) lo -= Y_STEP;
+  if (hi - max < Y_STEP / 2) hi += Y_STEP;
+  const ticks: number[] = [];
+  for (let t = lo; t <= hi; t += Y_STEP) ticks.push(t);
+  return { domain: [lo, hi], ticks };
+}
 
 type TooltipPayloadItem = {
   name?: string;
@@ -165,9 +228,10 @@ function LatestPointDot(props: {
   cx?: number;
   cy?: number;
   index?: number;
+  lastIndex?: number;
 }) {
-  const { cx, cy, index } = props;
-  if (index !== WEEKLY_BACKLOG.length - 1 || cx == null || cy == null) {
+  const { cx, cy, index, lastIndex } = props;
+  if (index !== lastIndex || cx == null || cy == null) {
     return <g />;
   }
   return (
@@ -187,11 +251,36 @@ function LatestPointDot(props: {
 
 export function BacklogWeeklyChart() {
   const reducedMotion = usePrefersReducedMotion();
+  const [data, setData] = useState<WeeklyPoint[]>(() => buildSeries([]));
+
+  // Pull the operator's manually-entered daily figures and merge them into
+  // the line so newly-recorded dates (May 21, 22, …) show up live.
+  const refresh = useCallback(() => {
+    fetch("/api/orders-backlog/open-po")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (d && Array.isArray(d.entries)) setData(buildSeries(d.entries));
+      })
+      .catch(() => {
+        /* keep the baseline series on a failed fetch */
+      });
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    // Re-fetch the instant a new figure is saved on the Orders Backlog page.
+    const onUpdate = () => refresh();
+    window.addEventListener("open-po:updated", onUpdate);
+    return () => window.removeEventListener("open-po:updated", onUpdate);
+  }, [refresh]);
+
+  const lastIndex = data.length - 1;
+  const { domain, ticks } = yAxisFor(data);
 
   return (
     <div className="h-[260px] w-full">
       <ResponsiveContainer>
-        <AreaChart data={WEEKLY_BACKLOG} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="openPosArea" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.2} />
@@ -211,8 +300,8 @@ export function BacklogWeeklyChart() {
           <YAxis
             // Zoom to the data band instead of starting at $0, so week-to-week
             // movement is actually visible.
-            domain={[24_000_000, 36_000_000]}
-            ticks={[24_000_000, 28_000_000, 32_000_000, 36_000_000]}
+            domain={domain}
+            ticks={ticks}
             tickFormatter={fmt}
             tick={{ fill: "var(--color-muted)", fontSize: 11 }}
             tickLine={false}
@@ -229,7 +318,7 @@ export function BacklogWeeklyChart() {
             stroke="var(--color-primary)"
             strokeWidth={2.5}
             fill="url(#openPosArea)"
-            dot={<LatestPointDot />}
+            dot={<LatestPointDot lastIndex={lastIndex} />}
             activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--color-card)" }}
             isAnimationActive={!reducedMotion}
             animationDuration={550}
