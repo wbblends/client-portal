@@ -219,7 +219,6 @@ export const COPY = {
     continue: "Continue",
     backTooltip: "Previous question",
     resumeBanner: "Picking up where you left off.",
-    addComment: "Add comment",
     commentLabel: "Comments (optional)",
     ratingRequired: "Pick a number to continue.",
   },

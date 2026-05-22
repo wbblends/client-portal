@@ -17,9 +17,11 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import Image from "next/image";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
+import heroImg from "@/public/brand/login-hero.webp";
 import {
   COPY,
   OPEN_QUESTIONS,
@@ -320,7 +322,7 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
   // ── Render ──
   if (phase === "welcome") {
     return (
-      <SurveyShell>
+      <SurveyShell hero>
         <WelcomeScreen onStart={start} />
       </SurveyShell>
     );
@@ -451,20 +453,59 @@ function validateContact(c: Contact): Partial<Contact> {
 
 // ─── Shell + chrome ────────────────────────────────────────────────────────
 
-/** Background chrome mirrors the portal login page: an ambient brand wash, a
- *  hairline accent at the top edge, and a faint grain texture. The layers are
- *  `fixed` so they never affect document flow or scrolling. */
-function SurveyShell({ children }: { children: React.ReactNode }) {
+/** Background chrome. Flow screens use the portal login page's ambient brand
+ *  wash; the welcome screen (`hero`) swaps in the portal swirl hero image
+ *  under a legibility wash. A hairline accent and faint grain sit on top of
+ *  both. The layers are `fixed` so they never affect flow or scrolling. */
+function SurveyShell({
+  children,
+  hero = false,
+}: {
+  children: React.ReactNode;
+  hero?: boolean;
+}) {
   return (
     <main className="relative flex min-h-dvh flex-col bg-surface">
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0"
-        style={{
-          background:
-            "radial-gradient(60rem 40rem at 88% 10%, color-mix(in oklab, var(--color-primary) 16%, transparent), transparent 65%), radial-gradient(50rem 36rem at 6% 95%, color-mix(in oklab, var(--color-primary) 9%, transparent), transparent 60%)",
-        }}
-      />
+      {hero ? (
+        <>
+          <div aria-hidden className="pointer-events-none fixed inset-0">
+            <Image
+              src={heroImg}
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              placeholder="blur"
+              className="object-cover"
+            />
+          </div>
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-0"
+            style={{
+              background:
+                "linear-gradient(135deg, color-mix(in oklab, var(--color-surface) 88%, transparent) 0%, color-mix(in oklab, var(--color-surface) 68%, transparent) 55%, color-mix(in oklab, var(--color-primary-soft) 55%, transparent) 100%)",
+            }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-0"
+            style={{
+              background:
+                "radial-gradient(38rem 30rem at 50% 42%, color-mix(in oklab, white 62%, transparent), transparent 72%)",
+            }}
+          />
+        </>
+      ) : (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0"
+          style={{
+            background:
+              "radial-gradient(60rem 40rem at 88% 10%, color-mix(in oklab, var(--color-primary) 16%, transparent), transparent 65%), radial-gradient(50rem 36rem at 6% 95%, color-mix(in oklab, var(--color-primary) 9%, transparent), transparent 60%)",
+          }}
+        />
+      )}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-x-0 top-0 h-px"
@@ -557,6 +598,7 @@ function DoneScreen() {
         className="mt-8 inline-flex h-12 items-center justify-center rounded-xl bg-primary px-7 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
       >
         {COPY.done.cta}
+        <ArrowRight className="ml-2 h-4 w-4" />
       </a>
     </CenteredScreen>
   );
@@ -692,31 +734,24 @@ function RatingScreen({
   onNext: () => void;
 }) {
   const scale = SCALES[question.scale];
-  const [commentOpen, setCommentOpen] = useState(false);
-
-  // A screen revisited via Back that already carries a comment opens with the
-  // box expanded so the respondent sees what they wrote.
-  useEffect(() => {
-    setCommentOpen(comment.trim().length > 0);
-  }, [question.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const selectedOption = scale.options.find(o => o.value === value);
   const answered = typeof value === "number";
 
   return (
     <div>
       <p className="text-xs font-bold uppercase tracking-wide text-muted-soft">
-        Question {question.number}
+        Question {question.number} — How would you rate our:
       </p>
       <h2 className="mt-2 font-display italic text-[clamp(30px,5.1vw,39px)] leading-snug tracking-tight text-foreground">
         {question.text}
       </h2>
 
-      <div
-        className="mt-7 flex flex-wrap gap-2.5"
-        role="radiogroup"
-        aria-label={question.text}
-      >
+      <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div
+          className="flex flex-wrap gap-2.5"
+          role="radiogroup"
+          aria-label={question.text}
+        >
         {scale.options.map(opt => {
           const selected = value === opt.value;
           return (
@@ -738,6 +773,12 @@ function RatingScreen({
             </button>
           );
         })}
+        </div>
+        {selectedOption && (
+          <span className="text-sm font-semibold text-primary">
+            {selectedOption.label}
+          </span>
+        )}
       </div>
 
       <div className="mt-3 flex justify-between text-xs text-muted-soft">
@@ -749,38 +790,19 @@ function RatingScreen({
         </span>
       </div>
 
-      <p
-        className={cn(
-          "mt-4 h-5 text-sm font-semibold text-primary transition-opacity",
-          selectedOption ? "opacity-100" : "opacity-0",
-        )}
-      >
-        {selectedOption ? selectedOption.label : " "}
-      </p>
-
-      {/* Optional per-question comment — collapsed behind a small link. */}
-      {commentOpen ? (
-        <div className="mt-2">
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-muted">
-            {COPY.micro.commentLabel}
-          </label>
-          <textarea
-            value={comment}
-            rows={3}
-            maxLength={FREE_TEXT_MAX}
-            onChange={e => onComment(question.id, e.target.value)}
-            className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary"
-          />
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setCommentOpen(true)}
-          className="mt-2 text-sm font-semibold text-primary hover:underline"
-        >
-          + {COPY.micro.addComment}
-        </button>
-      )}
+      {/* Per-question comment box — always visible, optional to fill in. */}
+      <div className="mt-5">
+        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-muted">
+          {COPY.micro.commentLabel}
+        </label>
+        <textarea
+          value={comment}
+          rows={3}
+          maxLength={FREE_TEXT_MAX}
+          onChange={e => onComment(question.id, e.target.value)}
+          className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary"
+        />
+      </div>
 
       {/* A Continue button appears once the question is answered, so the
           respondent can add a comment before moving on rather than being
@@ -899,6 +921,7 @@ function PrimaryButton({
       )}
     >
       {children}
+      <ArrowRight className="ml-2 h-4 w-4" />
     </button>
   );
 }
