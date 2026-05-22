@@ -1,18 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import {
-  Plus,
-  Trash2,
-  RotateCcw,
-  Download,
-  ChevronDown,
-  FilePlus2,
-  Lock,
-} from "lucide-react";
+import { Plus, Trash2, ChevronDown, FilePlus2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  ACTUALS_2025,
   MONTHLY_TARGETS,
   MONTH_LABELS,
   MONTH_SHORT,
@@ -27,23 +20,6 @@ import {
 import { NewOrderForm } from "./new-order-form";
 import { MonthlyPosReceivedChart } from "@/components/dashboard/orders-received-chart";
 import type { MonthlyPosReceivedPoint } from "@/components/dashboard/orders-received-chart-impl";
-
-// 2025 monthly PO revenue actuals — historical, used as the prior-year
-// baseline in the Monthly POs Received chart below.
-const ACTUALS_2025: { month: string; value: number }[] = [
-  { month: "Jan", value: 4_662_705 },
-  { month: "Feb", value: 5_038_802 },
-  { month: "Mar", value: 6_618_716 },
-  { month: "Apr", value: 7_109_174 },
-  { month: "May", value: 7_068_753 },
-  { month: "Jun", value: 5_725_431 },
-  { month: "Jul", value: 9_589_585 },
-  { month: "Aug", value: 7_111_473 },
-  { month: "Sep", value: 6_037_133 },
-  { month: "Oct", value: 8_733_145 },
-  { month: "Nov", value: 6_998_905 },
-  { month: "Dec", value: 8_376_343 },
-];
 
 type MonthCol =
   | { kind: "actual"; monthIdx: number }
@@ -66,8 +42,6 @@ export function OrdersPortalGrid({
 }) {
   const [rows, setRows] = useState<OrdersPortalRow[]>(initialRows);
   const [orderFormOpen, setOrderFormOpen] = useState(false);
-  /** Group rows visually by rep so the rep-color bands sit together. */
-  const [groupByRep, setGroupByRep] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   /**
    * Track which row.field combinations have a pending local edit. While a
@@ -275,33 +249,6 @@ export function OrdersPortalGrid({
     }
   };
 
-  const resetToSeed = async () => {
-    if (
-      typeof window !== "undefined" &&
-      !window.confirm(
-        "Reset all rows to the original 2026 POs snapshot? This affects every user.",
-      )
-    ) {
-      return;
-    }
-    pendingWritesRef.current += 1;
-    try {
-      const res = await fetch("/api/orders-portal/reset", { method: "POST" });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        setSyncError(data.error ?? "Couldn't reset the grid.");
-        return;
-      }
-      const { rows: fresh } = (await res.json()) as { rows: OrdersPortalRow[] };
-      setRows(fresh);
-      setSyncError(null);
-    } catch {
-      setSyncError("Network error — couldn't reset the grid.");
-    } finally {
-      pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
-    }
-  };
-
   // ── Aggregates
   const monthTotals = useMemo(() => {
     const out = Array(12).fill(0);
@@ -404,29 +351,6 @@ export function OrdersPortalGrid({
     return cols;
   }, [currentMonthIdx, forecastWindow]);
 
-  /** Visible rows. When grouped by rep, rows are bucketed by rep and rep
-   *  groups are ordered by REP_SUGGESTIONS (then any leftovers alphabetically).
-   *  Otherwise, the natural server order is preserved. */
-  const displayedRows = useMemo(() => {
-    if (!groupByRep) return rows;
-    const order = [...REP_SUGGESTIONS];
-    const seen = new Set<string>(order);
-    for (const r of rows) {
-      const k = r.rep || "—";
-      if (!seen.has(k)) {
-        order.push(k);
-        seen.add(k);
-      }
-    }
-    const buckets = new Map<string, OrdersPortalRow[]>();
-    for (const r of rows) {
-      const k = r.rep || "—";
-      if (!buckets.has(k)) buckets.set(k, []);
-      buckets.get(k)!.push(r);
-    }
-    return order.flatMap(k => buckets.get(k) ?? []);
-  }, [rows, groupByRep]);
-
   const quarters = useMemo(
     () => [
       { label: "Q1", actual: monthTotals[0] + monthTotals[1] + monthTotals[2], target: MONTHLY_TARGETS[0] + MONTHLY_TARGETS[1] + MONTHLY_TARGETS[2] },
@@ -477,39 +401,6 @@ export function OrdersPortalGrid({
     return order.filter(k => map.has(k)).map(tier => ({ tier, ...map.get(tier)! }));
   }, [rows, currentMonthIdx]);
 
-  const downloadCsv = () => {
-    const forecastHeaders = forecastWindow.map(i => `${MONTH_LABELS[i]} Forecast`);
-    const header = [
-      "Customer", "Rep", "CS", "Tier", "Projection",
-      ...MONTH_LABELS, ...forecastHeaders, "YTD", "Remaining to Target",
-    ];
-    const lines = [header.join(",")];
-    for (const r of rows) {
-      const ytd = r.months.reduce<number>((s, v) => s + (v ?? 0), 0);
-      const remaining = (r.projection || 0) - ytd;
-      const f = r.forecasts ?? [];
-      const cells = [
-        csv(r.customer),
-        csv(r.rep),
-        csv(r.cs),
-        csv(r.tier),
-        r.projection,
-        ...r.months.map(v => (v == null ? "" : v)),
-        ...forecastWindow.map(i => (f[i] == null ? "" : f[i])),
-        ytd,
-        remaining,
-      ];
-      lines.push(cells.join(","));
-    }
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `orders-portal-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="space-y-6">
       {/* ── Current-month focus card ──────────────────────────────────── */}
@@ -527,8 +418,8 @@ export function OrdersPortalGrid({
           return (
             <div className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between">
-                <div className="text-xs font-bold uppercase tracking-wide text-muted">
-                  {currentMonthLabel}
+                <div className="text-sm font-semibold uppercase tracking-wide text-muted">
+                  {currentMonthLabel} Orders Actuals
                 </div>
                 <div
                   className={cn(
@@ -571,8 +462,8 @@ export function OrdersPortalGrid({
               className="rounded-xl border border-warning-soft bg-warning-soft/40 p-5 shadow-[var(--shadow-card)]"
             >
               <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wide text-warning">
-                  {MONTH_LABELS[i]} Forecast
+                <div className="text-sm font-semibold uppercase tracking-wide text-warning">
+                  {MONTH_LABELS[i]} Orders Forecast
                 </div>
                 <div
                   className={cn(
@@ -689,71 +580,6 @@ export function OrdersPortalGrid({
           }))}
           firstColHeader="Tier"
         />
-      </div>
-
-      {/* ── Toolbar ───────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="text-xs text-muted">
-            <span className="text-foreground-soft font-medium">{rows.length}</span>{" "}
-            customers ·{" "}
-            {canEdit ? (
-              <span>edits sync to every user</span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-foreground-soft">
-                <Lock className="h-3 w-3" /> read-only
-              </span>
-            )}
-          </div>
-          <label className="inline-flex items-center gap-1.5 text-xs text-foreground-soft cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={groupByRep}
-              onChange={e => setGroupByRep(e.target.checked)}
-              className="h-3.5 w-3.5 accent-[var(--color-primary)]"
-            />
-            Group by rep
-          </label>
-          {/* Rep color legend */}
-          <div className="hidden sm:flex items-center gap-2 text-[11px] text-muted">
-            {REP_SUGGESTIONS.map(r => {
-              const tone = getRepColor(r);
-              return (
-                <span key={r} className="inline-flex items-center gap-1">
-                  <span className={cn("h-2 w-2 rounded-full", tone.dot)} />
-                  {r}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {syncError && (
-            <span className="text-xs text-danger font-medium" role="status">
-              {syncError}
-            </span>
-          )}
-          <Button size="sm" variant="outline" onClick={downloadCsv}>
-            <Download className="h-3.5 w-3.5" />
-            Export CSV
-          </Button>
-          {canEdit && (
-            <>
-              <Button size="sm" variant="outline" onClick={resetToSeed}>
-                <RotateCcw className="h-3.5 w-3.5" />
-                Reset
-              </Button>
-              <Button size="sm" variant="outline" onClick={addRow}>
-                <Plus className="h-3.5 w-3.5" />
-                Add row
-              </Button>
-              <Button size="sm" variant="primary" onClick={() => setOrderFormOpen(true)}>
-                <FilePlus2 className="h-3.5 w-3.5" />
-                Enter new order
-              </Button>
-            </>
-          )}
-        </div>
       </div>
 
       {/* ── Spreadsheet ──────────────────────────────────────────────── */}
@@ -882,7 +708,7 @@ export function OrdersPortalGrid({
             </tr>
           </thead>
           <tbody>
-            {displayedRows.map((r, idx) => (
+            {rows.map((r, idx) => (
               <Row
                 key={r.id}
                 row={r}
@@ -895,6 +721,40 @@ export function OrdersPortalGrid({
                 onDelete={() => deleteRow(r.id)}
               />
             ))}
+            {canEdit && (
+              <tr className="bg-card">
+                <td
+                  colSpan={8 + monthColumns.length}
+                  className="px-3 py-2.5 border-t border-border/60"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={addRow}
+                        className="inline-flex items-center gap-1 text-[12px] text-muted-soft hover:text-foreground transition-colors"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add row
+                      </button>
+                      {syncError && (
+                        <span className="text-xs text-danger font-medium" role="status">
+                          {syncError}
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => setOrderFormOpen(true)}
+                    >
+                      <FilePlus2 className="h-3.5 w-3.5" />
+                      Enter new order
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -1486,10 +1346,3 @@ function pct(numerator: number, denominator: number) {
   return `${((numerator / denominator) * 100).toFixed(1)}%`;
 }
 
-function csv(s: string) {
-  if (s == null) return "";
-  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
-}
