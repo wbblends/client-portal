@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
 import { BacklogWeeklyChart } from "@/components/dashboard/orders-backlog-charts";
 import { CumulativePipelineChart } from "@/components/dashboard/marketing-pipeline-chart";
-import { HomeTicketsDonuts } from "@/components/dashboard/home-tickets-donuts";
 import {
   TopDealsCard,
   scoreDealsForPipeline,
@@ -32,8 +31,6 @@ import {
 } from "@/lib/marketing/pipeline-history";
 import { listOrdersRows, type DbOrdersRow } from "@/lib/orders/store";
 import { listOpenPoEntries, type OpenPoEntry } from "@/lib/orders/open-po-store";
-import { listTickets, type Ticket } from "@/lib/tickets/store";
-import { isLate, isParked } from "@/lib/tickets/status";
 import {
   ACTUALS_2025,
   MONTHLY_TARGETS,
@@ -100,33 +97,6 @@ function sumMonthly(
   return total;
 }
 
-function countBy<T>(items: T[], pick: (t: T) => string): { name: string; value: number }[] {
-  const counts = new Map<string, number>();
-  for (const item of items) {
-    const key = pick(item).trim() || "—";
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  return [...counts.entries()]
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value);
-}
-
-function ticketHealth(tickets: Ticket[]) {
-  let overdue = 0;
-  let parked = 0;
-  let onTrack = 0;
-  for (const t of tickets) {
-    if (isLate(t)) overdue += 1;
-    else if (isParked(t.status)) parked += 1;
-    else onTrack += 1;
-  }
-  return [
-    { name: "Overdue", value: overdue },
-    { name: "Parked", value: parked },
-    { name: "On track", value: onTrack },
-  ].filter(d => d.value > 0);
-}
-
 // 12-month window ending today, anchored to month boundaries. Drives the
 // cumulative-pipeline chart's bucketing (one bar per month).
 function lastTwelveMonthsRange(): { from: Date; to: Date } {
@@ -151,7 +121,6 @@ const pctOf = (v: number, target: number) =>
  * HubSpot round-trip can no longer block the whole page from rendering:
  *
  *  - Orders / forecast + Monthly POs   → local DB (`listOrdersRows`), fast
- *  - Project tickets                   → local DB (`listTickets`), fast
  *  - Open pipeline + Top deals         → HubSpot kanban, can be slow on a cold
  *                                        cache — streamed in independently
  *  - Cumulative open pipeline          → HubSpot history, likewise streamed
@@ -185,7 +154,6 @@ export default async function HomePage() {
   const historyPromise = getPipelineHistory(range);
   const ordersPromise = listOrdersRows();
   const openPoPromise = listOpenPoEntries(1);
-  const ticketsPromise = listTickets();
 
   return (
     <div className="page-container page-pad-x page-pad-y space-y-7">
@@ -249,11 +217,6 @@ export default async function HomePage() {
       {/* Top deals */}
       <Suspense fallback={<TopDealsSkeleton />}>
         <TopDealsSection kanbanPromise={kanbanPromise} />
-      </Suspense>
-
-      {/* Tickets */}
-      <Suspense fallback={<TicketsSkeleton />}>
-        <TicketsSection ticketsPromise={ticketsPromise} />
       </Suspense>
     </div>
   );
@@ -503,61 +466,6 @@ async function TopDealsSection({
   );
 }
 
-async function TicketsSection({
-  ticketsPromise,
-}: {
-  ticketsPromise: Promise<Ticket[]>;
-}) {
-  const tickets = await ticketsPromise;
-  const openTickets = tickets.filter(t => t.deletedAt === null);
-  const ticketsBySection = countBy(openTickets, t => t.tab);
-  const healthData = ticketHealth(openTickets);
-  const overdueCount = openTickets.filter(t => isLate(t)).length;
-  const parkedCount = openTickets.filter(t => isParked(t.status)).length;
-
-  return (
-    <section className="space-y-3">
-      <SectionHeader title="Project tickets" href="/admin/tickets" />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiTile
-          label="Open tickets"
-          value={formatNumber(openTickets.length)}
-          hint="across all sections"
-        />
-        <KpiTile
-          label="Overdue"
-          value={formatNumber(overdueCount)}
-          hint={
-            openTickets.length > 0
-              ? `${Math.round((overdueCount / openTickets.length) * 100)}% of open`
-              : "past due date"
-          }
-          preferDirection="down"
-        />
-        <KpiTile
-          label="Parked"
-          value={formatNumber(parkedCount)}
-          hint="waiting on someone else"
-          preferDirection="down"
-        />
-        <KpiTile
-          label="Sections in flight"
-          value={formatNumber(ticketsBySection.length)}
-          hint="distinct workflows"
-        />
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Tickets by section & health</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <HomeTicketsDonuts bySection={ticketsBySection} health={healthData} />
-        </CardContent>
-      </Card>
-    </section>
-  );
-}
-
 // ─── Shared header ──────────────────────────────────────────────────────────
 
 function SectionHeader({
@@ -658,26 +566,3 @@ function TopDealsSkeleton() {
   );
 }
 
-function TicketsSkeleton() {
-  return (
-    <section className="space-y-3">
-      <SectionHeader title="Project tickets" href="/admin/tickets" />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <KpiTileSkeleton key={i} />
-        ))}
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Tickets by section & health</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="h-[220px] w-full rounded-lg bg-accent/30" />
-            <div className="h-[220px] w-full rounded-lg bg-accent/30" />
-          </div>
-        </CardContent>
-      </Card>
-    </section>
-  );
-}
