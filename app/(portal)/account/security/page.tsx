@@ -24,7 +24,7 @@ export default async function SecurityPage() {
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <CardTitle>Two-factor authentication</CardTitle>
+              <CardTitle>Two-Factor Authentication</CardTitle>
             </div>
             {me.mfaEnabled ? (
               <Badge tone="success">

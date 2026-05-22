@@ -92,7 +92,7 @@ function NewFolderDialog({
   }, [state, onClose]);
 
   return (
-    <DialogShell title="New folder" onClose={onClose}>
+    <DialogShell title="New Folder" onClose={onClose}>
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="parentId" value={parentId ?? ""} />
         <div className="space-y-1.5">
@@ -137,7 +137,7 @@ function AddDocumentDialog({
   }, [state, onClose]);
 
   return (
-    <DialogShell title="Add document" onClose={onClose}>
+    <DialogShell title="Add Document" onClose={onClose}>
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="parentId" value={parentId ?? ""} />
         <div className="space-y-1.5">

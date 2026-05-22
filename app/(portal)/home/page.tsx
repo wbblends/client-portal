@@ -171,7 +171,7 @@ export default async function HomePage() {
       <Suspense
         fallback={
           <SectionSkeleton
-            title="Orders & forecast"
+            title="Orders & Forecast"
             href="/dashboards/orders-portal"
             tiles={4}
           />
@@ -184,7 +184,7 @@ export default async function HomePage() {
       <Suspense
         fallback={
           <SectionSkeleton
-            title="Open pipeline"
+            title="Open Pipeline"
             href="/dashboards/pipeline-analytics"
             tiles={3}
           />
@@ -196,12 +196,12 @@ export default async function HomePage() {
       {/* Charts */}
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Suspense
-          fallback={<ChartCardSkeleton title="Open POs · last 12 weeks" height={260} />}
+          fallback={<ChartCardSkeleton title="Open POs · Last 12 Weeks" height={260} />}
         >
           <OpenPosWeeklySection openPoPromise={openPoPromise} />
         </Suspense>
         <Suspense
-          fallback={<ChartCardSkeleton title="Cumulative open pipeline" height={260} />}
+          fallback={<ChartCardSkeleton title="Cumulative Open Pipeline" height={260} />}
         >
           <CumulativePipelineSection historyPromise={historyPromise} />
         </Suspense>
@@ -209,7 +209,7 @@ export default async function HomePage() {
 
       {/* Monthly POs received */}
       <Suspense
-        fallback={<ChartCardSkeleton title="Monthly POs received" height={280} />}
+        fallback={<ChartCardSkeleton title="Monthly POs Received" height={280} />}
       >
         <MonthlyPosSection ordersPromise={ordersPromise} />
       </Suspense>
@@ -251,7 +251,7 @@ async function OrdersForecastSection({
 
   return (
     <section className="space-y-3">
-      <SectionHeader title="Orders & forecast" href="/dashboards/orders-portal" />
+      <SectionHeader title="Orders & Forecast" href="/dashboards/orders-portal" />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiTile
           label={`${monthLabel} Orders Actuals`}
@@ -296,23 +296,23 @@ async function PipelineKpiSection({
   return (
     <section className="space-y-3">
       <SectionHeader
-        title="Open pipeline"
+        title="Open Pipeline"
         href="/dashboards/pipeline-analytics"
         source={pipelines.source}
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiTile
-          label="Open deals"
+          label="Open Deals"
           value={formatNumber(pipelines.combined.dealCount)}
           hint={`${formatNumber(pipelines.perPipeline.sales.dealCount)} new logo · ${formatNumber(pipelines.perPipeline.expansion.dealCount)} wallet share`}
         />
         <KpiTile
-          label="Unweighted pipeline"
+          label="Unweighted Pipeline"
           value={formatCurrency(pipelines.combined.unweighted, { compact: true })}
           hint="Sum of open deal amounts"
         />
         <KpiTile
-          label="Weighted pipeline"
+          label="Weighted Pipeline"
           value={formatCurrency(pipelines.combined.weighted, { compact: true })}
           hint="Amount × stage probability"
         />
@@ -344,7 +344,7 @@ async function OpenPosWeeklySection({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Open POs · last 12 weeks</CardTitle>
+        <CardTitle>Open POs · Last 12 Weeks</CardTitle>
         {latest && (
           <div className="mt-2 flex items-baseline gap-2.5">
             <span className="font-display text-[32px] font-bold leading-none tracking-tight tabular-nums text-foreground">
@@ -375,7 +375,7 @@ async function CumulativePipelineSection({
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle>Cumulative open pipeline</CardTitle>
+            <CardTitle>Cumulative Open Pipeline</CardTitle>
           </div>
           {history.source === "placeholder" && (
             <Badge tone="warning" className="shrink-0">Demo data</Badge>
@@ -428,7 +428,7 @@ async function MonthlyPosSection({
     <Card>
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
-          <CardTitle>Monthly POs received</CardTitle>
+          <CardTitle>Monthly POs Received</CardTitle>
           <Link
             href="/dashboards/orders-portal"
             className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"
@@ -457,7 +457,7 @@ async function TopDealsSection({
 
   return (
     <section className="space-y-3">
-      <SectionHeader title="Top deals" source={kanban.source} />
+      <SectionHeader title="Top Deals" source={kanban.source} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <TopDealsCard title="New Logo Pipeline" deals={newLogoTop} />
         <TopDealsCard title="Wallet Share Pipeline" deals={expansionTop} />
@@ -557,7 +557,7 @@ function ChartCardSkeleton({ title, height }: { title: string; height: number })
 function TopDealsSkeleton() {
   return (
     <section className="space-y-3">
-      <SectionHeader title="Top deals" />
+      <SectionHeader title="Top Deals" />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="h-[420px] rounded-xl border border-border bg-accent/30" />
         <div className="h-[420px] rounded-xl border border-border bg-accent/30" />

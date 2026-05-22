@@ -65,7 +65,7 @@ export async function PipelineAnalyticsDashboard() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Cumulative open pipeline</CardTitle>
+          <CardTitle>Cumulative Open Pipeline</CardTitle>
         </CardHeader>
         <CardContent>
           <CumulativePipelineChart buckets={history.buckets} />

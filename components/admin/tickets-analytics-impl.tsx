@@ -518,7 +518,7 @@ export function TicketsAnalytics({
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
-          label="Open tickets"
+          label="Open Tickets"
           value={stats.total}
           hint="across all sections"
         />
@@ -532,7 +532,7 @@ export function TicketsAnalytics({
           }
         />
         <StatCard
-          label="Avg days open"
+          label="Avg Days Open"
           value={stats.avgAge}
           hint={`across ${formatNumber(stats.agedCount)} dated tickets`}
         />
@@ -548,7 +548,7 @@ export function TicketsAnalytics({
           By section
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
-          <ChartCard title="Open tickets by section">
+          <ChartCard title="Open Tickets by Section">
             <DonutChart
               data={charts.openBySection}
               colors={PALETTE}
@@ -556,7 +556,7 @@ export function TicketsAnalytics({
               reducedMotion={reducedMotion}
             />
           </ChartCard>
-          <ChartCard title="Ticket health">
+          <ChartCard title="Ticket Health">
             <DonutChart
               data={charts.health}
               colors={charts.health.map(
@@ -566,7 +566,7 @@ export function TicketsAnalytics({
               reducedMotion={reducedMotion}
             />
           </ChartCard>
-          <ChartCard title="Overdue tickets by section">
+          <ChartCard title="Overdue Tickets by Section">
             <BarsChart
               data={charts.overdueBySection}
               color="var(--color-danger)"
@@ -575,7 +575,7 @@ export function TicketsAnalytics({
               reducedMotion={reducedMotion}
             />
           </ChartCard>
-          <ChartCard title="Average days open by section">
+          <ChartCard title="Average Days Open by Section">
             <BarsChart
               data={charts.ageBySection}
               color="var(--color-primary)"
@@ -593,7 +593,7 @@ export function TicketsAnalytics({
           By product type
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
-          <ChartCard title="Open tickets by product type">
+          <ChartCard title="Open Tickets by Product Type">
             <DonutChart
               data={charts.openByProduct}
               colors={PALETTE}
@@ -601,7 +601,7 @@ export function TicketsAnalytics({
               reducedMotion={reducedMotion}
             />
           </ChartCard>
-          <ChartCard title="Overdue tickets by product type">
+          <ChartCard title="Overdue Tickets by Product Type">
             <BarsChart
               data={charts.overdueByProduct}
               color="var(--color-danger)"
@@ -611,7 +611,7 @@ export function TicketsAnalytics({
             />
           </ChartCard>
         </div>
-        <ChartCard title="Average days open by product type">
+        <ChartCard title="Average Days Open by Product Type">
           <BarsChart
             data={charts.ageByProduct}
             color="var(--color-primary)"
@@ -628,7 +628,7 @@ export function TicketsAnalytics({
           Workload &amp; aging
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
-          <ChartCard title="Open tickets by salesperson">
+          <ChartCard title="Open Tickets by Salesperson">
             <BarsChart
               data={charts.bySalesperson}
               color="var(--color-info)"
@@ -637,7 +637,7 @@ export function TicketsAnalytics({
               reducedMotion={reducedMotion}
             />
           </ChartCard>
-          <ChartCard title="Top 10 customers by open tickets">
+          <ChartCard title="Top 10 Customers by Open Tickets">
             <BarsChart
               data={charts.topCustomers}
               color="var(--color-primary)"
@@ -647,7 +647,7 @@ export function TicketsAnalytics({
             />
           </ChartCard>
         </div>
-        <ChartCard title="Ticket aging">
+        <ChartCard title="Ticket Aging">
           <BarsChart
             data={charts.aging}
             color="var(--color-primary)"

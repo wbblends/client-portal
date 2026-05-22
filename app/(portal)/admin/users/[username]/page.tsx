@@ -45,7 +45,7 @@ export default async function EditUserPage(props: PageProps<"/admin/users/[usern
 
       <Card>
         <CardHeader>
-          <CardTitle>User details</CardTitle>
+          <CardTitle>User Details</CardTitle>
         </CardHeader>
         <CardContent>
           <UserForm

@@ -101,12 +101,12 @@ export async function MarketingOverviewDashboard({
       {/* Pipeline flow (range-scoped chart) */}
       <section className="space-y-3">
         <SectionHeader
-          title="Pipeline flow"
+          title="Pipeline Flow"
           source={history.source}
         />
         <Card>
           <CardHeader>
-            <CardTitle>Pipeline flow</CardTitle>
+            <CardTitle>Pipeline Flow</CardTitle>
           </CardHeader>
           <CardContent>
             <PipelineFlowChart buckets={history.buckets} />
@@ -117,12 +117,12 @@ export async function MarketingOverviewDashboard({
       {/* Inbound leads */}
       <section className="space-y-3">
         <SectionHeader
-          title="Inbound leads"
+          title="Inbound Leads"
           source={leadCounts.source}
         />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <KpiTile
-            label="In selected range"
+            label="In Selected Range"
             value={formatNumber(leadCounts.inRange)}
             delta={leadDelta}
             hint={`vs ${formatNumber(leadCounts.inCompareRange)} ${compare.shortLabel.toLowerCase()}`}
@@ -132,7 +132,7 @@ export async function MarketingOverviewDashboard({
             value={formatNumber(leadCounts.inCompareRange)}
           />
           <KpiTile
-            label="All time"
+            label="All Time"
             value={formatNumber(leadCounts.allTime)}
           />
         </div>
@@ -141,7 +141,7 @@ export async function MarketingOverviewDashboard({
       {/* Marketing attribution */}
       <section className="space-y-3">
         <SectionHeader
-          title="Marketing attribution"
+          title="Marketing Attribution"
           source={
             attribution.source === "placeholder" || influencedPOs.source === "placeholder"
               ? "placeholder"
@@ -150,23 +150,23 @@ export async function MarketingOverviewDashboard({
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiTile
-            label="Attributed pipeline (unweighted)"
+            label="Attributed Pipeline (Unweighted)"
             value={formatCurrency(attribution.attributedUnweighted, { compact: true })}
             hint={`${formatNumber(attribution.attributedDealCount)} open deals · ${formatNumber(
               attribution.touchedCompanyNames.length,
             )} companies`}
           />
           <KpiTile
-            label="Attributed pipeline (weighted)"
+            label="Attributed Pipeline (Weighted)"
             value={formatCurrency(attribution.attributedWeighted, { compact: true })}
           />
           <KpiTile
-            label="Marketing-influenced POs in range"
+            label="Marketing-Influenced POs in Range"
             value={formatCurrency(influencedPOs.ytdInfluencedPOs, { compact: true })}
             hint={`${formatNumber(influencedPOs.matches.length)} matched customers`}
           />
           <KpiTile
-            label="Share of POs in range"
+            label="Share of POs in Range"
             value={`${(influencedPOs.influencedShare * 100).toFixed(1)}%`}
             hint={`of ${formatCurrency(influencedPOs.totalYTDPOs, { compact: true })} total`}
             preferDirection="up"
@@ -176,7 +176,7 @@ export async function MarketingOverviewDashboard({
         {influencedPOs.matches.length > 0 && (
           <Card className="overflow-hidden">
             <CardHeader>
-              <CardTitle>Matched customers</CardTitle>
+              <CardTitle>Matched Customers</CardTitle>
             </CardHeader>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -223,7 +223,7 @@ export async function MarketingOverviewDashboard({
       {/* Paid traffic & engagement (Google Ads + LinkedIn Ads) */}
       <section className="space-y-3">
         <SectionHeader
-          title="Paid traffic & engagement"
+          title="Paid Traffic & Engagement"
           source={adAnalytics.source}
         />
         <AdAnalyticsKpis analytics={adAnalytics} compareLabel={compare.shortLabel} />
@@ -233,7 +233,7 @@ export async function MarketingOverviewDashboard({
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>Daily paid visits</CardTitle>
+            <CardTitle>Daily Paid Visits</CardTitle>
           </CardHeader>
           <CardContent>
             <PaidVisitsTrendChart points={adAnalytics.daily} />
@@ -242,7 +242,7 @@ export async function MarketingOverviewDashboard({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle>Traffic source share</CardTitle>
+              <CardTitle>Traffic Source Share</CardTitle>
             </CardHeader>
             <CardContent>
               <TrafficShareChart slices={adAnalytics.trafficShare} />
@@ -250,7 +250,7 @@ export async function MarketingOverviewDashboard({
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Engagement quality by network</CardTitle>
+              <CardTitle>Engagement Quality by Network</CardTitle>
             </CardHeader>
             <CardContent>
               <EngagementCompareChart networks={adAnalytics.byNetwork} />

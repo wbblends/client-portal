@@ -29,7 +29,7 @@ export async function OrdersBacklogDashboard({ dashboard }: { dashboard: Dashboa
 
       <Card>
         <CardHeader>
-          <CardTitle>Open POs — last 12 weeks</CardTitle>
+          <CardTitle>Open POs — Last 12 Weeks</CardTitle>
         </CardHeader>
         <CardContent>
           <BacklogWeeklyChart />

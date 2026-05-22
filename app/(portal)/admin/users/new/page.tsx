@@ -33,13 +33,13 @@ export default async function NewUserPage() {
       <div>
         <p className="text-sm text-muted">Admin</p>
         <h1 className="mt-0.5 font-display text-[clamp(26px,4.2vw,34px)] leading-[1.1] tracking-tight text-foreground">
-          New user
+          New User
         </h1>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>User details</CardTitle>
+          <CardTitle>User Details</CardTitle>
         </CardHeader>
         <CardContent>
           <UserForm dashboards={dashboards} customers={customers} />

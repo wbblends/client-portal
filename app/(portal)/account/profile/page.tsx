@@ -22,7 +22,7 @@ export default async function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Profile photo</CardTitle>
+          <CardTitle>Profile Photo</CardTitle>
         </CardHeader>
         <CardContent>
           <ProfilePhotoCard name={me.name} avatarUrl={me.avatarUrl ?? null} />
@@ -31,7 +31,7 @@ export default async function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Display name</CardTitle>
+          <CardTitle>Display Name</CardTitle>
         </CardHeader>
         <CardContent>
           <ProfileFieldsCard

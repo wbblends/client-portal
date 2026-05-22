@@ -36,7 +36,7 @@ export default async function AdminUsersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Current users ({users.length})</CardTitle>
+          <CardTitle>Current Users ({users.length})</CardTitle>
         </CardHeader>
         <CardContent className="px-0">
           <div className="overflow-x-auto">

@@ -407,7 +407,7 @@ export function NewOrderForm({
               </Section>
 
               {/* Delivery schedule */}
-              <Section title="Delivery schedule">
+              <Section title="Delivery Schedule">
                 <div className="rounded-lg border border-border overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>

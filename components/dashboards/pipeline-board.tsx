@@ -299,9 +299,9 @@ function KpiStrip({ totals, filtered }: { totals: Totals; filtered: boolean }) {
   return (
     <Card className="overflow-hidden">
       <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
-        <KpiCell label="Pipeline value" primary={fmtMoneyCompact(totals.unweighted)} hint={hint ?? "Sum of open deal amounts"} />
-        <KpiCell label="Weighted value" primary={fmtMoneyCompact(totals.weighted)} hint={hint ?? "Probability-adjusted, from HubSpot"} />
-        <KpiCell label="Open deals" primary={totals.dealCount.toLocaleString()} hint={hint ?? "Count of open deals"} />
+        <KpiCell label="Pipeline Value" primary={fmtMoneyCompact(totals.unweighted)} hint={hint ?? "Sum of open deal amounts"} />
+        <KpiCell label="Weighted Value" primary={fmtMoneyCompact(totals.weighted)} hint={hint ?? "Probability-adjusted, from HubSpot"} />
+        <KpiCell label="Open Deals" primary={totals.dealCount.toLocaleString()} hint={hint ?? "Count of open deals"} />
       </div>
     </Card>
   );

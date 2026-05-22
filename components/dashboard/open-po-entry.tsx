@@ -99,7 +99,7 @@ export function OpenPoEntryCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Open POs — current total</CardTitle>
+        <CardTitle>Open POs — Current Total</CardTitle>
         <CardDescription>
           Enter the open-order total each day. The most recent entry is the working figure.
         </CardDescription>
