@@ -442,7 +442,7 @@ export function OrdersPortalGrid({
           return (
             <div className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold uppercase tracking-wide text-muted">
+                <div className="text-sm font-bold uppercase tracking-wide text-muted">
                   {currentMonthLabel} Orders Actuals
                 </div>
                 <div
@@ -486,7 +486,7 @@ export function OrdersPortalGrid({
               className="rounded-xl border border-warning-soft bg-warning-soft/40 p-5 shadow-[var(--shadow-card)]"
             >
               <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold uppercase tracking-wide text-warning">
+                <div className="text-sm font-bold uppercase tracking-wide text-warning">
                   {MONTH_LABELS[i]} Orders Forecast
                 </div>
                 <div

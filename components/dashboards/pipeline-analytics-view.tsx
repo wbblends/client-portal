@@ -353,7 +353,7 @@ function BreakdownTable({
   return (
     <Card className="overflow-hidden">
       <div className="px-5 pt-5 pb-3">
-        <h3 className="text-base font-semibold tracking-tight text-foreground">{title}</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">{title}</h3>
       </div>
 
       <div className="overflow-x-auto">
@@ -461,7 +461,7 @@ function DonutCard({
   return (
     <Card className="px-5 py-5">
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-base font-semibold tracking-tight text-foreground">{title}</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">{title}</h3>
         <WeightToggle value={weight} onChange={onWeightChange} />
       </div>
 
@@ -603,7 +603,7 @@ function AgingCard({ deals }: { deals: FlatDeal[] }) {
     <Card className="overflow-hidden">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="text-base font-semibold tracking-tight text-foreground">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">
             Stale deals
           </h3>
           <span className="text-xs text-muted">
