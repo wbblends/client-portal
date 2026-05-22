@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { Plus, Trash2, ChevronDown, FilePlus2 } from "lucide-react";
+import { Plus, Trash2, ChevronDown, FilePlus2, Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -61,6 +61,14 @@ export function OrdersPortalGrid({
    * server's older value. Cleared when the PATCH for that row resolves.
    */
   const dirtyRef = useRef<Set<string>>(new Set());
+
+  // ── Filters: narrow the customer sheet (and its Σ totals row) by account
+  // manager, CS, tier, or customer name. The KPI cards above stay
+  // company-wide — only the spreadsheet below responds.
+  const [filterRep, setFilterRep] = useState("");
+  const [filterCs, setFilterCs] = useState("");
+  const [filterTier, setFilterTier] = useState("");
+  const [filterQuery, setFilterQuery] = useState("");
 
   // ── Polling: every 10s pick up edits from other users. We pause polling
   // while there's a pending write so we don't race our own optimistic update.
@@ -291,6 +299,73 @@ export function OrdersPortalGrid({
   const ytdGrand = useMemo(
     () => monthTotals.reduce((s, v) => s + v, 0),
     [monthTotals],
+  );
+
+  // ── Filtered view of the spreadsheet rows. Drives the row body and the
+  // Σ totals strip; the KPI cards above keep using the unfiltered rows.
+  const filteredRows = useMemo(() => {
+    const q = filterQuery.trim().toLowerCase();
+    return rows.filter(r => {
+      if (filterRep && r.rep !== filterRep) return false;
+      if (filterCs && r.cs !== filterCs) return false;
+      if (filterTier && r.tier !== filterTier) return false;
+      if (q && !r.customer.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [rows, filterRep, filterCs, filterTier, filterQuery]);
+
+  const filtersActive =
+    filterRep !== "" || filterCs !== "" || filterTier !== "" || filterQuery.trim() !== "";
+
+  const clearFilters = useCallback(() => {
+    setFilterRep("");
+    setFilterCs("");
+    setFilterTier("");
+    setFilterQuery("");
+  }, []);
+
+  // Distinct rep / CS values present in the sheet, canonical names first.
+  const repOptions = useMemo(() => {
+    const present = new Set(rows.map(r => r.rep).filter(Boolean));
+    const out = REP_SUGGESTIONS.filter(r => present.has(r));
+    for (const r of Array.from(present).sort()) if (!out.includes(r)) out.push(r);
+    return out;
+  }, [rows]);
+
+  const csOptions = useMemo(() => {
+    const present = new Set(rows.map(r => r.cs).filter(Boolean));
+    const out = CS_SUGGESTIONS.filter(c => present.has(c));
+    for (const c of Array.from(present).sort()) if (!out.includes(c)) out.push(c);
+    return out;
+  }, [rows]);
+
+  // Σ-totals aggregates for the autosum row — these track the *filtered*
+  // rows so the totals strip matches what's visible.
+  const filteredMonthTotals = useMemo(() => {
+    const out = Array(12).fill(0);
+    for (const r of filteredRows) {
+      for (let i = 0; i < 12; i++) out[i] += r.months[i] ?? 0;
+    }
+    return out;
+  }, [filteredRows]);
+
+  const filteredForecastTotals = useMemo(() => {
+    const out = Array(12).fill(0);
+    for (const r of filteredRows) {
+      const f = r.forecasts ?? [];
+      for (let i = 0; i < 12; i++) out[i] += f[i] ?? 0;
+    }
+    return out;
+  }, [filteredRows]);
+
+  const filteredProjectionTotal = useMemo(
+    () => filteredRows.reduce((s, r) => s + (r.projection || 0), 0),
+    [filteredRows],
+  );
+
+  const filteredYtdGrand = useMemo(
+    () => filteredMonthTotals.reduce((s, v) => s + v, 0),
+    [filteredMonthTotals],
   );
 
   /**
@@ -619,6 +694,62 @@ export function OrdersPortalGrid({
         />
       </div>
 
+      {/* ── Filter bar ───────────────────────────────────────────────── */}
+      {/* Narrows the customer sheet + its Σ totals row only — the KPI cards
+          above stay company-wide. */}
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
+        <div className="flex h-9 items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted">
+          <Filter className="h-3.5 w-3.5" />
+          Filter
+        </div>
+        <FilterField label="Customer">
+          <input
+            type="text"
+            value={filterQuery}
+            onChange={e => setFilterQuery(e.target.value)}
+            placeholder="Search name…"
+            className="h-9 w-44 rounded-lg border border-border bg-card px-2.5 text-[13px] text-foreground outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </FilterField>
+        <FilterField label="Account Manager">
+          <FilterSelect
+            value={filterRep}
+            onChange={setFilterRep}
+            options={repOptions}
+            allLabel="All managers"
+          />
+        </FilterField>
+        <FilterField label="CS">
+          <FilterSelect
+            value={filterCs}
+            onChange={setFilterCs}
+            options={csOptions}
+            allLabel="All CS"
+          />
+        </FilterField>
+        <FilterField label="Tier">
+          <FilterSelect
+            value={filterTier}
+            onChange={setFilterTier}
+            options={TIERS}
+            allLabel="All tiers"
+          />
+        </FilterField>
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 text-[12px] font-medium text-muted-soft transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear
+          </button>
+        )}
+        <span className="ml-auto self-center text-xs text-muted tabular-nums">
+          {filteredRows.length} of {rows.length} customers
+        </span>
+      </div>
+
       {/* ── Spreadsheet ──────────────────────────────────────────────── */}
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
         <table className="w-full border-separate border-spacing-0 text-[13px] tabular-nums">
@@ -676,12 +807,12 @@ export function OrdersPortalGrid({
               <Th className="min-w-[120px]" />
               <Th className="w-[110px] text-center" />
               <Th className="text-right min-w-[140px] text-foreground">
-                {fmtCurrency(projectionTotal)}
+                {fmtCurrency(filteredProjectionTotal)}
               </Th>
               {monthColumns.map((col, idx) => {
                 if (col.kind === "actual") {
                   const i = col.monthIdx;
-                  const actual = monthTotals[i];
+                  const actual = filteredMonthTotals[i];
                   const target = targets?.[i] ?? null;
                   const onTrack = target != null && actual >= target;
                   const hasData = actual > 0;
@@ -716,7 +847,7 @@ export function OrdersPortalGrid({
                 }
                 // Forecast column sum
                 const i = col.monthIdx;
-                const fc = forecastTotals[i];
+                const fc = filteredForecastTotals[i];
                 const target = targets?.[i] ?? 0;
                 const hasData = fc > 0;
                 return (
@@ -739,15 +870,15 @@ export function OrdersPortalGrid({
                 );
               })}
               <Th className="text-right min-w-[140px] bg-primary-soft/60 text-primary">
-                {fmtCurrency(ytdGrand)}
+                {fmtCurrency(filteredYtdGrand)}
               </Th>
               <Th className="text-right min-w-[160px] bg-primary-soft/60 text-primary">
-                {fmtCurrency(projectionTotal - ytdGrand)}
+                {fmtCurrency(filteredProjectionTotal - filteredYtdGrand)}
               </Th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, idx) => (
+            {filteredRows.map((r, idx) => (
               <Row
                 key={r.id}
                 row={r}
@@ -760,6 +891,16 @@ export function OrdersPortalGrid({
                 onDelete={() => deleteRow(r.id)}
               />
             ))}
+            {filteredRows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={8 + monthColumns.length}
+                  className="px-3 py-10 text-center text-[13px] text-muted"
+                >
+                  No customers match the current filters.
+                </td>
+              </tr>
+            )}
             {canEdit && (
               <tr className="bg-card">
                 <td
@@ -1252,6 +1393,52 @@ function Td({
     >
       {children}
     </td>
+  );
+}
+
+/* ------------------------------ Filters -------------------------------- */
+
+function FilterField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-soft">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function FilterSelect({
+  value,
+  onChange,
+  options,
+  allLabel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: readonly string[];
+  allLabel: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="h-9 cursor-pointer rounded-lg border border-border bg-card px-2.5 text-[13px] text-foreground outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      <option value="">{allLabel}</option>
+      {options.map(o => (
+        <option key={o} value={o}>
+          {o}
+        </option>
+      ))}
+    </select>
   );
 }
 
