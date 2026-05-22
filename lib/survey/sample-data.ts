@@ -7,7 +7,12 @@
  * seeded RNG so the numbers are stable across reloads (no hydration drift).
  */
 import { seededRng, hashString } from "@/lib/utils";
-import { QUESTIONS, SURVEY_KEY, type SurveyResponse } from "./questions";
+import {
+  QUESTIONS,
+  NPS_QUESTION,
+  SURVEY_KEY,
+  type SurveyResponse,
+} from "./questions";
 
 type Persona = {
   first: string;
@@ -35,12 +40,12 @@ const PERSONAS: Persona[] = [
   { first: "Nadia", last: "Forsythe", email: "nadia@purefieldlabs.com", customerId: null, mood: 0.4 },
 ];
 
-/** Per-question baseline quality (1–5). Deliberately uneven so the "average
- *  rating by question" chart has a story — pricing and lead times read lower,
- *  formulation support and product quality read higher. */
+/** Per-question baseline quality (1–5), keyed by question id. Deliberately
+ *  uneven so the "average rating by question" chart has a story — lead times
+ *  read lower, formulation support and product quality read higher. */
 const QUESTION_BASELINE: Record<string, number> = {
-  q1: 3.4, q2: 3.8, q3: 4.6, q4: 4.0,
-  q5: 3.2, q6: 4.2, q7: 3.7, q8: 4.4, q9: 4.3, q10: 3.9, q11: 3.8,
+  q2: 3.8, q3: 4.6, q4: 4.0,
+  q5: 3.2, q6: 4.2, q7: 3.7, q8: 4.4, q9: 4.3, q10: 3.9,
   q12: 4.7, q13: 4.4, q14: 3.9, q15: 4.5, q16: 4.1, q17: 3.6,
   q18: 3.5, q19: 3.8, q20: 4.2,
   q21: 4.4, // likelihood to continue
@@ -104,7 +109,10 @@ export function sampleSurveyResponses(): SurveyResponse[] {
 
     // NPS — correlated with overall mood, kept on the 1–10 scale.
     const npsBase = 7.6 + p.mood * 3;
-    ratings.q22 = Math.min(10, Math.max(1, Math.round(npsBase + (rng() - 0.5) * 2)));
+    ratings[NPS_QUESTION.id] = Math.min(
+      10,
+      Math.max(1, Math.round(npsBase + (rng() - 0.5) * 2)),
+    );
 
     const submittedAt = new Date(
       now - (idx * 26 + Math.floor(rng() * 20)) * 60 * 60 * 1000,
@@ -120,8 +128,8 @@ export function sampleSurveyResponses(): SurveyResponse[] {
       customerId: p.customerId,
       ratings,
       comments,
-      changeOne: rng() < 0.55 ? CHANGE_ONE[idx % CHANGE_ONE.length] : "",
-      upcoming: rng() < 0.45 ? UPCOMING[idx % UPCOMING.length] : "",
+      changeOne: CHANGE_ONE[idx % CHANGE_ONE.length],
+      upcoming: UPCOMING[idx % UPCOMING.length],
       submittedAt,
     });
   });

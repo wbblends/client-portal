@@ -14,7 +14,7 @@ import { SURVEY_TITLE } from "@/lib/survey/questions";
  */
 export const metadata: Metadata = {
   title: `${SURVEY_TITLE} — WB Blends`,
-  description: "Tell us how WB Blends is doing. 22 quick ratings, about 3 minutes.",
+  description: "Tell us how WB Blends is doing. About 3 minutes.",
   robots: { index: false, follow: false },
 };
 

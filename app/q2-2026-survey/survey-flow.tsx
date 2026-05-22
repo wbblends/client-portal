@@ -3,14 +3,14 @@
 /**
  * Customer Experience Survey — the public, mobile-first survey flow.
  *
- * Built to the WB-Blends-Survey-Handoff spec:
- *  - One question per screen, rating screens auto-advance 300ms after a pick.
- *  - A thin progress bar that only moves on the 25 "work" screens (contact +
- *    22 ratings + 2 open-ended) — never on section intros or transitions.
- *  - Section intro + transition screens carry the brand voice; the rating
- *    questions stay clinical.
- *  - Back navigation, keyboard support (digit keys select + advance), and
- *    localStorage autosave so a closed tab can resume.
+ *  - One question per screen; a rating screen shows a Continue button once
+ *    answered so the respondent can add a comment before moving on.
+ *  - A thin progress bar that only moves on the "work" screens (contact +
+ *    20 ratings + 2 open-ended) — never on section intro screens.
+ *  - Section intro screens carry the brand voice; the rating questions stay
+ *    clinical.
+ *  - Back navigation, keyboard support (digit keys select a rating, Enter
+ *    advances), and localStorage autosave so a closed tab can resume.
  *
  * Everything is anonymous-by-link: there is no logged-in user. Per Devin's
  * ask, the form also collects first name / last name / email up front.
@@ -26,7 +26,6 @@ import {
   SCALES,
   SECTIONS,
   SURVEY_KEY,
-  TRANSITIONS,
   FREE_TEXT_MAX,
   FREE_TEXT_COUNTER_AT,
   questionsInSection,
@@ -37,20 +36,18 @@ import {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STORAGE_KEY = `wbb.survey.${SURVEY_KEY}`;
-const ADVANCE_DELAY_MS = 320;
 
 // ─── Step model ────────────────────────────────────────────────────────────
 
 type Step =
   | { kind: "contact" }
   | { kind: "section-intro"; section: SurveySection }
-  | { kind: "transition"; fromSection: number }
   | { kind: "question"; question: SurveyQuestion }
   | { kind: "open"; question: OpenQuestion }
   | { kind: "review" };
 
-/** Flattened screen order. Section intros and transitions sit between the
- *  rating blocks; the two open-ended questions trail section 5. */
+/** Flattened screen order. A section intro sits ahead of each rating block;
+ *  the two open-ended questions trail section 5. */
 const STEPS: Step[] = (() => {
   const out: Step[] = [{ kind: "contact" }];
   for (const section of SECTIONS) {
@@ -60,9 +57,6 @@ const STEPS: Step[] = (() => {
     }
     if (section.number === 5) {
       for (const q of OPEN_QUESTIONS) out.push({ kind: "open", question: q });
-    }
-    if (section.number < 5) {
-      out.push({ kind: "transition", fromSection: section.number });
     }
   }
   out.push({ kind: "review" });
@@ -136,7 +130,6 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
   const [contactErrors, setContactErrors] = useState<Partial<Contact>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydrated = useRef(false);
 
   // ── Restore on mount ──
@@ -212,14 +205,12 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
   const step = STEPS[stepIndex];
 
   const goNext = useCallback(() => {
-    if (advanceTimer.current) clearTimeout(advanceTimer.current);
     setDirection("fwd");
     setStepIndex(i => Math.min(i + 1, STEPS.length - 1));
     setResumed(false);
   }, []);
 
   const goBack = useCallback(() => {
-    if (advanceTimer.current) clearTimeout(advanceTimer.current);
     setDirection("back");
     setResumed(false);
     if (stepIndex === 0) {
@@ -275,19 +266,11 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
     }
   }, [respondentId, contact, customerId, ratings, comments, changeOne, upcoming]);
 
-  /** Records a rating. When `holdForComment` is false the screen auto-advances
-   *  after a short beat; when true (the comment box is open) it waits for an
-   *  explicit Next so an in-progress comment isn't interrupted. */
-  const pickRating = useCallback(
-    (qid: string, value: number, holdForComment: boolean) => {
-      setRatings(r => ({ ...r, [qid]: value }));
-      if (advanceTimer.current) clearTimeout(advanceTimer.current);
-      if (!holdForComment) {
-        advanceTimer.current = setTimeout(() => goNext(), ADVANCE_DELAY_MS);
-      }
-    },
-    [goNext],
-  );
+  /** Records a rating. The screen no longer auto-advances — a Continue button
+   *  appears once answered so an in-progress comment is never interrupted. */
+  const pickRating = useCallback((qid: string, value: number) => {
+    setRatings(r => ({ ...r, [qid]: value }));
+  }, []);
 
   // ── Keyboard ──
   useEffect(() => {
@@ -304,12 +287,15 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
         else if (e.key === "0" && scale.max === 10) value = 10;
         if (value != null && value >= scale.min && value <= scale.max) {
           e.preventDefault();
-          pickRating(step.question.id, value, false);
+          pickRating(step.question.id, value);
+        } else if (
+          e.key === "Enter" &&
+          typeof ratings[step.question.id] === "number"
+        ) {
+          e.preventDefault();
+          goNext();
         }
-      } else if (
-        (step.kind === "section-intro" || step.kind === "transition") &&
-        e.key === "Enter"
-      ) {
+      } else if (step.kind === "section-intro" && e.key === "Enter") {
         e.preventDefault();
         goNext();
       } else if (
@@ -317,20 +303,19 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
         e.key === "Enter" &&
         (e.metaKey || e.ctrlKey)
       ) {
-        e.preventDefault();
-        goNext();
+        const filled =
+          step.question.id === "changeOne"
+            ? changeOne.trim()
+            : upcoming.trim();
+        if (filled) {
+          e.preventDefault();
+          goNext();
+        }
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [phase, step, goNext, pickRating]);
-
-  useEffect(
-    () => () => {
-      if (advanceTimer.current) clearTimeout(advanceTimer.current);
-    },
-    [],
-  );
+  }, [phase, step, goNext, pickRating, ratings, changeOne, upcoming]);
 
   // ── Render ──
   if (phase === "welcome") {
@@ -370,7 +355,6 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <Logo size="sm" />
           <span className="min-w-10 text-right text-xs font-semibold tabular-nums text-muted-soft">
             {workLabel ?? ""}
           </span>
@@ -410,16 +394,6 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
 
           {step.kind === "section-intro" && (
             <IntroScreen section={step.section} onContinue={goNext} />
-          )}
-
-          {step.kind === "transition" && (
-            <TransitionScreen
-              fromSection={step.fromSection}
-              onContinue={() => {
-                track("section-complete", { section: step.fromSection });
-                goNext();
-              }}
-            />
           )}
 
           {step.kind === "question" && (
@@ -477,12 +451,35 @@ function validateContact(c: Contact): Partial<Contact> {
 
 // ─── Shell + chrome ────────────────────────────────────────────────────────
 
+/** Background chrome mirrors the portal login page: an ambient brand wash, a
+ *  hairline accent at the top edge, and a faint grain texture. The layers are
+ *  `fixed` so they never affect document flow or scrolling. */
 function SurveyShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="relative flex min-h-dvh flex-col bg-surface">
       <div
         aria-hidden
-        className="gradient-mesh pointer-events-none fixed inset-0 opacity-60"
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            "radial-gradient(60rem 40rem at 88% 10%, color-mix(in oklab, var(--color-primary) 16%, transparent), transparent 65%), radial-gradient(50rem 36rem at 6% 95%, color-mix(in oklab, var(--color-primary) 9%, transparent), transparent 60%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 h-px"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, color-mix(in oklab, var(--color-primary) 50%, transparent), transparent)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 opacity-[0.05] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>\")",
+        }}
       />
       <div className="relative flex flex-1 flex-col">{children}</div>
     </main>
@@ -529,7 +526,7 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
     <CenteredScreen>
       <Logo size="lg" />
-      <h1 className="mt-10 font-display text-[clamp(30px,5.4vw,42px)] leading-[1.08] tracking-tight text-foreground">
+      <h1 className="mt-10 font-display text-[clamp(45px,8.1vw,63px)] leading-[1.08] tracking-tight text-foreground">
         {COPY.welcome.title}
       </h1>
       <p className="mt-4 text-base leading-relaxed text-muted">
@@ -554,9 +551,6 @@ function DoneScreen() {
       </h1>
       <p className="mt-4 text-base leading-relaxed text-muted">
         {COPY.done.body}
-      </p>
-      <p className="mt-4 font-display text-lg italic text-primary">
-        {COPY.done.sign}
       </p>
       <a
         href={COPY.done.ctaHref}
@@ -673,26 +667,7 @@ function IntroScreen({
         {section.introHeading}
       </p>
       <h2 className="mt-3 font-display text-[clamp(26px,4.6vw,38px)] italic leading-[1.12] tracking-tight text-foreground">
-        {section.introLine}
-      </h2>
-      <PrimaryButton className="mt-8" onClick={onContinue}>
-        {COPY.micro.continue}
-      </PrimaryButton>
-    </div>
-  );
-}
-
-function TransitionScreen({
-  fromSection,
-  onContinue,
-}: {
-  fromSection: number;
-  onContinue: () => void;
-}) {
-  return (
-    <div>
-      <h2 className="font-display text-[clamp(24px,4.2vw,34px)] leading-[1.16] tracking-tight text-foreground">
-        {TRANSITIONS[fromSection]}
+        {section.title}
       </h2>
       <PrimaryButton className="mt-8" onClick={onContinue}>
         {COPY.micro.continue}
@@ -712,7 +687,7 @@ function RatingScreen({
   question: SurveyQuestion;
   value: number | undefined;
   comment: string;
-  onPick: (qid: string, value: number, holdForComment: boolean) => void;
+  onPick: (qid: string, value: number) => void;
   onComment: (qid: string, text: string) => void;
   onNext: () => void;
 }) {
@@ -733,7 +708,7 @@ function RatingScreen({
       <p className="text-xs font-bold uppercase tracking-wide text-muted-soft">
         Question {question.number}
       </p>
-      <h2 className="mt-2 text-[clamp(20px,3.4vw,26px)] font-semibold leading-snug tracking-tight text-foreground">
+      <h2 className="mt-2 font-display italic text-[clamp(30px,5.1vw,39px)] leading-snug tracking-tight text-foreground">
         {question.text}
       </h2>
 
@@ -751,7 +726,7 @@ function RatingScreen({
               role="radio"
               aria-checked={selected}
               aria-label={`${opt.value} — ${opt.label}`}
-              onClick={() => onPick(question.id, opt.value, commentOpen)}
+              onClick={() => onPick(question.id, opt.value)}
               className={cn(
                 "flex h-12 w-12 items-center justify-center rounded-full border text-base font-semibold tabular-nums transition-all duration-100",
                 selected
@@ -807,12 +782,12 @@ function RatingScreen({
         </button>
       )}
 
-      {/* A Next button appears once the question is answered — needed when the
-          comment box is open (auto-advance is suppressed) or when the screen
-          was reached by navigating Back. */}
+      {/* A Continue button appears once the question is answered, so the
+          respondent can add a comment before moving on rather than being
+          rushed off the screen. */}
       {answered && (
         <div className="mt-7">
-          <PrimaryButton onClick={onNext}>{COPY.micro.next}</PrimaryButton>
+          <PrimaryButton onClick={onNext}>{COPY.micro.continue}</PrimaryButton>
         </div>
       )}
     </div>
@@ -831,12 +806,10 @@ function OpenScreen({
   onNext: () => void;
 }) {
   const showCounter = value.length >= FREE_TEXT_COUNTER_AT;
+  const filled = value.trim().length > 0;
   return (
     <div>
-      <p className="text-xs font-bold uppercase tracking-wide text-muted-soft">
-        Optional
-      </p>
-      <h2 className="mt-2 text-[clamp(20px,3.4vw,26px)] font-semibold leading-snug tracking-tight text-foreground">
+      <h2 className="font-display italic text-[clamp(30px,5.1vw,39px)] leading-snug tracking-tight text-foreground">
         {question.text}
       </h2>
       <textarea
@@ -851,8 +824,8 @@ function OpenScreen({
       <div className="mt-1 h-4 text-right text-xs text-muted-soft">
         {showCounter ? `${value.length} / ${FREE_TEXT_MAX}` : " "}
       </div>
-      <PrimaryButton className="mt-5" onClick={onNext}>
-        {value.trim() ? COPY.micro.next : COPY.micro.skip}
+      <PrimaryButton className="mt-5" onClick={onNext} disabled={!filled}>
+        {COPY.micro.continue}
       </PrimaryButton>
     </div>
   );
@@ -874,6 +847,12 @@ function ReviewScreen({
       <h2 className="font-display text-[clamp(26px,4.6vw,38px)] leading-[1.12] tracking-tight text-foreground">
         {COPY.review.heading}
       </h2>
+      <p className="mt-4 text-base leading-relaxed text-muted">
+        {COPY.review.body}
+      </p>
+      <p className="mt-3 rounded-lg bg-primary-soft px-3.5 py-2.5 text-sm font-semibold text-primary">
+        {COPY.review.reminder}
+      </p>
       {error && (
         <p className="mt-4 rounded-lg bg-danger-soft px-3 py-2 text-sm font-semibold text-danger">
           {error}

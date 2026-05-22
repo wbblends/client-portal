@@ -6,6 +6,7 @@
 import {
   QUESTIONS,
   SCALES,
+  NPS_QUESTION,
   responseAverage,
   npsCategory,
   type SurveyResponse,
@@ -123,7 +124,7 @@ export function surveyNotificationEmail(
 ): { subject: string; html: string; text: string } {
   const name = `${response.firstName} ${response.lastName}`.trim() || "Anonymous";
   const avg = responseAverage(response);
-  const nps = response.ratings.q22;
+  const nps = response.ratings[NPS_QUESTION.id];
   const npsLine =
     typeof nps === "number"
       ? `${nps}/10 (${npsCategory(nps)})`

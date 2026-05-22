@@ -192,8 +192,9 @@ CREATE INDEX IF NOT EXISTS idx_tickets_rank ON tickets(tab, rank);
 -- Customer Experience Survey submissions. Filled out anonymously via the
 -- public link (/q2-2026-survey) — there is no logged-in user behind a row,
 -- so respondent identity is whatever the form collected (first/last/email).
--- ratings_json + comments_json are keyed by question id ("q1".."q22"); the
--- question text itself lives in lib/survey/questions.ts, not the DB, so a
+-- ratings_json + comments_json are keyed by stable question id (see the
+-- QUESTIONS list in lib/survey/questions.ts); the question text itself lives
+-- in lib/survey/questions.ts, not the DB, so a
 -- copy fix never needs a migration. survey_key scopes a row to its quarterly
 -- wave so future surveys reuse this table. respondent_id is a client UUID
 -- used to dedupe a double-submit from the same browser.

@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Ratings — every one of the 22 questions must be present and in range.
+  // Ratings — every one of the 20 questions must be present and in range.
   const rawRatings =
     body.ratings && typeof body.ratings === "object"
       ? (body.ratings as Record<string, unknown>)
@@ -99,6 +99,16 @@ export async function POST(request: NextRequest) {
     if (c) comments[q.id] = c;
   }
 
+  // Open-ended questions — both are required.
+  const changeOne = clampText(body.changeOne);
+  const upcoming = clampText(body.upcoming);
+  if (!changeOne || !upcoming) {
+    return NextResponse.json(
+      { error: "Please answer both open-ended questions." },
+      { status: 400 },
+    );
+  }
+
   // Optional customer attribution from a ?customerId= link param.
   const validCustomerIds = new Set(listCustomers().map(c => c.id));
   const customerId =
@@ -119,8 +129,8 @@ export async function POST(request: NextRequest) {
     customerId,
     ratings,
     comments,
-    changeOne: clampText(body.changeOne),
-    upcoming: clampText(body.upcoming),
+    changeOne,
+    upcoming,
   });
 
   // Notify the team. Email failures must not fail the submission — the row is
