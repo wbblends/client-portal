@@ -8,6 +8,7 @@ export function KpiTile({
   hint,
   preferDirection = "up",
   tone = "default",
+  emphasizeLabel = false,
 }: {
   label: string;
   value: string;
@@ -18,6 +19,9 @@ export function KpiTile({
   preferDirection?: "up" | "down";
   /** Visual tone. "warning" tints the card yellow to match forecast styling. */
   tone?: "default" | "warning";
+  /** Render the label a touch larger and semibold — used for the orders
+   *  actuals/forecast tiles so the month name reads more prominently. */
+  emphasizeLabel?: boolean;
 }) {
   let deltaUi: React.ReactNode = null;
   if (delta != null && Number.isFinite(delta)) {
@@ -60,7 +64,7 @@ export function KpiTile({
       <div className="flex items-baseline justify-between gap-3">
         <div
           className={cn(
-            "text-[13px] font-medium",
+            emphasizeLabel ? "text-sm font-semibold" : "text-[13px] font-medium",
             isWarning ? "text-warning" : "text-muted",
           )}
         >

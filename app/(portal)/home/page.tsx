@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { requireSession } from "@/lib/auth";
@@ -30,11 +31,21 @@ import {
   type PipelineHistory,
 } from "@/lib/marketing/pipeline-history";
 import { listOrdersRows, type DbOrdersRow } from "@/lib/orders/store";
+import { listOpenPoEntries, type OpenPoEntry } from "@/lib/orders/open-po-store";
 import { listTickets, type Ticket } from "@/lib/tickets/store";
 import { isLate, isParked } from "@/lib/tickets/status";
-import { ACTUALS_2025, MONTHLY_TARGETS, MONTH_SHORT } from "@/lib/data/orders-portal";
+import {
+  ACTUALS_2025,
+  MONTHLY_TARGETS,
+  MONTH_LABELS,
+  MONTH_SHORT,
+} from "@/lib/data/orders-portal";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import { MagicalSearchBar } from "@/components/ai-bot/MagicalSearchBar";
+
+export const metadata: Metadata = {
+  title: "WB Blends - Dashboard Home",
+};
 
 // Greeting templates rotate on every refresh. The page is already dynamic
 // (requireSession reads cookies), so Math.random() runs per request.
@@ -173,6 +184,7 @@ export default async function HomePage() {
   const kanbanPromise = getPipelineKanban();
   const historyPromise = getPipelineHistory(range);
   const ordersPromise = listOrdersRows();
+  const openPoPromise = listOpenPoEntries(1);
   const ticketsPromise = listTickets();
 
   return (
@@ -215,14 +227,11 @@ export default async function HomePage() {
 
       {/* Charts */}
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Open POs · last 12 weeks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BacklogWeeklyChart />
-          </CardContent>
-        </Card>
+        <Suspense
+          fallback={<ChartCardSkeleton title="Open POs · last 12 weeks" height={260} />}
+        >
+          <OpenPosWeeklySection openPoPromise={openPoPromise} />
+        </Suspense>
         <Suspense
           fallback={<ChartCardSkeleton title="Cumulative open pipeline" height={260} />}
         >
@@ -273,36 +282,40 @@ async function OrdersForecastSection({
   const nextTarget = MONTHLY_TARGETS[nextMonthIdx];
   const monthAfterTarget = MONTHLY_TARGETS[monthAfterIdx];
 
-  const monthLabel = MONTH_SHORT[currentMonthIdx];
-  const nextLabel = MONTH_SHORT[nextMonthIdx];
-  const afterLabel = MONTH_SHORT[monthAfterIdx];
+  const monthLabel = MONTH_LABELS[currentMonthIdx];
+  const nextLabel = MONTH_LABELS[nextMonthIdx];
+  const afterLabel = MONTH_LABELS[monthAfterIdx];
 
   return (
     <section className="space-y-3">
       <SectionHeader title="Orders & forecast" href="/dashboards/orders-portal" />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiTile
-          label={`${monthLabel} actuals`}
+          label={`${monthLabel} Orders Actuals`}
           value={formatCurrency(currentMonthActual)}
           hint={pctOf(currentMonthActual, currentTarget)}
+          emphasizeLabel
         />
         <KpiTile
-          label={`${monthLabel} forecast`}
+          label={`${monthLabel} Orders Forecast`}
           value={formatCurrency(currentMonthForecast)}
           hint={pctOf(currentMonthForecast, currentTarget)}
           tone="warning"
+          emphasizeLabel
         />
         <KpiTile
-          label={`${nextLabel} forecast`}
+          label={`${nextLabel} Orders Forecast`}
           value={formatCurrency(nextMonthForecast)}
           hint={pctOf(nextMonthForecast, nextTarget)}
           tone="warning"
+          emphasizeLabel
         />
         <KpiTile
-          label={`${afterLabel} forecast`}
+          label={`${afterLabel} Orders Forecast`}
           value={formatCurrency(monthAfterForecast)}
           hint={pctOf(monthAfterForecast, monthAfterTarget)}
           tone="warning"
+          emphasizeLabel
         />
       </div>
     </section>
@@ -342,6 +355,50 @@ async function PipelineKpiSection({
         />
       </div>
     </section>
+  );
+}
+
+/** YYYY-MM-DD → "May 15". Parsed without Date to avoid timezone drift. */
+function shortDate(iso: string): string {
+  const [, m, d] = iso.split("-").map(Number);
+  if (!m || !d) return iso;
+  return `${MONTH_SHORT[m - 1]} ${d}`;
+}
+
+/**
+ * "Open POs · last 12 weeks" chart, with the live open-PO backlog total —
+ * the most recent figure entered on the Orders Backlog page — laid over the
+ * top-left of the graph as a large number (no separate KPI card).
+ */
+async function OpenPosWeeklySection({
+  openPoPromise,
+}: {
+  openPoPromise: Promise<OpenPoEntry[]>;
+}) {
+  const entries = await openPoPromise;
+  const latest = entries[0] ?? null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Open POs · last 12 weeks</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="relative">
+          {latest && (
+            <div className="pointer-events-none absolute left-[74px] top-0 z-10">
+              <div className="font-display text-[34px] font-bold leading-none tracking-tight tabular-nums text-foreground">
+                {formatCurrency(latest.amount, { compact: true })}
+              </div>
+              <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+                Open POs · as of {shortDate(latest.date)}
+              </div>
+            </div>
+          )}
+          <BacklogWeeklyChart />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
