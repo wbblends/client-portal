@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS comment_mentions (
 -- runtime source of truth; this file is mirrored for human reading).
 CREATE TABLE IF NOT EXISTS orders_portal_rows (
   id           TEXT PRIMARY KEY,
+  year         INTEGER NOT NULL DEFAULT 2026,
   customer     TEXT NOT NULL DEFAULT '',
   rep          TEXT NOT NULL DEFAULT '',
   cs           TEXT NOT NULL DEFAULT '',
@@ -132,13 +133,14 @@ CREATE TABLE IF NOT EXISTS orders_portal_rows (
                CHECK (tier IN ('', 'AA', 'A', 'B', 'C')),
   projection   REAL NOT NULL DEFAULT 0,
   months_json  TEXT NOT NULL DEFAULT '[null,null,null,null,null,null,null,null,null,null,null,null]',
+  forecasts_json TEXT NOT NULL DEFAULT '[null,null,null,null,null,null,null,null,null,null,null,null]',
   position     INTEGER NOT NULL DEFAULT 0,
   updated_by   TEXT REFERENCES users(username) ON DELETE SET NULL,
   updated_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_orders_portal_rows_position
-  ON orders_portal_rows(position);
+  ON orders_portal_rows(year, position);
 
 -- Manually-entered daily open-PO backlog totals. One row per calendar date
 -- (re-saving a date overwrites it). The Orders Backlog dashboard shows the

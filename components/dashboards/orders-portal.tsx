@@ -1,22 +1,26 @@
 import type { Dashboard } from "@/lib/dashboards/registry";
-import { OrdersPortalGrid } from "./orders-portal-grid";
+import { OrdersPortalYears } from "./orders-portal-years";
 import { requireSession } from "@/lib/auth";
 import { isAdminRole } from "@/lib/users/store";
 import { listOrdersRows } from "@/lib/orders/store";
+import { PO_YEARS } from "@/lib/data/orders-portal";
 
 /**
- * Orders Portal — internal sales view of POs by customer for the year.
+ * Orders Portal — internal sales view of POs by customer, one tab per year.
  *
- * Today this is a fully editable, server-backed spreadsheet seeded with the
- * latest 2026 POs snapshot from the sales metrics workbook. Edits made by an
- * admin become visible to every other user on their next poll. Customer-role
- * users can't see this dashboard at all (gated by the dashboard registry);
- * non-admin internal users get a read-only view of the same numbers.
+ * Each year is a fully editable, server-backed spreadsheet seeded from the
+ * matching tab of the sales metrics workbook (2026 POs, 2025 POs). Edits made
+ * by an admin become visible to every other user on their next poll.
+ * Customer-role users can't see this dashboard at all (gated by the dashboard
+ * registry); non-admin internal users get a read-only view of the same
+ * numbers.
  */
 export async function OrdersPortalDashboard({ dashboard }: { dashboard: Dashboard }) {
   const user = await requireSession();
   const canEdit = isAdminRole(user.role);
-  const initialRows = await listOrdersRows();
+  const years = await Promise.all(
+    PO_YEARS.map(async year => ({ year, rows: await listOrdersRows(year) })),
+  );
 
   return (
     <div className="page-container page-pad-x page-pad-y space-y-5 sm:space-y-6">
@@ -27,7 +31,7 @@ export async function OrdersPortalDashboard({ dashboard }: { dashboard: Dashboar
         </h1>
       </div>
 
-      <OrdersPortalGrid initialRows={initialRows} canEdit={canEdit} />
+      <OrdersPortalYears years={years} canEdit={canEdit} />
     </div>
   );
 }

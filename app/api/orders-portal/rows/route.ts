@@ -8,7 +8,7 @@ import {
   applyOrderToRows,
   type CreateOrdersRowInput,
 } from "@/lib/orders/store";
-import type { Tier } from "@/lib/data/orders-portal";
+import { PO_YEARS, CURRENT_PO_YEAR, type Tier } from "@/lib/data/orders-portal";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +18,18 @@ function isTier(v: unknown): v is Tier | "" {
   return typeof v === "string" && (ALLOWED_TIERS as string[]).includes(v);
 }
 
-/** GET — anyone with portal access can read the grid. */
-export async function GET() {
+/** Coerce an untrusted year to a tracked PO year, falling back to current. */
+function resolveYear(v: unknown): number {
+  const n = Number(v);
+  return (PO_YEARS as readonly number[]).includes(n) ? n : CURRENT_PO_YEAR;
+}
+
+/** GET — anyone with portal access can read the grid for a given year. */
+export async function GET(request: NextRequest) {
   await requireSession();
-  const rows = await listOrdersRows();
-  return NextResponse.json({ rows });
+  const year = resolveYear(request.nextUrl.searchParams.get("year"));
+  const rows = await listOrdersRows(year);
+  return NextResponse.json({ rows, year });
 }
 
 /**
@@ -45,7 +52,8 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json().catch(() => ({}))) as {
     kind?: string;
-    row?: Partial<CreateOrdersRowInput> & { tier?: unknown };
+    year?: unknown;
+    row?: Partial<CreateOrdersRowInput> & { tier?: unknown; year?: unknown };
     customer?: string;
     rep?: string;
     cs?: string;
@@ -67,6 +75,7 @@ export async function POST(request: NextRequest) {
       revenue,
       createdAt,
       updatedBy: me.username,
+      year: resolveYear(body.year),
     });
     return NextResponse.json({ ok: true, row: result.row, created: result.created });
   }
@@ -93,6 +102,7 @@ export async function POST(request: NextRequest) {
   const row = await createOrdersRow(
     {
       id: typeof raw.id === "string" ? raw.id : undefined,
+      year: resolveYear(raw.year ?? body.year),
       customer: typeof raw.customer === "string" ? raw.customer : "",
       rep: typeof raw.rep === "string" ? raw.rep : "",
       cs: typeof raw.cs === "string" ? raw.cs : "",

@@ -106,6 +106,17 @@ async function applyMigrations(client: Client) {
     if (!(err instanceof Error && /duplicate column/i.test(err.message))) throw err;
   }
 
+  // 2026-05 — per-year orders_portal_rows so the grid can show prior years
+  // behind a year tab. Existing rows are 2026 (the only year the table held
+  // before this column existed), which is exactly the DEFAULT.
+  try {
+    await client.execute(
+      `ALTER TABLE orders_portal_rows ADD COLUMN year INTEGER NOT NULL DEFAULT 2026`,
+    );
+  } catch (err) {
+    if (!(err instanceof Error && /duplicate column/i.test(err.message))) throw err;
+  }
+
   // 2026-05 — tickets table (coworker-synced PM tickets, admin-only page).
   // The schema landed with PK on id alone; tickets in flight on >1 workflow
   // need PK (tab, id). If we see the old shape, drop and recreate — the

@@ -127,6 +127,11 @@ CREATE INDEX IF NOT EXISTS idx_notifications_recipient
 -- environments still come up with the 2026 PO snapshot.
 CREATE TABLE IF NOT EXISTS orders_portal_rows (
   id           TEXT PRIMARY KEY,
+  -- Calendar year this customer line belongs to. The grid shows one year at
+  -- a time behind a year tab; rows for the same customer in different years
+  -- are linked by the customer name (the join a future order-timing
+  -- predictor uses).
+  year         INTEGER NOT NULL DEFAULT 2026,
   customer     TEXT NOT NULL DEFAULT '',
   rep          TEXT NOT NULL DEFAULT '',
   cs           TEXT NOT NULL DEFAULT '',
@@ -144,7 +149,7 @@ CREATE TABLE IF NOT EXISTS orders_portal_rows (
 );
 
 CREATE INDEX IF NOT EXISTS idx_orders_portal_rows_position
-  ON orders_portal_rows(position);
+  ON orders_portal_rows(year, position);
 
 -- Manually-entered daily open-PO backlog totals. One row per calendar date
 -- (re-saving a date overwrites it). The Orders Backlog dashboard shows the

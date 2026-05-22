@@ -3,15 +3,18 @@
  * every other portal user on their next poll. Mirrors the OrdersPortalRow
  * shape used by the spreadsheet UI.
  *
- * On the first read against an empty table we seed-import
- * `ORDERS_PORTAL_SEED` so existing environments don't come up blank. After
- * that the DB is the source of truth — the seed is reachable again only via
- * the explicit reset endpoint.
+ * Rows are partitioned by calendar `year` — the grid shows one year at a time
+ * behind a year tab. On the first read of a year against an empty partition
+ * we seed-import that year's snapshot (`ordersPortalSeedForYear`) so existing
+ * environments don't come up blank. After that the DB is the source of truth;
+ * the seed is reachable again only via the explicit reset endpoint.
  */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { ensureDb } from "@/lib/db";
 import {
-  ORDERS_PORTAL_SEED,
+  ordersPortalSeedForYear,
+  PO_YEARS,
+  CURRENT_PO_YEAR,
   type OrdersPortalRow,
   type Tier,
 } from "@/lib/data/orders-portal";
@@ -26,10 +29,11 @@ export function revalidateOrdersCache(): void {
   revalidateTag(ORDERS_CACHE_TAG, { expire: 0 });
 }
 
-// `maybeSeed` runs a SELECT COUNT(*) on every read to handle the first-boot
-// "table is empty, copy in the seed" case. Once the table is non-empty for
-// this process, that check is wasted work — cache the verdict.
-let seedChecked = false;
+// `maybeSeed` runs a SELECT COUNT(*) per year on every read to handle the
+// first-boot "this year's partition is empty, copy in the seed" case. Once a
+// year is non-empty for this process, that check is wasted work — remember
+// which years we've already settled.
+const seededYears = new Set<number>();
 
 function parseMonths(json: string | null | undefined): (number | null)[] {
   if (!json) return Array(12).fill(null);
@@ -70,22 +74,28 @@ function rowFromDb(r: {
   };
 }
 
-async function maybeSeed(): Promise<void> {
-  if (seedChecked) return;
+/** Seed a single year's partition if it is still empty. */
+async function maybeSeedYear(year: number): Promise<void> {
+  if (seededYears.has(year)) return;
   const client = await ensureDb();
-  const { rows } = await client.execute("SELECT COUNT(*) AS n FROM orders_portal_rows");
+  const { rows } = await client.execute({
+    sql: "SELECT COUNT(*) AS n FROM orders_portal_rows WHERE year = ?",
+    args: [year],
+  });
   if ((rows[0]?.n as number) > 0) {
-    seedChecked = true;
+    seededYears.add(year);
     return;
   }
-  for (let i = 0; i < ORDERS_PORTAL_SEED.length; i++) {
-    const r = ORDERS_PORTAL_SEED[i];
+  const seed = ordersPortalSeedForYear(year);
+  for (let i = 0; i < seed.length; i++) {
+    const r = seed[i];
     await client.execute({
       sql: `INSERT INTO orders_portal_rows
-              (id, customer, rep, cs, tier, projection, months_json, forecasts_json, position)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              (id, year, customer, rep, cs, tier, projection, months_json, forecasts_json, position)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         r.id,
+        year,
         r.customer,
         r.rep,
         r.cs,
@@ -97,17 +107,24 @@ async function maybeSeed(): Promise<void> {
       ],
     });
   }
-  seedChecked = true;
+  seededYears.add(year);
 }
 
-async function _listOrdersRows(): Promise<DbOrdersRow[]> {
+/** Seed every tracked year that is still empty. */
+async function maybeSeed(): Promise<void> {
+  for (const year of PO_YEARS) await maybeSeedYear(year);
+}
+
+async function _listOrdersRows(year: number): Promise<DbOrdersRow[]> {
   await maybeSeed();
   const client = await ensureDb();
-  const { rows } = await client.execute(
-    `SELECT id, customer, rep, cs, tier, projection, months_json, forecasts_json, position
-       FROM orders_portal_rows
-       ORDER BY position ASC, id ASC`,
-  );
+  const { rows } = await client.execute({
+    sql: `SELECT id, customer, rep, cs, tier, projection, months_json, forecasts_json, position
+            FROM orders_portal_rows
+           WHERE year = ?
+           ORDER BY position ASC, id ASC`,
+    args: [year],
+  });
   return (rows as unknown as Array<{
     id: string;
     customer: string;
@@ -125,15 +142,23 @@ async function _listOrdersRows(): Promise<DbOrdersRow[]> {
 // expect their save to show up on the next render. revalidateOrdersCache() is
 // called from every mutation path below to bust the cache immediately so the
 // TTL is only relevant for cross-user staleness, not the editing admin's own
-// view.
-export const listOrdersRows = unstable_cache(
+// view. The `year` argument is part of the cache key, so each year caches
+// independently.
+const _listOrdersRowsCached = unstable_cache(
   _listOrdersRows,
   ["orders:listOrdersRows"],
   { tags: [ORDERS_CACHE_TAG], revalidate: ORDERS_CACHE_TTL_SECONDS },
 );
 
+export function listOrdersRows(
+  year: number = CURRENT_PO_YEAR,
+): Promise<DbOrdersRow[]> {
+  return _listOrdersRowsCached(year);
+}
+
 export type CreateOrdersRowInput = {
   id?: string;
+  year?: number;
   customer?: string;
   rep?: string;
   cs?: string;
@@ -150,6 +175,7 @@ export async function createOrdersRow(
 ): Promise<DbOrdersRow> {
   await maybeSeed();
   const client = await ensureDb();
+  const year = input.year ?? CURRENT_PO_YEAR;
   const id =
     input.id?.trim() ||
     `r-new-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -159,19 +185,21 @@ export async function createOrdersRow(
   const forecasts = Array.isArray(input.forecasts) && input.forecasts.length === 12
     ? input.forecasts
     : Array(12).fill(null);
-  // New rows go to the end by default.
-  const { rows: maxRows } = await client.execute(
-    "SELECT COALESCE(MAX(position), -1) AS p FROM orders_portal_rows",
-  );
+  // New rows go to the end of their year's partition by default.
+  const { rows: maxRows } = await client.execute({
+    sql: "SELECT COALESCE(MAX(position), -1) AS p FROM orders_portal_rows WHERE year = ?",
+    args: [year],
+  });
   const position =
     input.position ?? ((maxRows[0]?.p as number | undefined) ?? -1) + 1;
 
   await client.execute({
     sql: `INSERT INTO orders_portal_rows
-            (id, customer, rep, cs, tier, projection, months_json, forecasts_json, position, updated_by)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, year, customer, rep, cs, tier, projection, months_json, forecasts_json, position, updated_by)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
+      year,
       input.customer ?? "",
       input.rep ?? "",
       input.cs ?? "",
@@ -252,12 +280,8 @@ export async function patchOrdersRow(
     sets.push("forecasts_json = ?");
     args.push(JSON.stringify(forecasts));
   }
-  if (sets.length === 0) {
-    // Nothing to change — just touch updated_at/updated_by.
-    sets.push("updated_at = CURRENT_TIMESTAMP");
-  } else {
-    sets.push("updated_at = CURRENT_TIMESTAMP");
-  }
+  // Always touch updated_at — even a no-op patch records who looked last.
+  sets.push("updated_at = CURRENT_TIMESTAMP");
   sets.push("updated_by = ?");
   args.push(updatedBy);
   args.push(id);
@@ -298,21 +322,24 @@ export async function deleteOrdersRow(id: string): Promise<void> {
   revalidateOrdersCache();
 }
 
-/** Replace the table contents with ORDERS_PORTAL_SEED. */
-export async function resetOrdersRows(): Promise<DbOrdersRow[]> {
+/** Replace every year's partition with its seed snapshot. */
+export async function resetOrdersRows(
+  year: number = CURRENT_PO_YEAR,
+): Promise<DbOrdersRow[]> {
   const client = await ensureDb();
   await client.execute("DELETE FROM orders_portal_rows");
-  // Reset clears `seedChecked` so the next read repopulates from the seed.
-  seedChecked = false;
+  // Reset clears the seed memo so the next read repopulates every year.
+  seededYears.clear();
   await maybeSeed();
   revalidateOrdersCache();
-  return listOrdersRows();
+  return listOrdersRows(year);
 }
 
 /**
- * Fold a new order into the grid. If the customer already has a row, bump
- * the target month; otherwise insert a fresh row. Mirrors the behavior the
- * old client-side handler used to do against localStorage.
+ * Fold a new order into the grid. If the customer already has a row in the
+ * target year, bump that month; otherwise insert a fresh row. Mirrors the
+ * behavior the old client-side handler used to do against localStorage.
+ * Orders always land in the current PO year unless told otherwise.
  */
 export async function applyOrderToRows(args: {
   customer: string;
@@ -321,17 +348,21 @@ export async function applyOrderToRows(args: {
   revenue: number;
   createdAt: string;
   updatedBy: string;
+  year?: number;
 }): Promise<{ row: DbOrdersRow; created: boolean }> {
   await maybeSeed();
   const client = await ensureDb();
+  const year = args.year ?? CURRENT_PO_YEAR;
   const monthIdx = new Date(args.createdAt).getMonth();
   const customerKey = args.customer.trim().toLowerCase();
 
-  const { rows: existingRows } = await client.execute(
-    `SELECT id, customer, rep, cs, tier, projection, months_json, forecasts_json, position
-       FROM orders_portal_rows
-       ORDER BY position ASC, id ASC`,
-  );
+  const { rows: existingRows } = await client.execute({
+    sql: `SELECT id, customer, rep, cs, tier, projection, months_json, forecasts_json, position
+            FROM orders_portal_rows
+           WHERE year = ?
+           ORDER BY position ASC, id ASC`,
+    args: [year],
+  });
   const list = existingRows as unknown as Array<{
     id: string;
     customer: string;
@@ -364,6 +395,7 @@ export async function applyOrderToRows(args: {
   months[monthIdx] = args.revenue;
   const created = await createOrdersRow(
     {
+      year,
       customer: args.customer,
       rep: args.rep,
       cs: args.cs,

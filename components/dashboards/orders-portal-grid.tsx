@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   ACTUALS_2025,
   MONTHLY_TARGETS,
+  CURRENT_PO_YEAR,
   MONTH_LABELS,
   MONTH_SHORT,
   TIERS,
@@ -26,20 +27,31 @@ type MonthCol =
   | { kind: "forecast"; monthIdx: number };
 
 /**
- * Editable, spreadsheet-style grid mirroring the "2026 POs" tab. Rows live in
- * the `orders_portal_rows` table — any admin's edit becomes visible to every
- * other user on their next poll (every 10s). Read-only viewers see the same
- * data but can't change it. YTD, Remaining-to-Target, MTD, Q1..Q4, current-
- * month thermometer, and column auto-sums are all derived live from the rows
- * below.
+ * Editable, spreadsheet-style grid for one year's per-customer POs. Rows live
+ * in the `orders_portal_rows` table, partitioned by `year` — any admin's edit
+ * becomes visible to every other user on their next poll (every 10s).
+ * Read-only viewers see the same data but can't change it. YTD,
+ * Remaining-to-Target, MTD, Q1..Q4, current-month thermometer, and column
+ * auto-sums are all derived live from the rows below.
+ *
+ * The year is the current PO year or a prior one. A prior year is a closed
+ * book: no forecast columns, no month-to-date card, and — since the source
+ * has no monthly targets for past years — `targets` arrives null and the
+ * quarter cards / autosum drop their target comparisons.
  */
 export function OrdersPortalGrid({
   initialRows,
   canEdit,
+  year,
+  targets,
 }: {
   initialRows: OrdersPortalRow[];
   canEdit: boolean;
+  year: number;
+  /** 12 monthly targets, or null for a year with no target data. */
+  targets: number[] | null;
 }) {
+  const isCurrentYear = year === CURRENT_PO_YEAR;
   const [rows, setRows] = useState<OrdersPortalRow[]>(initialRows);
   const [orderFormOpen, setOrderFormOpen] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -59,7 +71,9 @@ export function OrdersPortalGrid({
       if (pendingWritesRef.current > 0) return;
       if (dirtyRef.current.size > 0) return;
       try {
-        const res = await fetch("/api/orders-portal/rows", { cache: "no-store" });
+        const res = await fetch(`/api/orders-portal/rows?year=${year}`, {
+          cache: "no-store",
+        });
         if (!res.ok) return;
         const data = (await res.json()) as { rows: OrdersPortalRow[] };
         if (!cancelled && Array.isArray(data.rows)) {
@@ -74,7 +88,7 @@ export function OrdersPortalGrid({
       cancelled = true;
       clearInterval(id);
     };
-  }, []);
+  }, [year]);
 
   // ── Mutations through the API. All write helpers patch local state
   // optimistically, then send the change to the server. canEdit guards the
@@ -162,6 +176,7 @@ export function OrdersPortalGrid({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           row: {
+            year,
             customer: "",
             rep: "",
             cs: "",
@@ -221,6 +236,7 @@ export function OrdersPortalGrid({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           kind: "order",
+          year,
           customer: draft.customer,
           rep: draft.rep,
           cs: draft.cs,
@@ -321,7 +337,7 @@ export function OrdersPortalGrid({
   }, []);
   const currentMonthLabel = MONTH_LABELS[currentMonthIdx];
   const monthActual = monthTotals[currentMonthIdx];
-  const monthTarget = MONTHLY_TARGETS[currentMonthIdx];
+  const monthTarget = targets?.[currentMonthIdx] ?? 0;
   const monthProgress = monthTarget > 0 ? monthActual / monthTarget : 0;
 
   /**
@@ -331,13 +347,15 @@ export function OrdersPortalGrid({
    * inserted in their place (alongside the current-month forecast).
    */
   const forecastWindow = useMemo<number[]>(() => {
+    // Forecasts only apply to the live year; a prior year is closed actuals.
+    if (!isCurrentYear) return [];
     const out: number[] = [];
     for (let k = 0; k < 3; k++) {
       const idx = currentMonthIdx + k;
       if (idx < 12) out.push(idx);
     }
     return out;
-  }, [currentMonthIdx]);
+  }, [currentMonthIdx, isCurrentYear]);
 
   const monthColumns = useMemo<MonthCol[]>(() => {
     const hiddenActuals = new Set(forecastWindow.slice(1));
@@ -351,15 +369,18 @@ export function OrdersPortalGrid({
     return cols;
   }, [currentMonthIdx, forecastWindow]);
 
-  const quarters = useMemo(
-    () => [
-      { label: "Q1", actual: monthTotals[0] + monthTotals[1] + monthTotals[2], target: MONTHLY_TARGETS[0] + MONTHLY_TARGETS[1] + MONTHLY_TARGETS[2] },
-      { label: "Q2", actual: monthTotals[3] + monthTotals[4] + monthTotals[5], target: MONTHLY_TARGETS[3] + MONTHLY_TARGETS[4] + MONTHLY_TARGETS[5] },
-      { label: "Q3", actual: monthTotals[6] + monthTotals[7] + monthTotals[8], target: MONTHLY_TARGETS[6] + MONTHLY_TARGETS[7] + MONTHLY_TARGETS[8] },
-      { label: "Q4", actual: monthTotals[9] + monthTotals[10] + monthTotals[11], target: MONTHLY_TARGETS[9] + MONTHLY_TARGETS[10] + MONTHLY_TARGETS[11] },
-    ],
-    [monthTotals],
-  );
+  const quarters = useMemo(() => {
+    const q = (a: number, b: number, c: number) => ({
+      actual: monthTotals[a] + monthTotals[b] + monthTotals[c],
+      target: targets ? targets[a] + targets[b] + targets[c] : null,
+    });
+    return [
+      { label: "Q1", ...q(0, 1, 2) },
+      { label: "Q2", ...q(3, 4, 5) },
+      { label: "Q3", ...q(6, 7, 8) },
+      { label: "Q4", ...q(9, 10, 11) },
+    ];
+  }, [monthTotals, targets]);
 
   /**
    * Aggregate YTD (sum of all 12 months) and MTD (current month only) by rep
@@ -410,7 +431,10 @@ export function OrdersPortalGrid({
       {/* Current-month booked + 90-day forecast row. Four cards: the current
           month's actual progress vs target, followed by forecast totals for
           this month plus the next two. Forecast cards share the yellow
-          palette used by the forecast columns in the spreadsheet below. */}
+          palette used by the forecast columns in the spreadsheet below. Only
+          the live year has a "current month" and a forecast — a prior year
+          jumps straight to its Quarter cards. */}
+      {isCurrentYear && (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {(() => {
           const delta = monthActual - monthTarget;
@@ -493,12 +517,15 @@ export function OrdersPortalGrid({
           );
         })}
       </div>
+      )}
 
       {/* ── Quarter cards ──────────────────────────────────────────────── */}
+      {/* A prior year has no target data, so its quarter cards show booked
+          totals only — no delta chip, no "of target", no progress bar. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {quarters.map(q => {
-          const delta = q.actual - q.target;
-          const onTrack = delta >= 0;
+          const delta = q.target == null ? null : q.actual - q.target;
+          const onTrack = delta == null ? true : delta >= 0;
           return (
             <div
               key={q.label}
@@ -508,44 +535,54 @@ export function OrdersPortalGrid({
                 <div className="text-xs font-bold uppercase tracking-wide text-muted">
                   {q.label}
                 </div>
-                <div
-                  className={cn(
-                    "text-[11px] font-medium px-2 py-0.5 rounded-full",
-                    onTrack
-                      ? "bg-success-soft text-success"
-                      : "bg-warning-soft text-warning",
-                  )}
-                >
-                  {onTrack ? "+" : ""}
-                  {fmtCurrencyShort(delta)}
-                </div>
+                {delta != null && (
+                  <div
+                    className={cn(
+                      "text-[11px] font-medium px-2 py-0.5 rounded-full",
+                      onTrack
+                        ? "bg-success-soft text-success"
+                        : "bg-warning-soft text-warning",
+                    )}
+                  >
+                    {onTrack ? "+" : ""}
+                    {fmtCurrencyShort(delta)}
+                  </div>
+                )}
               </div>
               <div className="mt-2 font-display text-[22px] tabular-nums text-foreground">
                 {fmtCurrency(q.actual)}
               </div>
               <div className="mt-0.5 text-xs text-muted">
-                of {fmtCurrency(q.target)} ({pct(q.actual, q.target)})
+                {q.target == null
+                  ? "booked"
+                  : `of ${fmtCurrency(q.target)} (${pct(q.actual, q.target)})`}
               </div>
-              <div className="mt-3 h-1.5 w-full rounded-full bg-accent overflow-hidden">
-                <div
-                  className={cn("h-full rounded-full", onTrack ? "bg-success" : "bg-primary")}
-                  style={{ width: `${Math.min(100, (q.actual / Math.max(1, q.target)) * 100)}%` }}
-                />
-              </div>
+              {q.target != null && (
+                <div className="mt-3 h-1.5 w-full rounded-full bg-accent overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full", onTrack ? "bg-success" : "bg-primary")}
+                    style={{ width: `${Math.min(100, (q.actual / Math.max(1, q.target)) * 100)}%` }}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
       {/* ── Monthly POs Received (below the Quarters) ─────────────────── */}
-      <section className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-        <header className="px-5 pt-4 pb-2">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Monthly POs Received</h2>
-        </header>
-        <div className="px-3 pb-4">
-          <MonthlyPosReceivedChart points={posReceivedPoints} />
-        </div>
-      </section>
+      {/* This chart is inherently 2025-vs-current-year, so it lives on the
+          current-year tab only. */}
+      {isCurrentYear && (
+        <section className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <header className="px-5 pt-4 pb-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Monthly POs Received</h2>
+          </header>
+          <div className="px-3 pb-4">
+            <MonthlyPosReceivedChart points={posReceivedPoints} />
+          </div>
+        </section>
+      )}
 
       {/* ── Breakdowns: by Rep / by Tier ──────────────────────────────── */}
       {/* Side-by-side panels showing YTD and current-month booked revenue
@@ -645,10 +682,10 @@ export function OrdersPortalGrid({
                 if (col.kind === "actual") {
                   const i = col.monthIdx;
                   const actual = monthTotals[i];
-                  const target = MONTHLY_TARGETS[i];
-                  const onTrack = actual >= target;
+                  const target = targets?.[i] ?? null;
+                  const onTrack = target != null && actual >= target;
                   const hasData = actual > 0;
-                  const isCurrent = i === currentMonthIdx;
+                  const isCurrent = isCurrentYear && i === currentMonthIdx;
                   return (
                     <Th
                       key={`a-${i}-${idx}`}
@@ -669,16 +706,18 @@ export function OrdersPortalGrid({
                       >
                         {hasData ? fmtCurrencyShort(actual) : "—"}
                       </div>
-                      <div className="mt-0.5 text-[10px] font-normal text-muted">
-                        tgt {fmtCurrencyShort(target)}
-                      </div>
+                      {target != null && (
+                        <div className="mt-0.5 text-[10px] font-normal text-muted">
+                          tgt {fmtCurrencyShort(target)}
+                        </div>
+                      )}
                     </Th>
                   );
                 }
                 // Forecast column sum
                 const i = col.monthIdx;
                 const fc = forecastTotals[i];
-                const target = MONTHLY_TARGETS[i];
+                const target = targets?.[i] ?? 0;
                 const hasData = fc > 0;
                 return (
                   <Th
