@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/portal/service-worker-register";
-import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -10,7 +9,8 @@ import "./globals.css";
  * Editor's Note (Production Type): display serif. Regular for headlines and
  * stat numbers; italic is the editorial accent for emphasis words.
  * Sequel Sans Display (Hello Type): variable body sans (weight axis 100–900).
- * Mono falls back to Geist Mono — used only for codes, IDs, kbd hints.
+ * Mono uses the platform monospace stack (see `--font-mono` in globals.css) —
+ * it only renders codes, IDs and kbd hints, so it isn't worth a font download.
  */
 
 const display = localFont({
@@ -32,11 +32,6 @@ const body = localFont({
       style: "normal",
     },
   ],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -94,7 +89,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${display.variable} ${body.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${display.variable} ${body.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

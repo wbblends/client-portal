@@ -55,7 +55,7 @@
 
   --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: var(--font-display), ui-serif, Georgia, "Times New Roman", serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
   /* Type scale — formalized after we noticed pages had drifted to a sea of
      magic `text-[Npx]` arbitrary values. New code should reach for these

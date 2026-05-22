@@ -1,39 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import {
-  Search,
-  LayoutDashboard,
-  TrendingUp,
-  LineChart,
-  PieChart,
-  Users,
-  Briefcase,
-  Factory,
-  Truck,
-  Kanban,
-  DollarSign,
-  Building2,
-  LogOut,
-  Sun,
-  Moon,
-  type LucideIcon,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const ICON_MAP: Record<string, LucideIcon> = {
-  LayoutDashboard,
-  TrendingUp,
-  LineChart,
-  PieChart,
-  Users,
-  Briefcase,
-  Factory,
-  Truck,
-  Kanban,
-  DollarSign,
-};
+/**
+ * Lazy wrapper around the ⌘K command palette.
+ *
+ * The palette is mounted once at the top of the portal layout, so its code
+ * would otherwise ship in every page's bundle despite only being needed when
+ * the user actually opens it. This wrapper ships nothing but a tiny keydown
+ * listener; the real palette (`command-palette-impl`) is fetched as its own
+ * chunk on the first ⌘K / trigger and stays mounted afterwards.
+ */
 
 type DashboardItem = {
   id: string;
@@ -48,49 +28,32 @@ type CustomerItem = {
   name: string;
 };
 
-export type PaletteItem =
-  | { kind: "dashboard"; id: string; label: string; sublabel: string; href: string; icon: LucideIcon }
-  | { kind: "customer"; id: string; label: string; sublabel: string; href: string; icon: LucideIcon }
-  | { kind: "action"; id: string; label: string; sublabel: string; icon: LucideIcon; run: () => void };
+const CommandPaletteImpl = dynamic(
+  () => import("./command-palette-impl").then(m => m.CommandPalette),
+  { ssr: false },
+);
 
-/**
- * Cmd+K palette. Mounted once at the top of the portal layout. Items come
- * from the server (dashboards + customers the user can see) plus a few quick
- * actions (theme toggle, sign out) generated client-side.
- *
- * Trigger: ⌘K / Ctrl+K from anywhere, or click the trigger in the sidebar.
- * Filter is a simple substring match on label + sublabel — fuzzy enough for
- * the size of this dataset without pulling in a fuzzy-search dep.
- */
-export function CommandPalette({
-  dashboards,
-  customers,
-  canSwitchCustomers,
-}: {
+export function CommandPalette(props: {
   dashboards: DashboardItem[];
   customers: CustomerItem[];
   canSwitchCustomers: boolean;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [activeIdx, setActiveIdx] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [mounted, setMounted] = useState(false);
 
-  // Global keybind: ⌘K / Ctrl+K opens, Esc closes (handled inside).
-  // Also listens for the `wbb:palette:open` window event so any UI element
-  // can open the palette without lifting state up.
+  // Until the palette is first invoked, listen for the same triggers the real
+  // palette would (⌘K / Ctrl+K and the `wbb:palette:open` event). On the first
+  // hit we mount the impl with `startOpen` so it opens in the same gesture;
+  // from then on the impl owns these listeners itself.
   useEffect(() => {
+    if (mounted) return;
     function onKey(e: KeyboardEvent) {
-      const isToggle = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k";
-      if (isToggle) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen(o => !o);
+        setMounted(true);
       }
     }
     function onOpen() {
-      setOpen(true);
+      setMounted(true);
     }
     window.addEventListener("keydown", onKey);
     window.addEventListener("wbb:palette:open", onOpen);
@@ -98,246 +61,17 @@ export function CommandPalette({
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("wbb:palette:open", onOpen);
     };
-  }, []);
+  }, [mounted]);
 
-  // When the palette opens, focus the input and reset state. Close on route
-  // change so navigation away dismisses it.
-  useEffect(() => {
-    if (open) {
-      setQuery("");
-      setActiveIdx(0);
-      // Defer to next paint — focusing too early gets eaten by the keypress
-      // that opened us.
-      const t = setTimeout(() => inputRef.current?.focus(), 0);
-      return () => clearTimeout(t);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
-  const items = useMemo<PaletteItem[]>(() => {
-    const dashItems: PaletteItem[] = dashboards.map(d => ({
-      kind: "dashboard",
-      id: `dash-${d.id}`,
-      label: d.name,
-      sublabel: d.category,
-      href: `/dashboards/${d.slug}`,
-      icon: ICON_MAP[d.iconName] ?? LayoutDashboard,
-    }));
-    const customerItems: PaletteItem[] = canSwitchCustomers
-      ? customers.map(c => ({
-          kind: "customer",
-          id: `cust-${c.id}`,
-          label: c.name,
-          sublabel: "Customer · Overview",
-          href: `/c/${c.id}/overview`,
-          icon: Building2,
-        }))
-      : [];
-    const actions: PaletteItem[] = [
-      {
-        kind: "action",
-        id: "theme-toggle",
-        label: "Toggle theme",
-        sublabel: "Switch between light and dark mode",
-        icon: getCurrentTheme() === "dark" ? Sun : Moon,
-        run: () => {
-          const cur = getCurrentTheme();
-          const next = cur === "dark" ? "light" : "dark";
-          const html = document.documentElement;
-          html.classList.add("theme-switching");
-          html.setAttribute("data-theme", next);
-          window.setTimeout(() => html.classList.remove("theme-switching"), 260);
-          try {
-            localStorage.setItem("wbb.theme", next);
-          } catch {
-            // ignore
-          }
-        },
-      },
-      {
-        kind: "action",
-        id: "sign-out",
-        label: "Sign out",
-        sublabel: "End your session",
-        icon: LogOut,
-        run: async () => {
-          await fetch("/api/auth/logout", { method: "POST" });
-          router.replace("/login");
-          router.refresh();
-        },
-      },
-    ];
-    return [...dashItems, ...customerItems, ...actions];
-  }, [dashboards, customers, canSwitchCustomers, router]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(item => {
-      const haystack = `${item.label} ${item.sublabel}`.toLowerCase();
-      return q.split(/\s+/).every(token => haystack.includes(token));
-    });
-  }, [query, items]);
-
-  // Keep activeIdx in range when filter shrinks the list.
-  useEffect(() => {
-    if (activeIdx >= filtered.length) {
-      setActiveIdx(Math.max(0, filtered.length - 1));
-    }
-  }, [filtered.length, activeIdx]);
-
-  function runItem(item: PaletteItem) {
-    if (item.kind === "action") {
-      item.run();
-      setOpen(false);
-      return;
-    }
-    setOpen(false);
-    router.push(item.href);
-  }
-
-  function onInputKey(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActiveIdx(i => Math.min(filtered.length - 1, i + 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActiveIdx(i => Math.max(0, i - 1));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const item = filtered[activeIdx];
-      if (item) runItem(item);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      setOpen(false);
-    }
-  }
-
-  // Group filtered items for display, preserving the ordering above.
-  const grouped = useMemo(() => groupItems(filtered), [filtered]);
-
-  return (
-    <>
-      {open && (
-        <div className="fixed inset-0 z-50">
-          <div
-            className="absolute inset-0 bg-foreground/40 backdrop-blur-sm animate-palette-fade"
-            onClick={() => setOpen(false)}
-          />
-          <div className="relative mx-auto mt-[12vh] w-[min(640px,calc(100%-2rem))] animate-palette-pop">
-            <div className="overflow-hidden rounded-2xl bg-card border border-border shadow-[var(--shadow-popover)]">
-              <div className="flex items-center gap-2 px-4 border-b border-border">
-                <Search className="h-4 w-4 text-muted shrink-0" />
-                <input
-                  ref={inputRef}
-                  value={query}
-                  onChange={e => {
-                    setQuery(e.target.value);
-                    setActiveIdx(0);
-                  }}
-                  onKeyDown={onInputKey}
-                  placeholder="Search dashboards, customers, actions…"
-                  className="flex-1 bg-transparent py-3.5 text-[15px] text-foreground placeholder:text-muted-soft outline-none"
-                />
-                <kbd className="hidden sm:inline-flex items-center rounded-md border border-border bg-surface px-1.5 py-0.5 text-[10px] font-medium text-muted">
-                  ESC
-                </kbd>
-              </div>
-
-              <div className="max-h-[60vh] overflow-y-auto py-2">
-                {filtered.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-sm text-muted">
-                    No matches for &ldquo;{query}&rdquo;
-                  </div>
-                ) : (
-                  grouped.map((group, gi) => (
-                    <div key={group.label} className={cn(gi > 0 && "mt-1")}>
-                      <div className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-soft">
-                        {group.label}
-                      </div>
-                      <ul role="listbox">
-                        {group.items.map(({ item, globalIdx }) => {
-                          const Icon = item.icon;
-                          const active = globalIdx === activeIdx;
-                          return (
-                            <li key={item.id} role="option" aria-selected={active}>
-                              <button
-                                type="button"
-                                onMouseEnter={() => setActiveIdx(globalIdx)}
-                                onClick={() => runItem(item)}
-                                className={cn(
-                                  "w-full text-left px-4 py-2 flex items-center gap-3 transition-colors",
-                                  active ? "bg-primary-soft" : "hover:bg-accent",
-                                )}
-                              >
-                                <Icon
-                                  className={cn(
-                                    "h-4 w-4 shrink-0",
-                                    active ? "text-primary" : "text-muted",
-                                  )}
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <div
-                                    className={cn(
-                                      "truncate text-sm",
-                                      active
-                                        ? "text-primary font-medium"
-                                        : "text-foreground",
-                                    )}
-                                  >
-                                    {item.label}
-                                  </div>
-                                  <div className="truncate text-xs text-muted">
-                                    {item.sublabel}
-                                  </div>
-                                </div>
-                                {active && (
-                                  <kbd className="shrink-0 inline-flex items-center rounded-md border border-primary/20 bg-card px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                                    ↵
-                                  </kbd>
-                                )}
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-2.5 text-[11px] text-muted">
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <KbdKey>↑</KbdKey>
-                    <KbdKey>↓</KbdKey>
-                    <span>navigate</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <KbdKey>↵</KbdKey>
-                    <span>open</span>
-                  </span>
-                </div>
-                <span className="flex items-center gap-1">
-                  <KbdKey>{platformMeta()}</KbdKey>
-                  <KbdKey>K</KbdKey>
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+  if (!mounted) return null;
+  return <CommandPaletteImpl {...props} startOpen />;
 }
 
 /**
  * Standalone trigger — dispatches a `wbb:palette:open` event that the global
  * `<CommandPalette>` listens for. Decouples the trigger location from where
- * the modal is mounted.
+ * the modal is mounted. Kept in this lightweight module (not the impl chunk)
+ * so the sidebar can render it without pulling in the full palette.
  */
 export function PaletteTrigger({ className }: { className?: string }) {
   return (
@@ -360,44 +94,8 @@ export function PaletteTrigger({ className }: { className?: string }) {
   );
 }
 
-function KbdKey({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="inline-flex items-center rounded border border-border bg-surface px-1 py-0.5 text-[10px] font-medium text-muted">
-      {children}
-    </kbd>
-  );
-}
-
 function platformMeta(): string {
   if (typeof navigator === "undefined") return "⌘";
   const ua = navigator.userAgent;
   return /Mac|iPhone|iPad/.test(ua) ? "⌘" : "Ctrl ";
-}
-
-function getCurrentTheme(): "light" | "dark" {
-  if (typeof document === "undefined") return "light";
-  return (document.documentElement.getAttribute("data-theme") as "light" | "dark") || "light";
-}
-
-type Group = { label: string; items: { item: PaletteItem; globalIdx: number }[] };
-
-function groupItems(items: PaletteItem[]): Group[] {
-  const groups = new Map<string, { item: PaletteItem; globalIdx: number }[]>();
-  const order: string[] = [];
-
-  items.forEach((item, i) => {
-    const label =
-      item.kind === "dashboard"
-        ? "Dashboards"
-        : item.kind === "customer"
-          ? "Customers"
-          : "Quick actions";
-    if (!groups.has(label)) {
-      groups.set(label, []);
-      order.push(label);
-    }
-    groups.get(label)!.push({ item, globalIdx: i });
-  });
-
-  return order.map(label => ({ label, items: groups.get(label)! }));
 }
