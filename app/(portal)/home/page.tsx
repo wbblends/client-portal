@@ -380,23 +380,21 @@ async function OpenPosWeeklySection({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-2">
         <CardTitle>Open POs · last 12 weeks</CardTitle>
+        {latest && (
+          <div className="mt-2 flex items-baseline gap-2.5">
+            <span className="font-display text-[32px] font-bold leading-none tracking-tight tabular-nums text-foreground">
+              {formatCurrency(latest.amount, { compact: true })}
+            </span>
+            <span className="text-xs font-medium text-muted">
+              as of {shortDate(latest.date)}
+            </span>
+          </div>
+        )}
       </CardHeader>
-      <CardContent>
-        <div className="relative">
-          {latest && (
-            <div className="pointer-events-none absolute left-[74px] top-0 z-10">
-              <div className="font-display text-[34px] font-bold leading-none tracking-tight tabular-nums text-foreground">
-                {formatCurrency(latest.amount, { compact: true })}
-              </div>
-              <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted">
-                Open POs · as of {shortDate(latest.date)}
-              </div>
-            </div>
-          )}
-          <BacklogWeeklyChart />
-        </div>
+      <CardContent className="pt-2">
+        <BacklogWeeklyChart />
       </CardContent>
     </Card>
   );

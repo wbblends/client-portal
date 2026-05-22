@@ -1,12 +1,12 @@
 "use client";
 
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
   LabelList,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -157,39 +157,84 @@ export function BacklogSnapshotsChart() {
   );
 }
 
+/**
+ * Marks only the most recent point with an emphasised dot; all earlier
+ * points stay dot-free so the line reads cleanly.
+ */
+function LatestPointDot(props: {
+  cx?: number;
+  cy?: number;
+  index?: number;
+}) {
+  const { cx, cy, index } = props;
+  if (index !== WEEKLY_BACKLOG.length - 1 || cx == null || cy == null) {
+    return <g />;
+  }
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={9} fill="var(--color-primary)" fillOpacity={0.16} />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={4.5}
+        fill="var(--color-primary)"
+        stroke="var(--color-card)"
+        strokeWidth={2}
+      />
+    </g>
+  );
+}
+
 export function BacklogWeeklyChart() {
   const reducedMotion = usePrefersReducedMotion();
 
   return (
     <div className="h-[260px] w-full">
       <ResponsiveContainer>
-        <LineChart data={WEEKLY_BACKLOG} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-          <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
+        <AreaChart data={WEEKLY_BACKLOG} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="openPosArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.2} />
+              <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid stroke="var(--color-border)" strokeOpacity={0.6} vertical={false} />
           <XAxis
             dataKey="label"
-            tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+            interval="preserveStartEnd"
+            minTickGap={24}
+            tick={{ fill: "var(--color-muted)", fontSize: 11 }}
             tickLine={false}
-            axisLine={{ stroke: "var(--color-border)" }}
+            tickMargin={10}
+            axisLine={false}
           />
           <YAxis
+            // Zoom to the data band instead of starting at $0, so week-to-week
+            // movement is actually visible.
+            domain={[24_000_000, 36_000_000]}
+            ticks={[24_000_000, 28_000_000, 32_000_000, 36_000_000]}
             tickFormatter={fmt}
-            tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+            tick={{ fill: "var(--color-muted)", fontSize: 11 }}
             tickLine={false}
             axisLine={false}
-            width={64}
+            width={52}
           />
-          <Tooltip content={<BacklogTooltip />} />
-          <Line
+          <Tooltip
+            content={<BacklogTooltip />}
+            cursor={{ stroke: "var(--color-border)", strokeWidth: 1 }}
+          />
+          <Area
             type="monotone"
             dataKey="value"
             stroke="var(--color-primary)"
-            strokeWidth={2}
-            dot={{ r: 3, fill: "var(--color-primary)" }}
-            activeDot={{ r: 5 }}
+            strokeWidth={2.5}
+            fill="url(#openPosArea)"
+            dot={<LatestPointDot />}
+            activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--color-card)" }}
             isAnimationActive={!reducedMotion}
             animationDuration={550}
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
