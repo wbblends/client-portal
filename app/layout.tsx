@@ -34,9 +34,11 @@ const body = localFont({
       style: "normal",
     },
     {
-      // Real Semi Bold Display cut — used by headers (font-semibold).
+      // Real Semi Bold Display cut — used by headers. Mapped across the
+      // 600-700 range so both font-semibold and font-bold land on this
+      // real file instead of triggering a blurry synthesized fake-bold.
       path: "../public/brand/fonts/SequelSansDisplay-Semibold.ttf",
-      weight: "600",
+      weight: "600 700",
       style: "normal",
     },
   ],

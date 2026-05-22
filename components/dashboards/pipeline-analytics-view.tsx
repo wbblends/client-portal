@@ -129,7 +129,7 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
 
       <div className="grid grid-cols-1 gap-5 sm:gap-7 xl:grid-cols-2">
         <DonutCard
-          title="Deals by stage"
+          title="Deals by Stage"
           deals={deals}
           weight={chartWeight}
           onWeightChange={setChartWeight}
@@ -137,7 +137,7 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
           orderHint={STAGE_ORDER}
         />
         <DonutCard
-          title="Deals by rep"
+          title="Deals by Rep"
           deals={deals}
           weight={chartWeight}
           onWeightChange={setChartWeight}
@@ -145,7 +145,7 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
           orderHint={null}
         />
         <DonutCard
-          title="Deals by tier"
+          title="Deals by Tier"
           deals={deals}
           weight={chartWeight}
           onWeightChange={setChartWeight}
@@ -153,7 +153,7 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
           orderHint={TIER_ORDER}
         />
         <DonutCard
-          title="Deals by format"
+          title="Deals by Format"
           deals={deals}
           weight={chartWeight}
           onWeightChange={setChartWeight}
@@ -161,7 +161,7 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
           orderHint={FORMAT_ORDER}
         />
         <DonutCard
-          title="Deals by source"
+          title="Deals by Source"
           deals={deals}
           weight={chartWeight}
           onWeightChange={setChartWeight}
@@ -171,31 +171,31 @@ export function PipelineAnalyticsView({ data }: { data: KanbanData }) {
       </div>
 
       <BreakdownTable
-        title="By stage"
+        title="By Stage"
         deals={deals}
         groupBy={d => d.stageLabel}
         orderHint={STAGE_ORDER}
       />
       <BreakdownTable
-        title="By rep"
+        title="By Rep"
         deals={deals}
         groupBy={d => d.owner?.name ?? "Unassigned"}
         orderHint={null}
       />
       <BreakdownTable
-        title="By tier"
+        title="By Tier"
         deals={deals}
         groupBy={d => d.tier ?? "Unset"}
         orderHint={TIER_ORDER}
       />
       <BreakdownTable
-        title="By format"
+        title="By Format"
         deals={deals}
         groupBy={d => d.format ?? "Unset"}
         orderHint={FORMAT_ORDER}
       />
       <BreakdownTable
-        title="By source"
+        title="By Source"
         deals={deals}
         groupBy={d => humanizeSource(d.source)}
         orderHint={null}
@@ -353,7 +353,7 @@ function BreakdownTable({
   return (
     <Card className="overflow-hidden">
       <div className="px-5 pt-5 pb-3">
-        <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">{title}</h3>
+        <h3 className="text-sm font-bold text-foreground">{title}</h3>
       </div>
 
       <div className="overflow-x-auto">
@@ -461,7 +461,7 @@ function DonutCard({
   return (
     <Card className="px-5 py-5">
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">{title}</h3>
+        <h3 className="text-sm font-bold text-foreground">{title}</h3>
         <WeightToggle value={weight} onChange={onWeightChange} />
       </div>
 
@@ -603,8 +603,8 @@ function AgingCard({ deals }: { deals: FlatDeal[] }) {
     <Card className="overflow-hidden">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">
-            Stale deals
+          <h3 className="text-sm font-bold text-foreground">
+            Stale Deals
           </h3>
           <span className="text-xs text-muted">
             No activity in {STALE_AFTER_DAYS}+ days · {withAge.length} deal{withAge.length === 1 ? "" : "s"} ·{" "}

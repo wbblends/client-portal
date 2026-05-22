@@ -442,7 +442,7 @@ export function OrdersPortalGrid({
           return (
             <div className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-card)]">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-bold uppercase tracking-wide text-muted">
+                <div className="text-sm font-bold text-muted">
                   {currentMonthLabel} Orders Actuals
                 </div>
                 <div
@@ -486,7 +486,7 @@ export function OrdersPortalGrid({
               className="rounded-xl border border-warning-soft bg-warning-soft/40 p-5 shadow-[var(--shadow-card)]"
             >
               <div className="flex items-center justify-between">
-                <div className="text-sm font-bold uppercase tracking-wide text-warning">
+                <div className="text-sm font-bold text-warning">
                   {MONTH_LABELS[i]} Orders Forecast
                 </div>
                 <div
@@ -532,7 +532,7 @@ export function OrdersPortalGrid({
               className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]"
             >
               <div className="flex items-center justify-between">
-                <div className="text-xs font-bold uppercase tracking-wide text-muted">
+                <div className="text-xs font-bold text-muted">
                   {q.label}
                 </div>
                 {delta != null && (
@@ -576,7 +576,7 @@ export function OrdersPortalGrid({
       {isCurrentYear && (
         <section className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
           <header className="px-5 pt-4 pb-2">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Monthly POs Received</h2>
+            <h2 className="text-sm font-bold text-foreground">Monthly POs Received</h2>
           </header>
           <div className="px-3 pb-4">
             <MonthlyPosReceivedChart points={posReceivedPoints} />
@@ -1278,7 +1278,7 @@ function BreakdownPanel({
   return (
     <section className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
       <header className="px-5 pt-4 pb-3 flex items-baseline justify-between">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">{title}</h2>
+        <h2 className="text-sm font-bold text-foreground">{title}</h2>
         <span className="text-[11px] uppercase tracking-wide text-muted">
           YTD · MTD {monthLabel}
         </span>
