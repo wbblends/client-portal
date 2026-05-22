@@ -27,8 +27,16 @@ const body = localFont({
   display: "swap",
   src: [
     {
+      // Regular "Body" cut — despite the "-VF" filename this is a single
+      // static weight (no fvar table), so it's pinned to 400.
       path: "../public/brand/fonts/SequelSansDisplay-VF.woff2",
-      weight: "100 900",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      // Real Semi Bold Display cut — used by headers (font-semibold).
+      path: "../public/brand/fonts/SequelSansDisplay-Semibold.ttf",
+      weight: "600",
       style: "normal",
     },
   ],

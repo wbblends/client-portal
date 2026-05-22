@@ -169,7 +169,13 @@ html.theme-switching *[data-theme-transition] {
     background-color: transparent;
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    font-weight: 500; /* Sequel Sans Display VF — 500 is the brand body weight. */
+    /* Two real cuts are installed: the 400 "Body" cut and the 600 "Semi
+       Bold Display" cut. Body text resolves to 400; font-semibold/bold
+       headers resolve to the real 600 face. */
+    font-weight: 500;
+    /* No cut heavier than 600 exists — stop the browser faking one on top
+       of the 600 face so font-bold (700) renders the 600 cut cleanly. */
+    font-synthesis-weight: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     /* Belt-and-braces guard against horizontal scroll on mobile. Every table
@@ -328,6 +334,21 @@ html.theme-switching *[data-theme-transition] {
       animation: none !important;
     }
   }
+
+  /* Customer Experience Survey screen transitions — a 250ms horizontal slide.
+     Forward slides the incoming screen in from the right; back, from the
+     left. Under prefers-reduced-motion the global `*` rule above collapses
+     the duration to ~0 so the screen still appears, just without travel. */
+  @keyframes survey-slide-fwd {
+    from { opacity: 0; transform: translateX(28px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes survey-slide-back {
+    from { opacity: 0; transform: translateX(-28px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .animate-survey-fwd  { animation: survey-slide-fwd 250ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .animate-survey-back { animation: survey-slide-back 250ms cubic-bezier(0.32, 0.72, 0, 1); }
 
   /* Decorative purple wash, used as a backdrop in marketing-feeling spots
      where we don't want a heavy raster background. */
