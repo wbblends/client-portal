@@ -6,9 +6,9 @@
  * (`app/(portal)/admin/customer-feedback/`) so both render the same question
  * text, the same scale endpoints, and the same number of work screens.
  *
- * 4 sections, 9 rating questions (8 on a 1–5 scale, the recommend question on
+ * 3 sections, 9 rating questions (8 on a 1–5 scale, the recommend question on
  * a 1–10 NPS scale), 2 required free-text questions. Question order follows
- * the customer lifecycle — quoting → service → product → outlook — so adjacent
+ * the customer lifecycle — quoting/product → service → outlook — so adjacent
  * questions don't bias each other.
  */
 
@@ -97,8 +97,7 @@ export type SurveySection = {
 export const SECTIONS: SurveySection[] = [
   { number: 1, title: "Quoting, Onboarding & Formulation", introHeading: "Section One" },
   { number: 2, title: "Partnership & Service", introHeading: "Section Two" },
-  { number: 3, title: "Product & Quality", introHeading: "Section Three" },
-  { number: 4, title: "Partnership Outlook & Open Feedback", introHeading: "Section Four" },
+  { number: 3, title: "Partnership Outlook & Open Feedback", introHeading: "Section Three" },
 ];
 
 // ─── Rating questions ──────────────────────────────────────────────────────
@@ -126,18 +125,16 @@ export const QUESTIONS: SurveyQuestion[] = [
   { id: "q2", number: 1, section: 1, text: "Quoting Accuracy & Speed", scale: "satisfaction" },
   { id: "q3", number: 2, section: 1, text: "New Product Development / Formulation Support", scale: "satisfaction" },
   { id: "q4", number: 3, section: 1, text: "Product Onboarding Process (Quote → R&D → FPS → Production Run)", scale: "satisfaction" },
+  { id: "q12", number: 4, section: 1, text: "Overall Quality (Product Quality Standards)", scale: "satisfaction" },
 
   // Section 2 — Partnership & Service
-  { id: "q5", number: 4, section: 2, text: "Lead Times / Delivery Timelines", scale: "satisfaction" },
-  { id: "q8", number: 5, section: 2, text: "Communication & Responsiveness", scale: "satisfaction" },
-  { id: "q9", number: 6, section: 2, text: "Business Development Representative (Communication, Technical Expertise, etc)", scale: "satisfaction", leadIn: "How would you rate your:" },
-  { id: "q10", number: 7, section: 2, text: "Account Manager (Communication, Collaboration, Expertise, etc)", scale: "satisfaction", leadIn: "How would you rate your:" },
+  { id: "q5", number: 5, section: 2, text: "Lead Times / Delivery Timelines", scale: "satisfaction" },
+  { id: "q8", number: 6, section: 2, text: "Communication & Responsiveness", scale: "satisfaction" },
+  { id: "q9", number: 7, section: 2, text: "Business Development Representative (Communication, Technical Expertise, etc)", scale: "satisfaction", leadIn: "How would you rate your:" },
+  { id: "q10", number: 8, section: 2, text: "Account Manager (Communication, Collaboration, Expertise, etc)", scale: "satisfaction", leadIn: "How would you rate your:" },
 
-  // Section 3 — Product & Quality
-  { id: "q12", number: 8, section: 3, text: "Overall Quality (Product Quality Standards)", scale: "satisfaction" },
-
-  // Section 4 — Partnership Outlook
-  { id: "q22", number: 9, section: 4, text: "Likelihood to Recommend WB Blends", scale: "nps" },
+  // Section 3 — Partnership Outlook
+  { id: "q22", number: 9, section: 3, text: "Likelihood to Recommend WB Blends", scale: "nps" },
 ];
 
 export const QUESTION_BY_ID: Record<string, SurveyQuestion> = Object.fromEntries(
