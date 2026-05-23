@@ -180,8 +180,8 @@ export const COPY = {
   welcome: {
     title: "Customer Experience Survey",
     body: "We appreciate your honest feedback, and your responses are only shared with our executive team.",
-    meta: "~3 minutes",
-    start: "Let's get started",
+    meta: "~2 minutes",
+    start: "Let's Get Started",
   },
   contact: {
     heading: "Who are we hearing from?",
@@ -194,12 +194,12 @@ export const COPY = {
     reminder:
       "As a reminder, your responses will be confidential to anyone outside of our executive team.",
     submit: "Submit",
-    back: "Back to review",
+    back: "Back to Review",
   },
   done: {
     title: "We appreciate you!",
     body: "We are grateful for the opportunity to earn your business.",
-    cta: "Return to wbblends.com",
+    cta: "Return to WB Blends",
     ctaHref: "https://wbblends.com",
   },
   micro: {

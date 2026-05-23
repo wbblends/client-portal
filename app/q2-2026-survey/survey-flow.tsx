@@ -582,19 +582,27 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
 
   return (
     <CenteredScreen>
-      <Logo size="lg" />
-      <h1 className="mt-10 font-display text-[clamp(45px,8.1vw,63px)] leading-[1.08] tracking-tight text-foreground">
-        {COPY.welcome.title}
-      </h1>
-      <p className="mt-4 text-base leading-relaxed text-muted">
-        {COPY.welcome.body}
-      </p>
-      <p className="mt-3 text-sm font-semibold text-foreground-soft">
-        {COPY.welcome.meta}
-      </p>
-      <PrimaryButton className="mt-8" onClick={onStart}>
-        {COPY.welcome.start}
-      </PrimaryButton>
+      {/* Frosted-glass card: translucent fill + heavy backdrop blur reads as
+          a liquid-glass surface over the swirl hero behind it. */}
+      <div className="flex flex-col items-center rounded-3xl border border-white/50 bg-white/35 px-6 py-12 text-center shadow-[0_30px_80px_-30px_rgba(17,11,41,0.25)] ring-1 ring-inset ring-white/40 backdrop-blur-2xl sm:px-12 sm:py-16">
+        <Logo size="lg" />
+        <h1 className="mt-10 font-display text-[clamp(58px,10.5vw,82px)] leading-[1.0] tracking-tight text-foreground">
+          {COPY.welcome.title.split(" ").map(word => (
+            <span key={word} className="block">
+              {word}
+            </span>
+          ))}
+        </h1>
+        <p className="mt-6 max-w-[440px] text-base leading-relaxed text-muted">
+          {COPY.welcome.body}
+        </p>
+        <p className="mt-3 text-sm font-semibold text-foreground-soft">
+          {COPY.welcome.meta}
+        </p>
+        <PrimaryButton className="mt-8" onClick={onStart}>
+          {COPY.welcome.start}
+        </PrimaryButton>
+      </div>
     </CenteredScreen>
   );
 }
