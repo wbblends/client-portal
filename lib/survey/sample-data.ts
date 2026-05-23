@@ -45,10 +45,8 @@ const PERSONAS: Persona[] = [
  *  read lower, formulation support and product quality read higher. */
 const QUESTION_BASELINE: Record<string, number> = {
   q2: 3.8, q3: 4.6, q4: 4.0,
-  q5: 3.2, q6: 4.2, q7: 3.7, q8: 4.4, q9: 4.3, q10: 3.9,
-  q12: 4.7, q13: 4.4, q14: 3.9, q15: 4.5, q16: 4.1, q17: 3.6,
-  q18: 3.5, q19: 3.8, q20: 4.2,
-  q21: 4.4, // likelihood to continue
+  q5: 3.2, q8: 4.4, q9: 4.3, q10: 3.9,
+  q12: 4.7,
 };
 
 const LOW_COMMENTS = [

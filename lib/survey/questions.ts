@@ -6,10 +6,10 @@
  * (`app/(portal)/admin/customer-feedback/`) so both render the same question
  * text, the same scale endpoints, and the same number of work screens.
  *
- * 5 sections, 20 rating questions (19 on a 1–5 scale, the recommend question
- * on a 1–10 NPS scale), 2 required free-text questions. Question order follows
- * the customer lifecycle — quoting → service → product → growth → outlook — so
- * adjacent questions don't bias each other.
+ * 4 sections, 9 rating questions (8 on a 1–5 scale, the recommend question on
+ * a 1–10 NPS scale), 2 required free-text questions. Question order follows
+ * the customer lifecycle — quoting → service → product → outlook — so adjacent
+ * questions don't bias each other.
  */
 
 /** Identifier for the current survey wave. Stored on every response row so a
@@ -98,8 +98,7 @@ export const SECTIONS: SurveySection[] = [
   { number: 1, title: "Quoting, Onboarding & Formulation", introHeading: "Section One" },
   { number: 2, title: "Partnership & Service", introHeading: "Section Two" },
   { number: 3, title: "Product & Quality", introHeading: "Section Three" },
-  { number: 4, title: "Growth & Capacity", introHeading: "Section Four" },
-  { number: 5, title: "Partnership Outlook & Open Feedback", introHeading: "Section Five" },
+  { number: 4, title: "Partnership Outlook & Open Feedback", introHeading: "Section Four" },
 ];
 
 // ─── Rating questions ──────────────────────────────────────────────────────
@@ -109,10 +108,14 @@ export type SurveyQuestion = {
   id: string;
   /** 1-based display number. */
   number: number;
-  /** Which section (1–5) this question belongs to. */
+  /** Which section this question belongs to. */
   section: number;
   text: string;
   scale: RatingScaleId;
+  /** Optional override for the rating-screen lead-in ("How would you rate
+   *  ___:"). Defaults to "How would you rate our:". Set to a "your" variant
+   *  for questions about people assigned to the customer (BDR, AM). */
+  leadIn?: string;
 };
 
 // `id` is the stable stored-response column key and never changes; `number`
@@ -120,34 +123,21 @@ export type SurveyQuestion = {
 // changes.
 export const QUESTIONS: SurveyQuestion[] = [
   // Section 1 — Quoting, Onboarding & Formulation
-  { id: "q2", number: 1, section: 1, text: "Quoting Accuracy & Timeline", scale: "satisfaction" },
-  { id: "q3", number: 2, section: 1, text: "Technical Expertise / Formulation Support", scale: "satisfaction" },
+  { id: "q2", number: 1, section: 1, text: "Quoting Accuracy & Speed", scale: "satisfaction" },
+  { id: "q3", number: 2, section: 1, text: "New Product Development / Formulation Support", scale: "satisfaction" },
   { id: "q4", number: 3, section: 1, text: "Product Onboarding Process (Quote → R&D → FPS → Production Run)", scale: "satisfaction" },
 
   // Section 2 — Partnership & Service
   { id: "q5", number: 4, section: 2, text: "Lead Times / Delivery Timelines", scale: "satisfaction" },
-  { id: "q6", number: 5, section: 2, text: "Order Accuracy (Right Product, Quantity, Packaging)", scale: "satisfaction" },
-  { id: "q7", number: 6, section: 2, text: "Issue Resolution & Handling of Problems", scale: "satisfaction" },
-  { id: "q8", number: 7, section: 2, text: "Communication & Responsiveness", scale: "satisfaction" },
-  { id: "q9", number: 8, section: 2, text: "Business Development Representative (Performance, Responsiveness, Flexibility, Helps Work Through Problems)", scale: "satisfaction" },
-  { id: "q10", number: 9, section: 2, text: "Account Manager (Performance, Responsiveness, Flexibility, Helps Work Through Problems, Provides Up-to-Date Information)", scale: "satisfaction" },
+  { id: "q8", number: 5, section: 2, text: "Communication & Responsiveness", scale: "satisfaction" },
+  { id: "q9", number: 6, section: 2, text: "Business Development Representative (Communication, Technical Expertise, etc)", scale: "satisfaction", leadIn: "How would you rate your:" },
+  { id: "q10", number: 7, section: 2, text: "Account Manager (Communication, Collaboration, Expertise, etc)", scale: "satisfaction", leadIn: "How would you rate your:" },
 
   // Section 3 — Product & Quality
-  { id: "q12", number: 10, section: 3, text: "Overall Quality (Product Quality Standards)", scale: "satisfaction" },
-  { id: "q13", number: 11, section: 3, text: "Consistency of Product (Batch to Batch)", scale: "satisfaction" },
-  { id: "q14", number: 12, section: 3, text: "Packaging Quality & Options", scale: "satisfaction" },
-  { id: "q15", number: 13, section: 3, text: "Raw Material Sourcing & Ingredient Quality", scale: "satisfaction" },
-  { id: "q16", number: 14, section: 3, text: "Label Review & Regulatory / Compliance Support", scale: "satisfaction" },
-  { id: "q17", number: 15, section: 3, text: "Documentation Quality (COAs, MSDS, Amazon Readiness)", scale: "satisfaction" },
+  { id: "q12", number: 8, section: 3, text: "Overall Quality (Product Quality Standards)", scale: "satisfaction" },
 
-  // Section 4 — Growth & Capacity
-  { id: "q18", number: 16, section: 4, text: "MOQ Flexibility", scale: "satisfaction" },
-  { id: "q19", number: 17, section: 4, text: "Capacity / Ability to Scale with Demand", scale: "satisfaction" },
-  { id: "q20", number: 18, section: 4, text: "Overall Experience with WB Blends", scale: "satisfaction" },
-
-  // Section 5 — Partnership Outlook
-  { id: "q21", number: 19, section: 5, text: "Likelihood to Continue Partnership", scale: "likelihood" },
-  { id: "q22", number: 20, section: 5, text: "Likelihood to Recommend WB Blends", scale: "nps" },
+  // Section 4 — Partnership Outlook
+  { id: "q22", number: 9, section: 4, text: "Likelihood to Recommend WB Blends", scale: "nps" },
 ];
 
 export const QUESTION_BY_ID: Record<string, SurveyQuestion> = Object.fromEntries(
@@ -217,6 +207,7 @@ export const COPY = {
   },
   micro: {
     continue: "Continue",
+    skipNa: "Not Applicable, Skip",
     backTooltip: "Previous question",
     resumeBanner: "Picking up where you left off.",
     commentLabel: "Comments (optional)",

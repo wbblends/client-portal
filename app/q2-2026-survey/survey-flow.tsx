@@ -57,7 +57,7 @@ const STEPS: Step[] = (() => {
     for (const q of questionsInSection(section.number)) {
       out.push({ kind: "question", question: q });
     }
-    if (section.number === 5) {
+    if (section === SECTIONS[SECTIONS.length - 1]) {
       for (const q of OPEN_QUESTIONS) out.push({ kind: "open", question: q });
     }
   }
@@ -413,6 +413,22 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
                 })
               }
               onNext={goNext}
+              onSkip={() => {
+                const qid = step.question.id;
+                setRatings(r => {
+                  if (!(qid in r)) return r;
+                  const next = { ...r };
+                  delete next[qid];
+                  return next;
+                });
+                setComments(c => {
+                  if (!(qid in c)) return c;
+                  const next = { ...c };
+                  delete next[qid];
+                  return next;
+                });
+                goNext();
+              }}
             />
           )}
 
@@ -725,6 +741,7 @@ function RatingScreen({
   onPick,
   onComment,
   onNext,
+  onSkip,
 }: {
   question: SurveyQuestion;
   value: number | undefined;
@@ -732,6 +749,7 @@ function RatingScreen({
   onPick: (qid: string, value: number) => void;
   onComment: (qid: string, text: string) => void;
   onNext: () => void;
+  onSkip: () => void;
 }) {
   const scale = SCALES[question.scale];
   const selectedOption = scale.options.find(o => o.value === value);
@@ -740,7 +758,7 @@ function RatingScreen({
   return (
     <div>
       <p className="text-xs font-bold uppercase tracking-wide text-muted-soft">
-        Question {question.number} — How would you rate our:
+        Question {question.number} — {question.leadIn ?? "How would you rate our:"}
       </p>
       <h2 className="mt-2 font-display italic text-[clamp(30px,5.1vw,39px)] leading-snug tracking-tight text-foreground">
         {question.text}
@@ -804,14 +822,22 @@ function RatingScreen({
         />
       </div>
 
-      {/* A Continue button appears once the question is answered, so the
-          respondent can add a comment before moving on rather than being
-          rushed off the screen. */}
-      {answered && (
-        <div className="mt-7">
+      {/* Continue when answered, plus an always-available "Not Applicable,
+          Skip" so the respondent can move past questions that do not apply
+          to their relationship with us. */}
+      <div className="mt-7 flex flex-wrap items-center gap-3">
+        {answered && (
           <PrimaryButton onClick={onNext}>{COPY.micro.continue}</PrimaryButton>
-        </div>
-      )}
+        )}
+        <button
+          type="button"
+          onClick={onSkip}
+          className="ml-auto inline-flex h-12 items-center justify-center rounded-xl border border-border bg-accent px-6 text-sm font-semibold text-foreground-soft transition-colors hover:bg-border"
+        >
+          {COPY.micro.skipNa}
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }

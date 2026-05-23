@@ -65,7 +65,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Ratings — every one of the 20 questions must be present and in range.
+  // Ratings — each question is optional (the respondent can mark it Not
+  // Applicable and skip), but anything they did send must be a valid integer
+  // inside that question's scale.
   const rawRatings =
     body.ratings && typeof body.ratings === "object"
       ? (body.ratings as Record<string, unknown>)
@@ -73,6 +75,7 @@ export async function POST(request: NextRequest) {
   const ratings: Record<string, number> = {};
   for (const q of QUESTIONS) {
     const v = rawRatings[q.id];
+    if (v === undefined || v === null) continue;
     const scale = SCALES[q.scale];
     if (
       typeof v !== "number" ||
@@ -81,7 +84,7 @@ export async function POST(request: NextRequest) {
       v > scale.max
     ) {
       return NextResponse.json(
-        { error: `Missing or invalid rating for question ${q.number}.` },
+        { error: `Invalid rating for question ${q.number}.` },
         { status: 400 },
       );
     }
