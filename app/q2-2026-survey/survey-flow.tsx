@@ -5,8 +5,8 @@
  *
  *  - One question per screen; a rating screen shows a Continue button once
  *    answered so the respondent can add a comment before moving on.
- *  - A thin progress bar that only moves on the "work" screens (contact +
- *    20 ratings + 2 open-ended) — never on section intro screens.
+ *  - A thin progress bar that only moves on the "work" screens (9 ratings +
+ *    the closing open-ended question) — never on contact or section intros.
  *  - Section intro screens carry the brand voice; the rating questions stay
  *    clinical.
  *  - Back navigation, keyboard support (digit keys select a rating, Enter
@@ -65,8 +65,11 @@ const STEPS: Step[] = (() => {
   return out;
 })();
 
+// Contact is intentionally excluded from "work" so the visible counter ("N
+// of M") only counts numbered questions — the respondent doesn't think of
+// typing their name as Question 1.
 const isWorkStep = (s: Step) =>
-  s.kind === "contact" || s.kind === "question" || s.kind === "open";
+  s.kind === "question" || s.kind === "open";
 
 /** Total work screens — drives the progress bar denominator (25). */
 const TOTAL_WORK = STEPS.filter(isWorkStep).length;
@@ -91,7 +94,6 @@ type Saved = {
   contact: Contact;
   ratings: Record<string, number>;
   comments: Record<string, string>;
-  changeOne: string;
   upcoming: string;
 };
 
@@ -126,7 +128,6 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
   });
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [comments, setComments] = useState<Record<string, string>>({});
-  const [changeOne, setChangeOne] = useState("");
   const [upcoming, setUpcoming] = useState("");
 
   const [contactErrors, setContactErrors] = useState<Partial<Contact>>({});
@@ -148,7 +149,6 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
       setContact(saved.contact ?? contact);
       setRatings(saved.ratings ?? {});
       setComments(saved.comments ?? {});
-      setChangeOne(saved.changeOne ?? "");
       setUpcoming(saved.upcoming ?? "");
       if (saved.phase === "flow") {
         setPhase("flow");
@@ -177,7 +177,6 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
       contact,
       ratings,
       comments,
-      changeOne,
       upcoming,
     };
     try {
@@ -192,7 +191,6 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
     contact,
     ratings,
     comments,
-    changeOne,
     upcoming,
   ]);
 
@@ -245,7 +243,6 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
           customerId,
           ratings,
           comments,
-          changeOne,
           upcoming,
         }),
       });
@@ -266,7 +263,7 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
       );
       setPhase("flow");
     }
-  }, [respondentId, contact, customerId, ratings, comments, changeOne, upcoming]);
+  }, [respondentId, contact, customerId, ratings, comments, upcoming]);
 
   /** Records a rating. The screen no longer auto-advances — a Continue button
    *  appears once answered so an in-progress comment is never interrupted. */
@@ -305,11 +302,7 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
         e.key === "Enter" &&
         (e.metaKey || e.ctrlKey)
       ) {
-        const filled =
-          step.question.id === "changeOne"
-            ? changeOne.trim()
-            : upcoming.trim();
-        if (filled) {
+        if (upcoming.trim()) {
           e.preventDefault();
           goNext();
         }
@@ -317,7 +310,7 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [phase, step, goNext, pickRating, ratings, changeOne, upcoming]);
+  }, [phase, step, goNext, pickRating, ratings, upcoming]);
 
   // ── Render ──
   if (phase === "welcome") {
@@ -435,12 +428,8 @@ export function SurveyFlow({ customerId }: { customerId: string | null }) {
           {step.kind === "open" && (
             <OpenScreen
               question={step.question}
-              value={step.question.id === "changeOne" ? changeOne : upcoming}
-              onChange={text =>
-                step.question.id === "changeOne"
-                  ? setChangeOne(text)
-                  : setUpcoming(text)
-              }
+              value={upcoming}
+              onChange={setUpcoming}
               onNext={goNext}
             />
           )}

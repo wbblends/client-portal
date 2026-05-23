@@ -7,8 +7,8 @@
  * text, the same scale endpoints, and the same number of work screens.
  *
  * 3 sections, 9 rating questions (8 on a 1–5 scale, the recommend question on
- * a 1–10 NPS scale), 2 required free-text questions. Question order follows
- * the customer lifecycle — quoting/product → service → outlook — so adjacent
+ * a 1–10 NPS scale), 1 required free-text closer. Question order follows the
+ * customer lifecycle — quoting/product → service → outlook — so adjacent
  * questions don't bias each other.
  */
 
@@ -161,11 +161,6 @@ export type OpenQuestion = {
 };
 
 export const OPEN_QUESTIONS: OpenQuestion[] = [
-  {
-    id: "changeOne",
-    text: "If you could change one thing about working with WB Blends that would have the biggest impact on your business, what would it be?",
-    placeholder: "The one thing that would move the needle.",
-  },
   {
     id: "upcoming",
     text: "Are there any upcoming projects we can support?",

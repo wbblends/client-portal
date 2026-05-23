@@ -102,12 +102,14 @@ export async function POST(request: NextRequest) {
     if (c) comments[q.id] = c;
   }
 
-  // Open-ended questions — both are required.
+  // Closing free-text question — only `upcoming` is collected from the UI
+  // now. `changeOne` is kept in the stored row for backwards compatibility
+  // with older responses but is no longer required from new submissions.
   const changeOne = clampText(body.changeOne);
   const upcoming = clampText(body.upcoming);
-  if (!changeOne || !upcoming) {
+  if (!upcoming) {
     return NextResponse.json(
-      { error: "Please answer both open-ended questions." },
+      { error: "Please answer the final question." },
       { status: 400 },
     );
   }
