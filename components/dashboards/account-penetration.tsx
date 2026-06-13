@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 import { getAccountPenetration, type AccountPenetration } from "@/lib/marketing/hubspot";
 
 /**
@@ -96,11 +96,6 @@ function AccountCard({ account }: { account: AccountPenetration }) {
           <h2 className="font-display text-[20px] leading-tight tracking-tight text-foreground">
             {account.name}
           </h2>
-          <p className="mt-0.5 text-xs text-muted">
-            {account.firstNewLogoCloseDate
-              ? `First closed in New Logo Pipeline · ${formatDate(account.firstNewLogoCloseDate)}`
-              : "No closed-won deal in New Logo Pipeline"}
-          </p>
         </div>
         <a
           href={account.hubspotUrl}
