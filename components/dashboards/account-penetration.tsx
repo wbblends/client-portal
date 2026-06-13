@@ -81,11 +81,10 @@ function AccountCard({ account }: { account: AccountPenetration }) {
   const totalIdentified = account.captured + account.inProgress;
   const untapped = Math.max(projection - totalIdentified, 0);
 
-  // Percentages are the true ratio to the projection, NOT the capped bar
-  // width — so an account whose pipeline has outgrown its projection reads
-  // above 100% even though its bar segment is clipped at the projection.
+  // Percentages are capped at 100% to match the capped bar width — an account
+  // whose pipeline has outgrown its projection still reads at 100%, never above.
   const pctOfProjection = (value: number) =>
-    hasProjection ? Math.round((value / projection) * 100) : 0;
+    hasProjection ? Math.min(Math.round((value / projection) * 100), 100) : 0;
   const capturedPct = pctOfProjection(account.captured);
   const inProgressPct = pctOfProjection(account.inProgress);
   const untappedPct = pctOfProjection(untapped);
