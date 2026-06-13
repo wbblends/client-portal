@@ -7,10 +7,11 @@ import { getAccountPenetration, type AccountPenetration } from "@/lib/marketing/
  * Account Penetration dashboard. Server component.
  *
  * One progress bar per account. The bar's full width is the account's initial
- * projection — the value closed in the Sales Pipeline. The solid fill is
- * wallet share we've since CLOSED WON; the lighter fill is wallet share still
- * IN PROGRESS (quoting / formulation / onboarding). Both fills are capped at
- * the projection; anything beyond shows as an "over projection" badge.
+ * projection — the value closed in the Sales Pipeline. GREEN is wallet share
+ * we've CLOSED WON; YELLOW is wallet share still IN PROGRESS (quoting /
+ * formulation / onboarding); RED is the UNTAPPED remainder we're not yet
+ * working. Both fills are capped at the projection; anything beyond shows as
+ * an "over projection" badge.
  */
 export async function AccountPenetrationDashboard() {
   const data = await getAccountPenetration();
@@ -43,12 +44,12 @@ export async function AccountPenetrationDashboard() {
 function Legend() {
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
-      <LegendDot className="bg-primary" label="Wallet share won" />
+      <LegendDot className="bg-success" label="Closed won" />
       <LegendDot
-        className="bg-primary/30"
-        label="Wallet share in progress (quoting / R&D / onboarding)"
+        className="bg-warning"
+        label="In progress (quoting / R&D / onboarding)"
       />
-      <LegendDot className="bg-accent" label="Untapped vs. projection" />
+      <LegendDot className="bg-danger" label="Untapped / not working" />
     </div>
   );
 }
@@ -78,7 +79,6 @@ function AccountCard({ account }: { account: AccountPenetration }) {
   const filledFrac = capturedFrac + inProgressFrac;
 
   const totalIdentified = account.captured + account.inProgress;
-  const overflow = Math.max(totalIdentified - projection, 0);
   const untapped = Math.max(projection - totalIdentified, 0);
 
   // Percentages are the true ratio to the projection, NOT the capped bar
@@ -115,61 +115,47 @@ function AccountCard({ account }: { account: AccountPenetration }) {
 
       {hasProjection ? (
         <>
-          {/* Header: captured % is the hero (left); the initial projection
-              anchors the right end of the bar — the reference it's measured
-              against. */}
-          <div className="mt-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">
-                Original Projection Captured
-              </p>
-              <p className="mt-1 font-display text-[36px] leading-none tabular-nums tracking-tight text-foreground">
-                {capturedPct}%
-              </p>
-              <p className="mt-1.5 text-xs tabular-nums text-muted">
-                {formatCurrency(account.captured, { compact: true })} ·{" "}
-                {formatNumber(account.capturedDealCount)} won
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">
-                Initial projection
-              </p>
-              <p className="mt-1 font-display text-[36px] leading-none tabular-nums tracking-tight text-foreground">
-                {formatCurrency(projection, { compact: true })}
-              </p>
-              {overflow > 0 && (
-                <div className="mt-1.5">
-                  <Badge tone="success">
-                    +{formatCurrency(overflow, { compact: true })} over projection
-                  </Badge>
-                </div>
-              )}
-            </div>
+          {/* Header: annual revenue captured is the hero, framed in dollars
+              against the initial projection. */}
+          <div className="mt-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">
+              Annual Revenue Captured
+            </p>
+            <p className="mt-1 font-display text-[36px] leading-none tabular-nums tracking-tight text-foreground">
+              {formatCurrency(account.captured, { compact: true })}
+            </p>
+            <p className="mt-1.5 text-xs tabular-nums text-muted">
+              of {formatCurrency(projection, { compact: true })} initially projected ·{" "}
+              {capturedPct}% · {formatNumber(account.capturedDealCount)} won
+            </p>
           </div>
 
           <div
-            className="relative mt-4 h-3.5 w-full overflow-hidden rounded-full bg-accent"
+            className="relative mt-4 h-3.5 w-full overflow-hidden rounded-full bg-danger"
             role="img"
-            aria-label={`${capturedPct}% of the ${formatCurrency(projection, {
+            aria-label={`${formatCurrency(account.captured, {
               compact: true,
-            })} projection captured, with another ${inProgressPct}% in progress`}
+            })} of the ${formatCurrency(projection, {
+              compact: true,
+            })} projection closed won (green), with another ${formatCurrency(account.inProgress, {
+              compact: true,
+            })} in progress (yellow); the remainder is untapped (red)`}
           >
-            {/* In-progress segment: spans the full filled width, lighter shade. */}
+            {/* In-progress (yellow): spans the full filled width. */}
             <div
-              className="absolute inset-y-0 left-0 bg-primary/30"
+              className="absolute inset-y-0 left-0 bg-warning"
               style={{ width: `${filledFrac * 100}%` }}
             />
-            {/* Captured segment: solid, drawn on top from the left edge. */}
+            {/* Closed won (green): solid, drawn on top from the left edge. */}
             <div
-              className="absolute inset-y-0 left-0 bg-primary"
+              className="absolute inset-y-0 left-0 bg-success"
               style={{ width: `${capturedFrac * 100}%` }}
             />
           </div>
 
           <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
             <PenetrationStat
-              dotClass="bg-primary/30"
+              dotClass="bg-warning"
               label="In progress"
               pct={inProgressPct}
               detail={`${formatCurrency(account.inProgress, { compact: true })} · ${formatNumber(
@@ -177,7 +163,7 @@ function AccountCard({ account }: { account: AccountPenetration }) {
               )} deals`}
             />
             <PenetrationStat
-              dotClass="bg-accent"
+              dotClass="bg-danger"
               label="Untapped"
               pct={untappedPct}
               detail={formatCurrency(untapped, { compact: true })}
