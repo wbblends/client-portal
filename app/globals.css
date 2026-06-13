@@ -53,6 +53,20 @@
   --chart-neutral-1: #898a96;  /* fallback — Unset / Unknown */
   --chart-neutral-2: #b6b3c4;  /* fallback — secondary "missing" bucket */
 
+  /* Categorical HIGH-CONTRAST ramp — eight distinct hues so adjacent slices in
+     a donut/legend are discernible at a glance (the purple ramp above blurs
+     together when many categories show at once). Anchored on brand purple,
+     then walking the wheel green → amber → rose → blue → teal → fuchsia →
+     orange. Same two neutrals close the list for "Unset/Unknown" buckets. */
+  --chart-cat-1: #6540e3;   /* brand purple — anchor */
+  --chart-cat-2: #14a26b;   /* green */
+  --chart-cat-3: #e89923;   /* amber */
+  --chart-cat-4: #d93a6a;   /* rose */
+  --chart-cat-5: #2563c9;   /* blue */
+  --chart-cat-6: #0d9488;   /* teal */
+  --chart-cat-7: #c026d3;   /* fuchsia */
+  --chart-cat-8: #ea580c;   /* orange */
+
   --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: var(--font-display), ui-serif, Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -127,6 +141,17 @@
   --chart-purple-8: #6540e3;
   --chart-neutral-1: #807a9c;
   --chart-neutral-2: #5e577a;
+
+  /* Dark-mode categorical ramp — lifted in lightness/saturation so each hue
+     reads on the deep card surface while staying distinct from its neighbors. */
+  --chart-cat-1: #a194ff;   /* purple */
+  --chart-cat-2: #2dc580;   /* green */
+  --chart-cat-3: #ffb24a;   /* amber */
+  --chart-cat-4: #ff6188;   /* rose */
+  --chart-cat-5: #5b9bff;   /* blue */
+  --chart-cat-6: #2dd4bf;   /* teal */
+  --chart-cat-7: #e879f9;   /* fuchsia */
+  --chart-cat-8: #fb923c;   /* orange */
 
   --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
   --shadow-card-hover: 0 4px 14px -2px rgba(134, 117, 255, 0.20), 0 0 0 1px rgba(255, 255, 255, 0.06);

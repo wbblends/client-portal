@@ -45,22 +45,22 @@ const STALE_AFTER_DAYS = 30;
 const STALE_TOP_N = 15;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Curated palette for donut slices — eight shades of the WB Blends brand
-// purple, with lightness alternating on purpose so adjacent slices stay
-// distinguishable when many categories are visible. The two trailing
-// neutrals are reserved for "Unset/Unknown" buckets so a missing value
-// reads as "missing" rather than as another category. Sourced from the
-// --chart-purple-*/--chart-neutral-* tokens in globals.css so light and
-// dark mode get tonally appropriate variants.
+// Curated palette for donut slices — eight DISTINCT hues (brand purple, green,
+// amber, rose, blue, teal, fuchsia, orange) so adjacent slices stay
+// discernible at a glance even when many categories are visible. The two
+// trailing neutrals are reserved for "Unset/Unknown" buckets so a missing
+// value reads as "missing" rather than as another category. Sourced from the
+// --chart-cat-*/--chart-neutral-* tokens in globals.css so light and dark mode
+// get tonally appropriate variants.
 const SLICE_COLORS = [
-  "var(--chart-purple-1)",  // brand primary
-  "var(--chart-purple-2)",  // mid-light lavender
-  "var(--chart-purple-3)",  // deep purple
-  "var(--chart-purple-4)",  // light lavender
-  "var(--chart-purple-5)",  // mid-deep
-  "var(--chart-purple-6)",  // mid-light alt
-  "var(--chart-purple-7)",  // very deep
-  "var(--chart-purple-8)",  // palest lavender
+  "var(--chart-cat-1)",     // brand purple
+  "var(--chart-cat-2)",     // green
+  "var(--chart-cat-3)",     // amber
+  "var(--chart-cat-4)",     // rose
+  "var(--chart-cat-5)",     // blue
+  "var(--chart-cat-6)",     // teal
+  "var(--chart-cat-7)",     // fuchsia
+  "var(--chart-cat-8)",     // orange
   "var(--chart-neutral-1)", // fallback for "Unset/Unknown"
   "var(--chart-neutral-2)", // secondary fallback
 ];
@@ -436,18 +436,18 @@ function DonutCard({
     // Render the donut in value-descending order so the largest slice starts
     // at the top, regardless of how the table is sorted.
     const sorted = [...rows].sort((a, b) => valueOf(b) - valueOf(a));
-    // Palette shape: indices 0–7 are the purple ramp, 8–9 are neutral
-    // fallbacks for "missing data" buckets. Real categories rotate through
-    // the eight purples; Unset/Unassigned/Unknown drop into a neutral so
+    // Palette shape: indices 0–7 are the distinct categorical hues, 8–9 are
+    // neutral fallbacks for "missing data" buckets. Real categories rotate
+    // through the eight hues; Unset/Unassigned/Unknown drop into a neutral so
     // they read visually as "no value" rather than as another category.
-    const PURPLE_COUNT = 8;
+    const CATEGORICAL_COUNT = 8;
     let neutralCursor = 0;
     return sorted.map((r, i) => {
       const isMissing =
         r.key === "Unset" || r.key === "Unassigned" || r.key === "Unknown";
       const color = isMissing
-        ? SLICE_COLORS[PURPLE_COUNT + (neutralCursor++ % 2)]
-        : SLICE_COLORS[i % PURPLE_COUNT];
+        ? SLICE_COLORS[CATEGORICAL_COUNT + (neutralCursor++ % 2)]
+        : SLICE_COLORS[i % CATEGORICAL_COUNT];
       return {
         key: r.key,
         value: valueOf(r),
