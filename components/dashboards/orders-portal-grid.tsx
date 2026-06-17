@@ -416,19 +416,16 @@ export function OrdersPortalGrid({
   const monthProgress = monthTarget > 0 ? monthActual / monthTarget : 0;
 
   /**
-   * Rolling 90-day forecast window: current month plus the next two, clipped
-   * to December. The current month keeps its actual column; the +1 and +2
-   * future months have their actual columns hidden and their forecast columns
-   * inserted in their place (alongside the current-month forecast).
+   * Forecast window: the current month plus every remaining month through
+   * December. The current month keeps its actual column; each future month
+   * has its actual column hidden and its forecast column inserted in its place
+   * (alongside the current-month forecast).
    */
   const forecastWindow = useMemo<number[]>(() => {
     // Forecasts only apply to the live year; a prior year is closed actuals.
     if (!isCurrentYear) return [];
     const out: number[] = [];
-    for (let k = 0; k < 3; k++) {
-      const idx = currentMonthIdx + k;
-      if (idx < 12) out.push(idx);
-    }
+    for (let idx = currentMonthIdx; idx < 12; idx++) out.push(idx);
     return out;
   }, [currentMonthIdx, isCurrentYear]);
 
@@ -503,12 +500,12 @@ export function OrdersPortalGrid({
       {/* Full-width card styled like the Quarter cards below: short label +
           delta chip on top, big actual number, "of $target (pct%)" sub line,
           and a progress bar at the bottom. */}
-      {/* Current-month booked + 90-day forecast row. Four cards: the current
-          month's actual progress vs target, followed by forecast totals for
-          this month plus the next two. Forecast cards share the yellow
-          palette used by the forecast columns in the spreadsheet below. Only
-          the live year has a "current month" and a forecast — a prior year
-          jumps straight to its Quarter cards. */}
+      {/* Current-month booked + forecast row. The current month's actual
+          progress vs target, followed by forecast totals for every remaining
+          month through December. Forecast cards share the yellow palette used
+          by the forecast columns in the spreadsheet below. Only the live year
+          has a "current month" and a forecast — a prior year jumps straight to
+          its Quarter cards. */}
       {isCurrentYear && (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {(() => {

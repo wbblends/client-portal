@@ -100,7 +100,8 @@ export function emptyForecasts(): (number | null)[] {
 /**
  * Snapshot from the 2026 POs tab as of the latest export. Numbers represent
  * actual booked PO amounts ($) per month, per customer. Forecasts seed empty
- * — admins fill them in via the grid's rolling 90-day forecast columns.
+ * — admins fill them in via the grid's forecast columns (current month
+ * through December).
  */
 type SeedRow = Omit<OrdersPortalRow, "forecasts">;
 const SEED_ROWS_RAW: SeedRow[] = [
