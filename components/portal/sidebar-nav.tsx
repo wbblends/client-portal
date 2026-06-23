@@ -29,6 +29,7 @@ import {
   ChevronDown,
   MessageSquare,
   FileSpreadsheet,
+  Telescope,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -197,6 +198,12 @@ export function SidebarNav({
           href="/tools/quote-builder"
           label="Quote Builder"
           icon={FileSpreadsheet}
+          pathname={pathname}
+        />
+        <NavLink
+          href="/tools/brand-researcher"
+          label="Brand Researcher"
+          icon={Telescope}
           pathname={pathname}
         />
       </CollapsibleGroup>
