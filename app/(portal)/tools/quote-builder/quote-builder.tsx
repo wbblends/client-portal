@@ -321,7 +321,7 @@ export function QuoteBuilder() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative -m-4 min-h-[calc(100dvh-7rem)] sm:-m-6 lg:-m-8">
+    <div className="relative min-h-[calc(100dvh-7rem)] overflow-hidden">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -369,17 +369,22 @@ function GhostButton({
   children,
   onClick,
   disabled,
+  className,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   disabled?: boolean;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-6 text-sm font-semibold text-foreground-soft transition-colors hover:bg-accent disabled:opacity-50"
+      className={cn(
+        "inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-6 text-sm font-semibold text-foreground-soft transition-colors hover:bg-accent disabled:opacity-50",
+        className,
+      )}
     >
       {children}
     </button>
@@ -665,13 +670,16 @@ function ReviewStep({
 
       <QuoteForm data={data} set={set} setIngredient={setIngredient} setIngredients={setIngredients} />
 
-      {/* Sticky action bar */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="mx-auto flex max-w-[860px] items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <GhostButton onClick={onBack} disabled={generating}>
+      {/* Floating action island — auto-width and centered over the content
+          area so it doesn't span the full viewport or sit on top of the
+          left sidebar. pointer-events-none on the wrapper lets clicks pass
+          through the empty gutters to the form behind it. */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-20 flex justify-center px-4">
+        <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-border bg-card/95 p-1.5 shadow-[0_12px_40px_-12px_rgba(17,11,41,0.4)] backdrop-blur supports-[backdrop-filter]:bg-card/85">
+          <GhostButton onClick={onBack} disabled={generating} className="h-10 px-4">
             <ArrowLeft className="h-4 w-4" /> Back
           </GhostButton>
-          <PrimaryButton onClick={onGenerate} disabled={generating}>
+          <PrimaryButton onClick={onGenerate} disabled={generating} className="h-10 px-5">
             {generating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" /> Building PDF…

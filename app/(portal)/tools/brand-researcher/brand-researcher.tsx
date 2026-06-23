@@ -321,7 +321,7 @@ export function BrandResearcher({ canSeeCrm = false }: { canSeeCrm?: boolean }) 
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative -m-4 min-h-[calc(100dvh-7rem)] sm:-m-6 lg:-m-8">
+    <div className="relative min-h-[calc(100dvh-7rem)] overflow-hidden">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
