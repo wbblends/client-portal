@@ -69,10 +69,7 @@ export const SUBMIT_QUOTE_TOOL: Anthropic.Tool = {
           },
           newProduct: yesNo,
           flexFirm: str,
-          existingProduct: yesNo,
-          existingInfo: str,
           sample: yesNo,
-          fps: yesNo,
           prodSpecs: yesNo,
           excipientRestrictions: yesNo,
           preferredExcipient: {
@@ -148,6 +145,11 @@ export const SUBMIT_QUOTE_TOOL: Anthropic.Tool = {
           boxSize: str,
           unitsPerCarton: str,
           palletQty: str,
+          // Accessories (capsule)
+          cotton: yesNo,
+          desiccant: yesNo,
+          unitCartonCust: yesNo,
+          insertCust: yesNo,
           // Special requirements
           srOrganic: bool,
           srNonGmo: bool,
@@ -159,6 +161,9 @@ export const SUBMIT_QUOTE_TOOL: Anthropic.Tool = {
           srAllergenFree: bool,
           srRawMaterialClaims: bool,
           srRetailers: bool,
+          srMicrobial: bool,
+          srCofA: bool,
+          srHeavyMetal: bool,
           srOther: str,
           international: yesNo,
           intlCountries: str,

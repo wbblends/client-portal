@@ -79,28 +79,6 @@ function Text({
   );
 }
 
-function Area({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <label className="block">
-      <Label>{label}</Label>
-      <textarea
-        value={value}
-        rows={2}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full resize-y rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary focus:bg-card"
-      />
-    </label>
-  );
-}
-
 function Check({
   label,
   checked,
@@ -308,19 +286,12 @@ export function QuoteForm(props: Props) {
       <Section title="Product background">
         <div className="grid gap-5 sm:grid-cols-2">
           <YesNo label="Is this a new product?" value={data.newProduct} onChange={(v) => set("newProduct", v)} />
-          <YesNo label="Is this an existing product?" value={data.existingProduct} onChange={(v) => set("existingProduct", v)} />
-        </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {data.newProduct === "yes" && (
             <Text label="Formulation — flexible or firm?" value={data.flexFirm} onChange={(v) => set("flexFirm", v)} placeholder="e.g. Flexible" />
           )}
-          {data.existingProduct === "yes" && (
-            <Area label="Formula / product link / images" value={data.existingInfo} onChange={(v) => set("existingInfo", v)} />
-          )}
         </div>
         <div className="mt-5 grid gap-5 sm:grid-cols-2">
-          <YesNo label="Sample of finished product?" value={data.sample} onChange={(v) => set("sample", v)} note="If yes → Attn: Landon Penrod, 585 W 1000N, Spanish Fork, UT 84660" />
-          <YesNo label="Do you have an FPS for your product?" value={data.fps} onChange={(v) => set("fps", v)} note="If yes, attach your FPS." />
+          <YesNo label="Can we order a sample of the finished product?" value={data.sample} onChange={(v) => set("sample", v)} note="If yes → Attn: Landon Penrod, 585 W 1000N, Spanish Fork, UT 84660" />
           <YesNo label="Specific production specifications?" value={data.prodSpecs} onChange={(v) => set("prodSpecs", v)} note="If yes, attach manufacturing specs." />
           {!isLiquid && (
             <YesNo label="Excipient restrictions?" value={data.excipientRestrictions} onChange={(v) => set("excipientRestrictions", v)} />
@@ -573,12 +544,29 @@ export function QuoteForm(props: Props) {
           />
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-3">
-          <Text label="Box size" value={data.boxSize} onChange={(v) => set("boxSize", v)} />
-          {!isLiquid && <Text label="Units per carton" value={data.unitsPerCarton} onChange={(v) => set("unitsPerCarton", v)} />}
-          <Text label="Pallet quantity" value={data.palletQty} onChange={(v) => set("palletQty", v)} />
-          {!isLiquid && <Text label="Lid size" value={data.lidSize} onChange={(v) => set("lidSize", v)} />}
-        </div>
+        {/* Box size, pallet qty and the rest of the pack-out sizes were dropped
+            from the liquid quote — capsule/powder only. */}
+        {!isLiquid && (
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <Text label="Box size" value={data.boxSize} onChange={(v) => set("boxSize", v)} />
+            <Text label="Units per carton" value={data.unitsPerCarton} onChange={(v) => set("unitsPerCarton", v)} />
+            <Text label="Pallet quantity" value={data.palletQty} onChange={(v) => set("palletQty", v)} />
+            <Text label="Lid size" value={data.lidSize} onChange={(v) => set("lidSize", v)} />
+          </div>
+        )}
+
+        {/* Accessories — capsule only. */}
+        {isCapsule && (
+          <div className="mt-6 border-t border-border/70 pt-5">
+            <Label>Accessories</Label>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <YesNo label="Cotton" value={data.cotton} onChange={(v) => set("cotton", v)} />
+              <YesNo label="Desiccant" value={data.desiccant} onChange={(v) => set("desiccant", v)} />
+              <YesNo label="Unit carton — customer supplied?" value={data.unitCartonCust} onChange={(v) => set("unitCartonCust", v)} />
+              <YesNo label="Insert — customer supplied?" value={data.insertCust} onChange={(v) => set("insertCust", v)} />
+            </div>
+          </div>
+        )}
       </Section>
 
       {/* Special requirements */}
@@ -594,6 +582,9 @@ export function QuoteForm(props: Props) {
           <Check label="Non Allergen" checked={data.srAllergenFree} onChange={(v) => set("srAllergenFree", v)} />
           <Check label="Raw Material Claims" checked={data.srRawMaterialClaims} onChange={(v) => set("srRawMaterialClaims", v)} />
           <Check label="Going into retailers" checked={data.srRetailers} onChange={(v) => set("srRetailers", v)} />
+          <Check label="Microbial" checked={data.srMicrobial} onChange={(v) => set("srMicrobial", v)} />
+          <Check label="C of A (USP or equivalent)" checked={data.srCofA} onChange={(v) => set("srCofA", v)} />
+          <Check label="Heavy Metal Testing" checked={data.srHeavyMetal} onChange={(v) => set("srHeavyMetal", v)} />
         </div>
         <div className="mt-3 max-w-md">
           <Text label="Other" value={data.srOther} onChange={(v) => set("srOther", v)} />

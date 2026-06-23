@@ -75,10 +75,7 @@ export type QuoteData = {
   // ── Product background ──
   newProduct: YesNo;
   flexFirm: string;
-  existingProduct: YesNo;
-  existingInfo: string;
   sample: YesNo;
-  fps: YesNo;
   prodSpecs: YesNo;
   excipientRestrictions: YesNo;
   /** Capsule/Powder preferred excipient — single-select (the PDF field is one
@@ -176,6 +173,12 @@ export type QuoteData = {
   bottleSize: string;
   lidSize: string;
 
+  // ── Accessories (capsule only) ──
+  cotton: YesNo;
+  desiccant: YesNo;
+  unitCartonCust: YesNo;
+  insertCust: YesNo;
+
   // ── Special requirements ──
   srOrganic: boolean;
   srNonGmo: boolean;
@@ -187,6 +190,9 @@ export type QuoteData = {
   srAllergenFree: boolean;
   srRawMaterialClaims: boolean;
   srRetailers: boolean;
+  srMicrobial: boolean;
+  srCofA: boolean;
+  srHeavyMetal: boolean;
   srOther: string;
 
   international: YesNo;
@@ -206,10 +212,7 @@ export function emptyQuoteData(productType: ProductType = "capsule"): QuoteData 
     ingredients: Array.from({ length: 5 }, emptyIngredient),
     newProduct: "",
     flexFirm: "",
-    existingProduct: "",
-    existingInfo: "",
     sample: "",
-    fps: "",
     prodSpecs: "",
     excipientRestrictions: "",
     preferredExcipient: "",
@@ -283,6 +286,10 @@ export function emptyQuoteData(productType: ProductType = "capsule"): QuoteData 
     palletQty: "",
     bottleSize: "",
     lidSize: "",
+    cotton: "",
+    desiccant: "",
+    unitCartonCust: "",
+    insertCust: "",
     srOrganic: false,
     srNonGmo: false,
     srNonGmoProject: false,
@@ -293,6 +300,9 @@ export function emptyQuoteData(productType: ProductType = "capsule"): QuoteData 
     srAllergenFree: false,
     srRawMaterialClaims: false,
     srRetailers: false,
+    srMicrobial: false,
+    srCofA: false,
+    srHeavyMetal: false,
     srOther: "",
     international: "",
     intlCountries: "",

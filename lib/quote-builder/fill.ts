@@ -131,22 +131,29 @@ function specialReqOps(d: QuoteData): Op[] {
   if (d.srAllergenFree) ops.push(c("Allergen Free"));
   if (d.srRawMaterialClaims) ops.push(c("Raw Material Claims"));
   if (d.srRetailers) ops.push(c("Product is going into retailers"));
-  ops.push(t("undefined", d.srOther));
+  // Microbial / C of A / heavy-metal testing have no dedicated checkbox on the
+  // PDF, so they ride along in the free-text "Other" field alongside anything
+  // the rep typed.
+  const extras: string[] = [];
+  if (d.srMicrobial) extras.push("Microbial");
+  if (d.srCofA) extras.push("C of A (USP or equivalent)");
+  if (d.srHeavyMetal) extras.push("Heavy Metal Testing");
+  const otherText = [d.srOther.trim(), ...extras].filter(Boolean).join("; ");
+  ops.push(t("undefined", otherText));
   const intl = yn("q6", d.international, "2", "1"); // international: yes=2, no=1
   if (intl) ops.push(intl);
   ops.push(t("If yes which countries", d.intlCountries));
   return ops;
 }
 
-/** Background questions shared by both forms (q1–q4). */
+/** Background questions shared by both forms: new product (q1) + sample (q3).
+ *  The existing-product (q2) and FPS (q4) questions were dropped from the
+ *  tool, so those PDF fields are left blank. */
 function backgroundSharedOps(d: QuoteData): Op[] {
   const ops: (Op | null)[] = [
     yn("q1", d.newProduct, "1", "2"),
     t("If yes please send the s", d.flexFirm),
-    yn("q2", d.existingProduct, "1", "2"),
-    t("If yes please sen", d.existingInfo),
     yn("q3", d.sample, "1", "2"),
-    yn("q4", d.fps, "1", "2"),
   ];
   return ops.filter((o): o is Op => o !== null);
 }
@@ -179,8 +186,8 @@ function packagingSharedOps(d: QuoteData): Op[] {
   // Pack out (e2: standard=1, custom=2)
   if (d.packOut === "standard") ops.push(r("e2", "1"));
   else if (d.packOut === "custom") ops.push(r("e2", "2"));
-  // Sizes (only the high-confidence, named fields)
-  ops.push(t("Case Label", d.boxSize), t("Pallet Size", d.palletQty));
+  // Box size + pallet qty are filled per-form (capsule/powder only — they were
+  // dropped from the liquid quote), so they're not added here.
   return ops;
 }
 
@@ -303,9 +310,23 @@ function capsulePowderOps(d: QuoteData): Op[] {
   else if (d.scoop === "funnel") ops.push(r("e4", "3"));
   // Sizes specific to capsule/powder
   ops.push(
+    t("Case Label", d.boxSize),
+    t("Pallet Size", d.palletQty),
     t("undefinecd_cd", d.unitsPerCarton),
     t("undefinecd_cdcd", d.lidSize),
   );
+
+  // Accessory Y/N toggles — capsule only (mapped to the packaging-page fields;
+  // all are yes=/2, no=/1).
+  if (d.productType === "capsule") {
+    const acc: (Op | null)[] = [
+      yn("w1", d.cotton, "2", "1"), // Cotton
+      yn("w2", d.desiccant, "2", "1"), // Desiccant
+      yn("q10", d.unitCartonCust, "2", "1"), // Unit carton — customer supplied
+      yn("w5", d.insertCust, "2", "1"), // Insert — customer supplied
+    ];
+    for (const o of acc) if (o) ops.push(o);
+  }
 
   ops.push(...packagingSharedOps(d));
   ops.push(...specialReqOps(d));
