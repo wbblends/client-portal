@@ -28,6 +28,7 @@ import {
   BadgeCheck,
   ChevronDown,
   MessageSquare,
+  FileSpreadsheet,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -182,6 +183,23 @@ export function SidebarNav({
         icon={Home}
         pathname={pathname}
       />
+
+      {/* Tools — available to every signed-in user. Self-serve utilities that
+           aren't tied to a dashboard or customer. Pinned right under Home so
+           reps always have it one click away. */}
+      <CollapsibleGroup
+        id="tools"
+        label="Tools"
+        pathname={pathname}
+        containsActivePath={pathname.startsWith("/tools")}
+      >
+        <NavLink
+          href="/tools/quote-builder"
+          label="Quote Builder"
+          icon={FileSpreadsheet}
+          pathname={pathname}
+        />
+      </CollapsibleGroup>
 
       {/* Customer-role users see their own Customer Dashboard pinned at the
            top — they can't switch customers, so the picker/dropdown UI for
