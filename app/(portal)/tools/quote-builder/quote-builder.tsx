@@ -31,6 +31,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Mail,
+  Link2,
   AlertCircle,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
@@ -67,6 +68,7 @@ export function QuoteBuilder() {
   const [phase, setPhase] = useState<Phase>("welcome");
   const [data, setData] = useState<QuoteData>(() => emptyQuoteData("capsule"));
   const [files, setFiles] = useState<File[]>([]);
+  const [productUrl, setProductUrl] = useState("");
   const [summary, setSummary] = useState("");
   const [confidence, setConfidence] = useState("");
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -131,7 +133,8 @@ export function QuoteBuilder() {
   // ── Analyze uploads ──
   const analyze = useCallback(async () => {
     setError(null);
-    if (files.length === 0) {
+    const url = productUrl.trim();
+    if (files.length === 0 && !url) {
       setPhase("form");
       return;
     }
@@ -152,7 +155,9 @@ export function QuoteBuilder() {
     }
     if (cur.length) batches.push(cur);
 
-    setProgress({ done: 0, total: batches.length });
+    // The product URL (if any) is one more source on top of the file batches.
+    const totalUnits = batches.length + (url ? 1 : 0);
+    setProgress({ done: 0, total: totalUnits });
 
     let merged = emptyQuoteData(data.productType);
     const summaries: string[] = [];
@@ -187,7 +192,34 @@ export function QuoteBuilder() {
       } catch {
         failures.push(`Batch ${b + 1} couldn't be sent (it may be too large).`);
       }
-      setProgress({ done: b + 1, total: batches.length });
+      setProgress({ done: b + 1, total: totalUnits });
+    }
+
+    // Product URL — Claude fetches the page and extracts the same shape.
+    if (url) {
+      try {
+        const res = await fetch("/api/tools/quote-builder/analyze-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, productHint: data.productType }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          failures.push(json?.error || "Couldn't read the product URL.");
+        } else {
+          anyOk = true;
+          const fields = (json.fields ?? {}) as Record<string, unknown>;
+          if (Array.isArray(fields.ingredients))
+            allIngredients.push(fields.ingredients as Ingredient[]);
+          merged = applyExtracted(merged, { ...fields, ingredients: undefined });
+          if (json.summary) summaries.push(`From ${url}:\n${json.summary as string}`);
+          if (!detected && json.detectedProductType) detected = json.detectedProductType;
+          if (!firstConfidence && json.confidence) firstConfidence = json.confidence;
+        }
+      } catch {
+        failures.push("Couldn't reach the product URL.");
+      }
+      setProgress({ done: totalUnits, total: totalUnits });
     }
 
     // Best ingredient list = the one with the most named rows.
@@ -218,7 +250,7 @@ export function QuoteBuilder() {
       setError(failures.join(" ") + " You can still fill the quote in by hand.");
     }
     setPhase("form");
-  }, [files, data.productType]);
+  }, [files, productUrl, data.productType]);
 
   // ── Generate PDF ──
   const generate = useCallback(async () => {
@@ -257,6 +289,7 @@ export function QuoteBuilder() {
   const startOver = useCallback(() => {
     setData(emptyQuoteData("capsule"));
     setFiles([]);
+    setProductUrl("");
     setSummary("");
     setConfidence("");
     setError(null);
@@ -287,13 +320,17 @@ export function QuoteBuilder() {
         <UploadStep
           files={files}
           setFiles={setFiles}
+          productUrl={productUrl}
+          setProductUrl={setProductUrl}
           onBack={() => setPhase("type")}
           onAnalyze={analyze}
           error={error}
         />
       )}
 
-      {phase === "analyzing" && <Analyzing progress={progress} count={files.length} />}
+      {phase === "analyzing" && (
+        <Analyzing progress={progress} count={files.length + (productUrl.trim() ? 1 : 0)} />
+      )}
 
       {phase === "form" && (
         <ReviewStep
@@ -466,18 +503,23 @@ function TypeStep({
 function UploadStep({
   files,
   setFiles,
+  productUrl,
+  setProductUrl,
   onBack,
   onAnalyze,
   error,
 }: {
   files: File[];
   setFiles: (f: File[]) => void;
+  productUrl: string;
+  setProductUrl: (u: string) => void;
   onBack: () => void;
   onAnalyze: () => void;
   error: string | null;
 }) {
   const [drag, setDrag] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasInput = files.length > 0 || productUrl.trim().length > 0;
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -562,6 +604,36 @@ function UploadStep({
         </ul>
       )}
 
+      {/* Or just point it at a product page. */}
+      <div className="mt-5">
+        <div className="mb-2 flex items-center gap-2">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-soft">
+            or paste a product link
+          </span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <label className="relative block">
+          <Link2 className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-soft" />
+          <input
+            type="url"
+            inputMode="url"
+            value={productUrl}
+            onChange={(e) => setProductUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && hasInput) onAnalyze();
+            }}
+            placeholder="https://… a product page, Amazon listing, brand site"
+            className="h-12 w-full rounded-xl border border-border bg-card pl-10 pr-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-soft focus:border-primary"
+          />
+        </label>
+        <p className="mt-1.5 text-xs text-muted">
+          We&apos;ll fetch the page and reverse-engineer a starting quote from the label
+          and product details. Retail pages won&apos;t have everything — you&apos;ll still
+          confirm assays, volumes, and pricing.
+        </p>
+      </div>
+
       {error && <div className="mt-4"><ErrorNote>{error}</ErrorNote></div>}
 
       <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -570,7 +642,7 @@ function UploadStep({
         </GhostButton>
         <div className="flex flex-col gap-3 sm:flex-row">
           <GhostButton onClick={onAnalyze}>Skip — I&apos;ll fill it in</GhostButton>
-          <PrimaryButton onClick={onAnalyze} disabled={files.length === 0}>
+          <PrimaryButton onClick={onAnalyze} disabled={!hasInput}>
             <Sparkles className="h-4 w-4" />
             Analyze &amp; pre-fill
           </PrimaryButton>
@@ -595,8 +667,8 @@ function Analyzing({
       </span>
       <h2 className="mt-6 font-display text-2xl text-foreground">Reading your materials…</h2>
       <p className="mt-2 max-w-[380px] text-sm text-muted">
-        Digesting {count} {count === 1 ? "file" : "files"} and filling in the quote. This
-        usually takes a few seconds.
+        Digesting {count} {count === 1 ? "source" : "sources"} and filling in the quote. A
+        product link can take a little longer while we fetch the page.
       </p>
       {progress.total > 1 && (
         <p className="mt-3 text-xs font-semibold text-primary">
